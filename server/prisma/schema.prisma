@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  FOREMAN
+  SITE_MANAGER
+  SUPPLY
+  PTO
+  CHIEF_ENGINEER
+  DIRECTOR
+}
+
+enum ObjectType {
+  CONSTRUCTION_OBJECT
+  INTERNAL_DEPARTMENT
+}
+
+enum UserObjectRole {
+  OWNER
+  RESPONSIBLE
+  VIEWER
+}
+
+enum SupplyRequestStatus {
+  CREATED
+  PENDING_PTO
+  PENDING_CHIEF_ENGINEER
+  PENDING_SUPPLY
+  PENDING_DIRECTOR
+  RETURNED_TO_SUPPLY
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum ApprovalAction {
+  CREATED
+  APPROVED
+  REJECTED
+  RETURNED
+  SENT_TO_PTO
+  SENT_TO_CHIEF_ENGINEER
+  SENT_TO_SUPPLY
+  SENT_TO_DIRECTOR
+  MARKED_IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+  COMMENTED
+  PRICE_UPDATED
+}
+
+enum PriceField {
+  PTO_LIMIT_PRICE
+  SUPPLIER_PURCHASE_PRICE
+}
+
+model User {
+  id              String                @id @default(cuid())
+  name            String
+  role            UserRole
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  ownedObjects    ObjectEntity[]        @relation("ObjectOwner")
+  objectAccesses  UserObjectAccess[]
+  supplyRequests  SupplyRequest[]       @relation("SupplyRequestAuthor")
+  approvalActions ApprovalHistory[]     @relation("ApprovalActor")
+  priceChanges    RequestPriceHistory[] @relation("PriceChangeActor")
+}
+
+model ObjectEntity {
+  id             String             @id @default(cuid())
+  name           String
+  type           ObjectType
+  closingLimit   Decimal            @db.Decimal(18, 2)
+  ownerId        String
+  owner          User               @relation("ObjectOwner", fields: [ownerId], references: [id])
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  materials      ObjectMaterial[]
+  userAccesses   UserObjectAccess[]
+  supplyRequests SupplyRequest[]
+
+  @@index([ownerId])
+}
+
+model UserObjectAccess {
+  id        String         @id @default(cuid())
+  userId    String
+  objectId  String
+  role      UserObjectRole @default(VIEWER)
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  object    ObjectEntity   @relation(fields: [objectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, objectId])
+  @@index([objectId])
+}
+
+model ObjectMaterial {
+  id              String              @id @default(cuid())
+  objectId        String
+  object          ObjectEntity        @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  name            String
+  type            String
+  measurementUnit String
+  estimatedPrice  Decimal             @db.Decimal(18, 2)
+  isActive        Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  requestItems    SupplyRequestItem[]
+
+  @@unique([objectId, name, measurementUnit])
+  @@index([objectId])
+}
+
+model SupplyRequest {
+  id              String              @id @default(cuid())
+  requestNumber   String              @unique
+  status          SupplyRequestStatus @default(CREATED)
+  objectId        String
+  authorId        String
+  object          ObjectEntity        @relation(fields: [objectId], references: [id])
+  author          User                @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  items           SupplyRequestItem[]
+  approvalHistory ApprovalHistory[]
+
+  @@index([objectId])
+  @@index([authorId])
+  @@index([status])
+}
+
+model SupplyRequestItem {
+  id                      String                @id @default(cuid())
+  requestId               String
+  objectMaterialId        String
+  request                 SupplyRequest         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  objectMaterial          ObjectMaterial        @relation(fields: [objectMaterialId], references: [id])
+  materialNameSnapshot    String
+  materialTypeSnapshot    String
+  measurementUnitSnapshot String
+  estimatedPriceSnapshot  Decimal               @db.Decimal(18, 2)
+  quantity                Decimal               @db.Decimal(18, 3)
+  ptoLimitPrice           Decimal?              @db.Decimal(18, 2)
+  supplierPurchasePrice   Decimal?              @db.Decimal(18, 2)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  priceHistory            RequestPriceHistory[]
+
+  @@index([requestId])
+  @@index([objectMaterialId])
+}
+
+model ApprovalHistory {
+  id          String               @id @default(cuid())
+  requestId   String
+  actorId     String
+  action      ApprovalAction
+  fromStatus  SupplyRequestStatus?
+  toStatus    SupplyRequestStatus?
+  comment     String?
+  changesJson Json?
+  createdAt   DateTime             @default(now())
+  request     SupplyRequest        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actor       User                 @relation("ApprovalActor", fields: [actorId], references: [id])
+
+  @@index([requestId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+model RequestPriceHistory {
+  id            String            @id @default(cuid())
+  requestItemId String
+  actorId       String
+  field         PriceField
+  oldValue      Decimal?          @db.Decimal(18, 2)
+  newValue      Decimal?          @db.Decimal(18, 2)
+  createdAt     DateTime          @default(now())
+  requestItem   SupplyRequestItem @relation(fields: [requestItemId], references: [id], onDelete: Cascade)
+  actor         User              @relation("PriceChangeActor", fields: [actorId], references: [id])
+
+  @@index([requestItemId])
+  @@index([actorId])
+  @@index([createdAt])
+}
