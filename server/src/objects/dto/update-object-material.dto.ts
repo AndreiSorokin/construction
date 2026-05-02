@@ -1,7 +1,32 @@
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsNumberString,
+  IsOptional,
+  IsString,
+} from "class-validator";
+
 export class UpdateObjectMaterialDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   type?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
   measurementUnit?: string;
-  estimatedPrice?: string | number;
+
+  @IsOptional()
+  @IsNumberString()
+  estimatedPrice?: string;
+
+  @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 }

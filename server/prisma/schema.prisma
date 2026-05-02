@@ -62,16 +62,20 @@ enum PriceField {
 }
 
 model User {
-  id              String                @id @default(cuid())
-  name            String
-  role            UserRole
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  ownedObjects    ObjectEntity[]        @relation("ObjectOwner")
-  objectAccesses  UserObjectAccess[]
-  supplyRequests  SupplyRequest[]       @relation("SupplyRequestAuthor")
-  approvalActions ApprovalHistory[]     @relation("ApprovalActor")
-  priceChanges    RequestPriceHistory[] @relation("PriceChangeActor")
+  id               String                @id @default(cuid())
+  email            String                @unique
+  passwordHash     String
+  refreshTokenHash String?
+  name             String
+  role             UserRole?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  ownedObjects     ObjectEntity[]        @relation("ObjectOwner")
+  objectAccesses   UserObjectAccess[]
+  supplyRequests   SupplyRequest[]       @relation("SupplyRequestAuthor")
+  approvalActions  ApprovalHistory[]     @relation("ApprovalActor")
+  priceChanges     RequestPriceHistory[] @relation("PriceChangeActor")
+  sentInvitations  Invitation[]          @relation("InvitationInviter")
 }
 
 model ObjectEntity {
@@ -86,6 +90,7 @@ model ObjectEntity {
   materials      ObjectMaterial[]
   userAccesses   UserObjectAccess[]
   supplyRequests SupplyRequest[]
+  invitations    Invitation[]
 
   @@index([ownerId])
 }
@@ -101,6 +106,26 @@ model UserObjectAccess {
 
   @@unique([userId, objectId])
   @@index([objectId])
+}
+
+model Invitation {
+  id         String         @id @default(cuid())
+  email      String
+  name       String
+  tokenHash  String         @unique
+  userRole   UserRole
+  objectRole UserObjectRole @default(VIEWER)
+  objectId   String
+  inviterId  String
+  acceptedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime       @default(now())
+  object     ObjectEntity   @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  inviter    User           @relation("InvitationInviter", fields: [inviterId], references: [id])
+
+  @@index([email])
+  @@index([objectId])
+  @@index([inviterId])
 }
 
 model ObjectMaterial {

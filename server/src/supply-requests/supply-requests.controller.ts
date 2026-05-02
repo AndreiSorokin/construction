@@ -1,4 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { UserRole } from "@prisma/client";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { Roles } from "../auth/roles.decorator";
+import { RolesGuard } from "../auth/roles.guard";
+import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
@@ -6,12 +20,17 @@ import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices
 import { SupplyRequestsService } from "./supply-requests.service";
 
 @Controller("supply-requests")
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class SupplyRequestsController {
   constructor(private readonly supplyRequestsService: SupplyRequestsService) {}
 
   @Post("materials")
-  createMaterialRequest(@Body() dto: CreateMaterialSupplyRequestDto) {
-    return this.supplyRequestsService.createMaterialRequest(dto);
+  @Roles(UserRole.FOREMAN, UserRole.SITE_MANAGER)
+  createMaterialRequest(
+    @Body() dto: CreateMaterialSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createMaterialRequest(dto, user.id);
   }
 
   @Get()
@@ -25,56 +44,96 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/pto-limit-prices")
+  @Roles(UserRole.PTO)
   setPtoLimitPrices(
     @Param("id") id: string,
     @Body() dto: SetPtoLimitPricesDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.supplyRequestsService.setPtoLimitPrices(id, dto);
+    return this.supplyRequestsService.setPtoLimitPrices(id, dto, user.id);
   }
 
   @Patch(":id/chief-engineer/approve")
+  @Roles(UserRole.CHIEF_ENGINEER)
   approveByChiefEngineer(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.supplyRequestsService.approveByChiefEngineer(id, dto);
+    return this.supplyRequestsService.approveByChiefEngineer(id, dto, user.id);
   }
 
   @Patch(":id/supplier-purchase-prices")
+  @Roles(UserRole.SUPPLY)
   setSupplierPurchasePrices(
     @Param("id") id: string,
     @Body() dto: SetSupplierPurchasePricesDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.supplyRequestsService.setSupplierPurchasePrices(id, dto);
+    return this.supplyRequestsService.setSupplierPurchasePrices(
+      id,
+      dto,
+      user.id,
+    );
   }
 
   @Patch(":id/director/approve")
-  approveByDirector(@Param("id") id: string, @Body() dto: RequestActionDto) {
-    return this.supplyRequestsService.approveByDirector(id, dto);
+  @Roles(UserRole.DIRECTOR)
+  approveByDirector(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByDirector(id, dto, user.id);
   }
 
   @Patch(":id/director/return")
-  returnToSupply(@Param("id") id: string, @Body() dto: RequestActionDto) {
-    return this.supplyRequestsService.returnToSupply(id, dto);
+  @Roles(UserRole.DIRECTOR)
+  returnToSupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.returnToSupply(id, dto, user.id);
   }
 
   @Patch(":id/director/reject")
-  rejectByDirector(@Param("id") id: string, @Body() dto: RequestActionDto) {
-    return this.supplyRequestsService.rejectByDirector(id, dto);
+  @Roles(UserRole.DIRECTOR)
+  rejectByDirector(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.rejectByDirector(id, dto, user.id);
   }
 
   @Patch(":id/director/archive")
-  archiveByDirector(@Param("id") id: string, @Body() dto: RequestActionDto) {
-    return this.supplyRequestsService.archiveByDirector(id, dto);
+  @Roles(UserRole.DIRECTOR)
+  archiveByDirector(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.archiveByDirector(id, dto, user.id);
   }
 
   @Patch(":id/complete")
-  complete(@Param("id") id: string, @Body() dto: RequestActionDto) {
-    return this.supplyRequestsService.complete(id, dto);
+  @Roles(UserRole.SUPPLY)
+  complete(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.complete(id, dto, user.id);
   }
 
   @Patch(":id/archive")
-  archive(@Param("id") id: string, @Body() dto: RequestActionDto) {
-    return this.supplyRequestsService.archive(id, dto);
+  @Roles(UserRole.SUPPLY, UserRole.DIRECTOR)
+  archive(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.archive(id, dto, user.id);
   }
 }

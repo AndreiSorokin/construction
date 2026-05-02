@@ -38,12 +38,22 @@ npm run start:dev
 - `POST /users`
 - `GET /users`
 
+Авторизация:
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/accept-invitation`
+- `POST /auth/refresh`
+- `POST /auth/logout`
+- `GET /auth/me`
+
 Объекты и материалы:
 
 - `POST /objects`
 - `GET /objects`
 - `GET /objects/:id`
 - `POST /objects/:id/access`
+- `POST /objects/:id/invitations`
 - `POST /objects/:id/materials`
 - `GET /objects/:id/materials`
 - `PATCH /objects/:id/materials/:materialId`

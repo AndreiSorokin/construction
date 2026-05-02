@@ -1,4 +1,7 @@
+import { IsOptional, IsString } from "class-validator";
+
 export class RequestActionDto {
-  actorId: string;
+  @IsOptional()
+  @IsString()
   comment?: string;
 }

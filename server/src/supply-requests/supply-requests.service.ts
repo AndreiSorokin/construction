@@ -21,12 +21,15 @@ import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices
 export class SupplyRequestsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createMaterialRequest(dto: CreateMaterialSupplyRequestDto) {
+  async createMaterialRequest(
+    dto: CreateMaterialSupplyRequestDto,
+    authorId: string,
+  ) {
     if (!dto.items?.length) {
       throw new BadRequestException("Request must contain at least one item");
     }
 
-    const author = await this.ensureUserWithRole(dto.authorId, [
+    const author = await this.ensureUserWithRole(authorId, [
       UserRole.FOREMAN,
       UserRole.SITE_MANAGER,
     ]);
@@ -68,7 +71,7 @@ export class SupplyRequestsService {
         data: {
           requestNumber: await this.createRequestNumber(tx),
           objectId: dto.objectId,
-          authorId: dto.authorId,
+          authorId,
           status: SupplyRequestStatus.PENDING_PTO,
           items: {
             create: dto.items.map((item) => {
@@ -90,7 +93,7 @@ export class SupplyRequestsService {
           },
           approvalHistory: {
             create: {
-              actorId: dto.authorId,
+              actorId: authorId,
               action: ApprovalAction.CREATED,
               fromStatus: null,
               toStatus: SupplyRequestStatus.PENDING_PTO,
@@ -125,8 +128,12 @@ export class SupplyRequestsService {
     return request;
   }
 
-  async setPtoLimitPrices(id: string, dto: SetPtoLimitPricesDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.PTO]);
+  async setPtoLimitPrices(
+    id: string,
+    dto: SetPtoLimitPricesDto,
+    actorId: string,
+  ) {
+    await this.ensureUserWithRole(actorId, [UserRole.PTO]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_PTO,
     ]);
@@ -148,7 +155,7 @@ export class SupplyRequestsService {
         await tx.requestPriceHistory.create({
           data: {
             requestItemId: requestItem.id,
-            actorId: dto.actorId,
+            actorId,
             field: PriceField.PTO_LIMIT_PRICE,
             oldValue: requestItem.ptoLimitPrice,
             newValue,
@@ -164,7 +171,7 @@ export class SupplyRequestsService {
       return this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.SENT_TO_CHIEF_ENGINEER,
         request.status,
         SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
@@ -173,8 +180,12 @@ export class SupplyRequestsService {
     });
   }
 
-  async approveByChiefEngineer(id: string, dto: RequestActionDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.CHIEF_ENGINEER]);
+  async approveByChiefEngineer(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    await this.ensureUserWithRole(actorId, [UserRole.CHIEF_ENGINEER]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
     ]);
@@ -183,7 +194,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.SENT_TO_SUPPLY,
         request.status,
         SupplyRequestStatus.PENDING_SUPPLY,
@@ -195,8 +206,9 @@ export class SupplyRequestsService {
   async setSupplierPurchasePrices(
     id: string,
     dto: SetSupplierPurchasePricesDto,
+    actorId: string,
   ) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.SUPPLY]);
+    await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_SUPPLY,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
@@ -219,7 +231,7 @@ export class SupplyRequestsService {
         await tx.requestPriceHistory.create({
           data: {
             requestItemId: requestItem.id,
-            actorId: dto.actorId,
+            actorId,
             field: PriceField.SUPPLIER_PURCHASE_PRICE,
             oldValue: requestItem.supplierPurchasePrice,
             newValue,
@@ -235,7 +247,7 @@ export class SupplyRequestsService {
       return this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.SENT_TO_DIRECTOR,
         request.status,
         SupplyRequestStatus.PENDING_DIRECTOR,
@@ -244,8 +256,8 @@ export class SupplyRequestsService {
     });
   }
 
-  async approveByDirector(id: string, dto: RequestActionDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.DIRECTOR]);
+  async approveByDirector(id: string, dto: RequestActionDto, actorId: string) {
+    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
@@ -254,7 +266,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.MARKED_IN_PROGRESS,
         request.status,
         SupplyRequestStatus.IN_PROGRESS,
@@ -263,8 +275,8 @@ export class SupplyRequestsService {
     );
   }
 
-  async returnToSupply(id: string, dto: RequestActionDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.DIRECTOR]);
+  async returnToSupply(id: string, dto: RequestActionDto, actorId: string) {
+    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
@@ -273,7 +285,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.RETURNED,
         request.status,
         SupplyRequestStatus.RETURNED_TO_SUPPLY,
@@ -282,8 +294,8 @@ export class SupplyRequestsService {
     );
   }
 
-  async rejectByDirector(id: string, dto: RequestActionDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.DIRECTOR]);
+  async rejectByDirector(id: string, dto: RequestActionDto, actorId: string) {
+    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
@@ -292,7 +304,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.REJECTED,
         request.status,
         SupplyRequestStatus.RETURNED_TO_SUPPLY,
@@ -301,8 +313,8 @@ export class SupplyRequestsService {
     );
   }
 
-  async archiveByDirector(id: string, dto: RequestActionDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.DIRECTOR]);
+  async archiveByDirector(id: string, dto: RequestActionDto, actorId: string) {
+    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
@@ -312,7 +324,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.ARCHIVED,
         request.status,
         SupplyRequestStatus.ARCHIVED,
@@ -321,8 +333,8 @@ export class SupplyRequestsService {
     );
   }
 
-  async complete(id: string, dto: RequestActionDto) {
-    await this.ensureUserWithRole(dto.actorId, [UserRole.SUPPLY]);
+  async complete(id: string, dto: RequestActionDto, actorId: string) {
+    await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.IN_PROGRESS,
     ]);
@@ -331,7 +343,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.COMPLETED,
         request.status,
         SupplyRequestStatus.COMPLETED,
@@ -340,7 +352,7 @@ export class SupplyRequestsService {
     );
   }
 
-  async archive(id: string, dto: RequestActionDto) {
+  async archive(id: string, dto: RequestActionDto, actorId: string) {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.COMPLETED,
     ]);
@@ -349,7 +361,7 @@ export class SupplyRequestsService {
       this.moveRequest(
         tx,
         id,
-        dto.actorId,
+        actorId,
         ApprovalAction.ARCHIVED,
         request.status,
         SupplyRequestStatus.ARCHIVED,
@@ -399,7 +411,7 @@ export class SupplyRequestsService {
       throw new NotFoundException("User not found");
     }
 
-    if (!roles.includes(user.role)) {
+    if (!user.role || !roles.includes(user.role)) {
       throw new ForbiddenException("User role is not allowed for this action");
     }
 
