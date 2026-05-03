@@ -61,11 +61,14 @@ npm run start:dev
 Заявки на материалы:
 
 - `POST /supply-requests/materials`
+- `POST /supply-requests/transport`
+- `POST /supply-requests/money`
 - `GET /supply-requests`
 - `GET /supply-requests/:id`
 - `PATCH /supply-requests/:id/pto-limit-prices`
 - `PATCH /supply-requests/:id/chief-engineer/approve`
 - `PATCH /supply-requests/:id/supplier-purchase-prices`
+- `PATCH /supply-requests/:id/transport/supply/approve`
 - `PATCH /supply-requests/:id/director/approve`
 - `PATCH /supply-requests/:id/director/return`
 - `PATCH /supply-requests/:id/director/reject`

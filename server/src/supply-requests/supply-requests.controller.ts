@@ -14,6 +14,8 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
+import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
+import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
@@ -31,6 +33,23 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.createMaterialRequest(dto, user.id);
+  }
+
+  @Post("transport")
+  @Roles(UserRole.SITE_MANAGER)
+  createTransportRequest(
+    @Body() dto: CreateTransportSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createTransportRequest(dto, user.id);
+  }
+
+  @Post("money")
+  createMoneyRequest(
+    @Body() dto: CreateMoneySupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createMoneyRequest(dto, user.id);
   }
 
   @Get()
@@ -71,6 +90,20 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.setSupplierPurchasePrices(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/transport/supply/approve")
+  @Roles(UserRole.SUPPLY)
+  approveTransportBySupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveTransportBySupply(
       id,
       dto,
       user.id,

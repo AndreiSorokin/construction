@@ -9,10 +9,13 @@ import {
   PriceField,
   Prisma,
   SupplyRequestStatus,
+  SupplyRequestType,
   UserRole,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
+import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
+import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
@@ -69,7 +72,8 @@ export class SupplyRequestsService {
     return this.prisma.$transaction(async (tx) => {
       const request = await tx.supplyRequest.create({
         data: {
-          requestNumber: await this.createRequestNumber(tx),
+          requestNumber: await this.createRequestNumber(tx, "MAT"),
+          type: SupplyRequestType.MATERIAL,
           objectId: dto.objectId,
           authorId,
           status: SupplyRequestStatus.PENDING_PTO,
@@ -108,6 +112,70 @@ export class SupplyRequestsService {
     });
   }
 
+  async createTransportRequest(
+    dto: CreateTransportSupplyRequestDto,
+    authorId: string,
+  ) {
+    const author = await this.ensureUserWithRole(authorId, [
+      UserRole.SITE_MANAGER,
+    ]);
+
+    await this.ensureUserObjectAccess(author.id, dto.objectId);
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "TRN"),
+          type: SupplyRequestType.TRANSPORT,
+          objectId: dto.objectId,
+          authorId,
+          transportType: dto.transportType,
+          purpose: dto.purpose,
+          status: SupplyRequestStatus.PENDING_SUPPLY,
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: SupplyRequestStatus.PENDING_SUPPLY,
+              comment: "Transport request created and sent to supply",
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
+  async createMoneyRequest(dto: CreateMoneySupplyRequestDto, authorId: string) {
+    await this.ensureUserExists(authorId);
+    await this.ensureUserObjectAccess(authorId, dto.objectId);
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "MON"),
+          type: SupplyRequestType.MONEY,
+          objectId: dto.objectId,
+          authorId,
+          amount: new Prisma.Decimal(dto.amount),
+          paymentPurpose: dto.paymentPurpose,
+          status: SupplyRequestStatus.PENDING_DIRECTOR,
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: SupplyRequestStatus.PENDING_DIRECTOR,
+              comment: "Money request created and sent to director",
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
   findAll() {
     return this.prisma.supplyRequest.findMany({
       include: this.requestInclude,
@@ -134,9 +202,11 @@ export class SupplyRequestsService {
     actorId: string,
   ) {
     await this.ensureUserWithRole(actorId, [UserRole.PTO]);
-    const request = await this.ensureRequestStatus(id, [
-      SupplyRequestStatus.PENDING_PTO,
-    ]);
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_PTO],
+      SupplyRequestType.MATERIAL,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -186,9 +256,11 @@ export class SupplyRequestsService {
     actorId: string,
   ) {
     await this.ensureUserWithRole(actorId, [UserRole.CHIEF_ENGINEER]);
-    const request = await this.ensureRequestStatus(id, [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-    ]);
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
+      SupplyRequestType.MATERIAL,
+    );
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -209,10 +281,14 @@ export class SupplyRequestsService {
     actorId: string,
   ) {
     await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
-    const request = await this.ensureRequestStatus(id, [
-      SupplyRequestStatus.PENDING_SUPPLY,
-      SupplyRequestStatus.RETURNED_TO_SUPPLY,
-    ]);
+    const request = await this.ensureRequestStatus(
+      id,
+      [
+        SupplyRequestStatus.PENDING_SUPPLY,
+        SupplyRequestStatus.RETURNED_TO_SUPPLY,
+      ],
+      SupplyRequestType.MATERIAL,
+    );
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -256,6 +332,34 @@ export class SupplyRequestsService {
     });
   }
 
+  async approveTransportBySupply(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
+    const request = await this.ensureRequestStatus(
+      id,
+      [
+        SupplyRequestStatus.PENDING_SUPPLY,
+        SupplyRequestStatus.RETURNED_TO_SUPPLY,
+      ],
+      SupplyRequestType.TRANSPORT,
+    );
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        ApprovalAction.SENT_TO_DIRECTOR,
+        request.status,
+        SupplyRequestStatus.PENDING_DIRECTOR,
+        dto.comment,
+      ),
+    );
+  }
+
   async approveByDirector(id: string, dto: RequestActionDto, actorId: string) {
     await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
@@ -280,6 +384,12 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
+
+    if (request.type === SupplyRequestType.MONEY) {
+      throw new BadRequestException(
+        "Money request cannot be returned to supply",
+      );
+    }
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -390,6 +500,7 @@ export class SupplyRequestsService {
 
   private async createRequestNumber(
     tx: Prisma.TransactionClient,
+    prefix: string,
   ): Promise<string> {
     const now = new Date();
     const datePart = [
@@ -399,7 +510,7 @@ export class SupplyRequestsService {
     ].join("");
     const count = await tx.supplyRequest.count();
 
-    return `MAT-${datePart}-${String(count + 1).padStart(6, "0")}`;
+    return `MAT-${prefix}-${datePart}-${String(count + 1).padStart(6, "0")}`;
   }
 
   private async ensureUserWithRole(id: string, roles: UserRole[]) {
@@ -418,9 +529,21 @@ export class SupplyRequestsService {
     return user;
   }
 
+  private async ensureUserExists(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+  }
+
   private async ensureRequestStatus(
     id: string,
     statuses: SupplyRequestStatus[],
+    type?: SupplyRequestType,
   ) {
     const request = await this.prisma.supplyRequest.findUnique({
       where: { id },
@@ -437,7 +560,28 @@ export class SupplyRequestsService {
       );
     }
 
+    if (type && request.type !== type) {
+      throw new BadRequestException(
+        `Request type ${request.type} is not allowed for this action`,
+      );
+    }
+
     return request;
+  }
+
+  private async ensureUserObjectAccess(userId: string, objectId: string) {
+    const objectAccess = await this.prisma.userObjectAccess.findUnique({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    if (!objectAccess) {
+      throw new ForbiddenException("User has no access to this object");
+    }
   }
 
   private async moveRequest(

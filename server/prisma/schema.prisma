@@ -40,6 +40,12 @@ enum SupplyRequestStatus {
   ARCHIVED
 }
 
+enum SupplyRequestType {
+  MATERIAL
+  TRANSPORT
+  MONEY
+}
+
 enum ApprovalAction {
   CREATED
   APPROVED
@@ -148,9 +154,14 @@ model ObjectMaterial {
 model SupplyRequest {
   id              String              @id @default(cuid())
   requestNumber   String              @unique
+  type            SupplyRequestType
   status          SupplyRequestStatus @default(CREATED)
   objectId        String
   authorId        String
+  transportType   String?
+  purpose         String?
+  amount          Decimal?            @db.Decimal(18, 2)
+  paymentPurpose  String?
   object          ObjectEntity        @relation(fields: [objectId], references: [id])
   author          User                @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
   createdAt       DateTime            @default(now())
@@ -161,6 +172,7 @@ model SupplyRequest {
   @@index([objectId])
   @@index([authorId])
   @@index([status])
+  @@index([type])
 }
 
 model SupplyRequestItem {
