@@ -25,13 +25,23 @@ import {
   downloadMaterialsTemplate,
   getObject,
   importObjectMaterials,
+  inviteObjectUser,
   updateObjectMaterial,
 } from "@/lib/objects-api";
-import { ObjectEntity, ObjectMaterial, User } from "@/lib/types";
+import { ObjectEntity, ObjectMaterial, User, UserRole } from "@/lib/types";
 
 const objectTypeLabels = {
   CONSTRUCTION_OBJECT: "Строительный объект",
   INTERNAL_DEPARTMENT: "Внутренний отдел",
+};
+
+const inviteRoleLabels: Record<UserRole, string> = {
+  FOREMAN: "Прораб",
+  SITE_MANAGER: "Начальник участка",
+  SUPPLY: "Снабжение",
+  PTO: "ПТО",
+  CHIEF_ENGINEER: "Главный инженер",
+  DIRECTOR: "Директор",
 };
 
 type MaterialEditForm = {
@@ -110,6 +120,33 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
       });
       formElement.reset();
       showSuccess("Материал добавлен");
+      await loadPage();
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  async function inviteUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    clearError();
+    clearSuccess();
+
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+
+    try {
+      const result = await inviteObjectUser(objectId, {
+        email: String(form.get("email")),
+        name: String(form.get("name")),
+        userRole: String(form.get("userRole")) as UserRole,
+      });
+
+      formElement.reset();
+      showSuccess(
+        result.mail?.sent === false && result.inviteLink
+          ? `Приглашение создано. SMTP не отправил письмо, ссылка: ${result.inviteLink}`
+          : "Приглашение отправлено",
+      );
       await loadPage();
     } catch (error) {
       showError(error);
@@ -501,6 +538,46 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
               {canAddMaterials ? (
                 <aside className="grid min-w-0 gap-4 self-start">
+                  {canManageMaterials ? (
+                    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                      <h2 className="font-semibold text-slate-950">
+                        Пригласить пользователя
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Назначьте роль и доступ к этому объекту или отделу.
+                      </p>
+                      <form className="mt-4 grid gap-3" onSubmit={inviteUser}>
+                        <Field name="email" label="Email" type="email" />
+                        <Field name="name" label="Имя" />
+                        <label className="grid gap-1.5">
+                          <span className="text-sm font-medium text-slate-700">
+                            Роль в системе
+                          </span>
+                          <select
+                            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                            defaultValue="FOREMAN"
+                            name="userRole"
+                            required
+                          >
+                            {Object.entries(inviteRoleLabels).map(
+                              ([role, label]) => (
+                                <option key={role} value={role}>
+                                  {label}
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </label>
+                        <button
+                          className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+                          type="submit"
+                        >
+                          Пригласить
+                        </button>
+                      </form>
+                    </section>
+                  ) : null}
+
                   <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h2 className="font-semibold text-slate-950">
                       Excel импорт

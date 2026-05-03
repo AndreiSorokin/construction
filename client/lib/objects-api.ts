@@ -1,7 +1,12 @@
 import { apiClient } from "./api";
 import { getAccessToken } from "./auth-storage";
 import { API_URL } from "./config";
-import { ObjectEntity, ObjectMaterial, UserObjectAccess } from "./types";
+import {
+  ObjectEntity,
+  ObjectMaterial,
+  UserObjectAccess,
+  UserRole,
+} from "./types";
 
 export function getMyObjects() {
   return apiClient<UserObjectAccess[]>("/objects/access/mine");
@@ -57,6 +62,26 @@ export function deleteObjectMaterial(objectId: string, materialId: string) {
 export function deleteObject(id: string) {
   return apiClient<{ success: boolean }>(`/objects/${id}`, {
     method: "DELETE",
+  });
+}
+
+export type InviteObjectUserPayload = {
+  email: string;
+  name: string;
+  userRole: UserRole;
+};
+
+export function inviteObjectUser(
+  objectId: string,
+  payload: InviteObjectUserPayload,
+) {
+  return apiClient<{
+    type?: string;
+    inviteLink?: string;
+    mail?: { sent?: boolean };
+  }>(`/objects/${objectId}/invitations`, {
+    method: "POST",
+    body: payload,
   });
 }
 

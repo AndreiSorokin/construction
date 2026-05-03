@@ -190,10 +190,10 @@ export class ObjectsService {
           create: {
             userId: existingUser.id,
             objectId,
-            role: dto.objectRole ?? UserObjectRole.VIEWER,
+            role: dto.objectRole ?? UserObjectRole.RESPONSIBLE,
           },
           update: {
-            role: dto.objectRole ?? UserObjectRole.VIEWER,
+            role: dto.objectRole ?? UserObjectRole.RESPONSIBLE,
           },
         });
 
@@ -228,7 +228,7 @@ export class ObjectsService {
         name: dto.name,
         tokenHash,
         userRole: dto.userRole,
-        objectRole: dto.objectRole ?? UserObjectRole.VIEWER,
+        objectRole: dto.objectRole ?? UserObjectRole.RESPONSIBLE,
         objectId,
         inviterId,
         expiresAt,

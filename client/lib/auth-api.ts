@@ -10,6 +10,11 @@ export type RegisterPayload = LoginPayload & {
   name: string;
 };
 
+export type AcceptInvitationPayload = {
+  token: string;
+  password: string;
+};
+
 export function login(payload: LoginPayload) {
   return apiClient<AuthResponse>("/auth/login", {
     method: "POST",
@@ -19,6 +24,13 @@ export function login(payload: LoginPayload) {
 
 export function register(payload: RegisterPayload) {
   return apiClient<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function acceptInvitation(payload: AcceptInvitationPayload) {
+  return apiClient<AuthResponse>("/auth/accept-invitation", {
     method: "POST",
     body: payload,
   });
