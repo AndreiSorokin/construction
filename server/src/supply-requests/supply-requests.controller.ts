@@ -27,7 +27,7 @@ export class SupplyRequestsController {
   constructor(private readonly supplyRequestsService: SupplyRequestsService) {}
 
   @Post("materials")
-  @Roles(UserRole.FOREMAN, UserRole.SITE_MANAGER)
+  @Roles(UserRole.FOREMAN)
   createMaterialRequest(
     @Body() dto: CreateMaterialSupplyRequestDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -80,6 +80,20 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.approveByChiefEngineer(id, dto, user.id);
+  }
+
+  @Patch(":id/chief-engineer/return-to-pto")
+  @Roles(UserRole.CHIEF_ENGINEER)
+  returnToPtoByChiefEngineer(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.returnToPtoByChiefEngineer(
+      id,
+      dto,
+      user.id,
+    );
   }
 
   @Patch(":id/supplier-purchase-prices")

@@ -32,10 +32,7 @@ export class SupplyRequestsService {
       throw new BadRequestException("Request must contain at least one item");
     }
 
-    const author = await this.ensureUserWithRole(authorId, [
-      UserRole.FOREMAN,
-      UserRole.SITE_MANAGER,
-    ]);
+    const author = await this.ensureUserWithRole(authorId, [UserRole.FOREMAN]);
 
     const objectAccess = await this.prisma.userObjectAccess.findUnique({
       where: {
@@ -269,6 +266,36 @@ export class SupplyRequestsService {
         ApprovalAction.SENT_TO_SUPPLY,
         request.status,
         SupplyRequestStatus.PENDING_SUPPLY,
+        dto.comment,
+      ),
+    );
+  }
+
+  async returnToPtoByChiefEngineer(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    await this.ensureUserWithRole(actorId, [UserRole.CHIEF_ENGINEER]);
+
+    if (!dto.comment?.trim()) {
+      throw new BadRequestException("Return comment is required");
+    }
+
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
+      SupplyRequestType.MATERIAL,
+    );
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        ApprovalAction.RETURNED,
+        request.status,
+        SupplyRequestStatus.PENDING_PTO,
         dto.comment,
       ),
     );
@@ -509,7 +536,7 @@ export class SupplyRequestsService {
     ].join("");
     const count = await tx.supplyRequest.count();
 
-    return `MAT-${prefix}-${datePart}-${String(count + 1).padStart(6, "0")}`;
+    return `${prefix}-${datePart}-${String(count + 1).padStart(6, "0")}`;
   }
 
   private async ensureUserWithRole(id: string, roles: UserRole[]) {

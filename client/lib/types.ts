@@ -34,6 +34,47 @@ export type ObjectEntity = {
   materials?: ObjectMaterial[];
 };
 
+export type SupplyRequestStatus =
+  | "CREATED"
+  | "PENDING_PTO"
+  | "PENDING_CHIEF_ENGINEER"
+  | "PENDING_SUPPLY"
+  | "PENDING_DIRECTOR"
+  | "RETURNED_TO_SUPPLY"
+  | "REJECTED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "ARCHIVED";
+
+export type SupplyRequestType = "MATERIAL" | "TRANSPORT" | "MONEY";
+
+export type SupplyRequestItem = {
+  id: string;
+  objectMaterialId: string;
+  materialNameSnapshot: string;
+  materialTypeSnapshot: string;
+  measurementUnitSnapshot: string;
+  estimatedPriceSnapshot: string;
+  quantity: string;
+  ptoLimitPrice?: string | null;
+  supplierPurchasePrice?: string | null;
+};
+
+export type SupplyRequest = {
+  id: string;
+  requestNumber: string;
+  type: SupplyRequestType;
+  status: SupplyRequestStatus;
+  objectId: string;
+  authorId: string;
+  createdAt: string;
+  transportType?: string | null;
+  purpose?: string | null;
+  object?: ObjectEntity;
+  author?: User;
+  items: SupplyRequestItem[];
+};
+
 export type UserObjectAccess = {
   id: string;
   userId: string;

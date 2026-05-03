@@ -6,18 +6,15 @@ import {
   Edit2,
   Factory,
   Save,
+  Send,
   Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ChangeEvent,
-  FormEvent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useState } from "react";
+import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
+import { TransportRequestModal } from "@/components/dashboard/transport-request-modal";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
 import { getCurrentUser } from "@/lib/auth-api";
@@ -57,6 +54,8 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     measurementUnit: "",
     estimatedPrice: "",
   });
+  const [isMaterialRequestOpen, setIsMaterialRequestOpen] = useState(false);
+  const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
 
@@ -64,6 +63,8 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     user?.role === "DIRECTOR" || user?.role === "CHIEF_ENGINEER";
   const canManageMaterials = user?.role === "DIRECTOR";
   const canDeleteObject = user?.role === "DIRECTOR";
+  const canCreateMaterialRequest = user?.role === "FOREMAN";
+  const canCreateTransportRequest = user?.role === "SITE_MANAGER";
   const materialsTotalAmount =
     object?.materials?.reduce(
       (total, material) => total + toNumber(material.estimatedPrice),
@@ -221,18 +222,20 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   return (
     <main className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-white">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-700 text-white">
               <Factory size={20} />
             </span>
-            <div>
-              <div className="font-semibold text-slate-950">СтройКонтроль</div>
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-slate-950">
+                СтройКонтроль
+              </div>
               <div className="text-sm text-slate-500">Объект</div>
             </div>
           </div>
           <Link
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             href="/dashboard"
           >
             <ArrowLeft size={16} />
@@ -259,37 +262,63 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
           </div>
         ) : (
           <>
-            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex gap-4">
-                  <span className="grid size-12 place-items-center rounded-md bg-slate-100 text-slate-700">
+                <div className="flex min-w-0 gap-4">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
                     <Building2 size={22} />
                   </span>
-                  <div>
-                    <h1 className="text-2xl font-semibold text-slate-950">
+                  <div className="min-w-0">
+                    <h1 className="break-words text-2xl font-semibold text-slate-950">
                       {object.name}
                     </h1>
                     <p className="mt-1 text-sm text-slate-600">
                       {objectTypeLabels[object.type]} · лимит{" "}
-                      {Number(object.closingLimit).toLocaleString("ru-KZ")} тг
+                      {formatMoney(objectLimitAmount)}
                     </p>
                   </div>
                 </div>
 
-                {canDeleteObject ? (
-                  <button
-                    className="inline-flex h-10 items-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
-                    onClick={() => void handleDeleteObject()}
-                  >
-                    <Trash2 size={16} />
-                    Удалить объект
-                  </button>
-                ) : null}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {canCreateMaterialRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      disabled={!object.materials?.length}
+                      onClick={() => setIsMaterialRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Заявка на материалы
+                    </button>
+                  ) : null}
+
+                  {canCreateTransportRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                      onClick={() => setIsTransportRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Заявка на транспорт
+                    </button>
+                  ) : null}
+
+                  {canDeleteObject ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+                      onClick={() => void handleDeleteObject()}
+                      type="button"
+                    >
+                      <Trash2 size={16} />
+                      Удалить объект
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </section>
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <section className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <h2 className="font-semibold text-slate-950">Материалы</h2>
                 <div
                   className={
@@ -307,7 +336,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                         {formatMoney(materialsTotalAmount)}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <div className="text-sm text-slate-500">
                         Лимит объекта
                       </div>
@@ -322,8 +351,9 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </div>
                   ) : null}
                 </div>
+
                 <div className="mt-4 overflow-x-auto">
-                  <table className="w-full min-w-[760px] border-collapse text-sm">
+                  <table className="w-full min-w-[680px] border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-left text-slate-500">
                         <th className="py-2 pr-3 font-medium">Название</th>
@@ -406,12 +436,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                                     }
                                   />
                                 ) : (
-                                  <>
-                                    {Number(
-                                      material.estimatedPrice,
-                                    ).toLocaleString("ru-KZ")}{" "}
-                                    тг
-                                  </>
+                                  formatMoney(toNumber(material.estimatedPrice))
                                 )}
                               </td>
                               {canManageMaterials ? (
@@ -475,8 +500,8 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               </section>
 
               {canAddMaterials ? (
-                <aside className="grid gap-4">
-                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <aside className="grid min-w-0 gap-4 self-start">
+                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h2 className="font-semibold text-slate-950">
                       Excel импорт
                     </h2>
@@ -507,7 +532,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </div>
                   </section>
 
-                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h2 className="font-semibold text-slate-950">
                       Добавить вручную
                     </h2>
@@ -531,6 +556,21 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                 </aside>
               ) : null}
             </div>
+
+            <MaterialRequestModal
+              isOpen={isMaterialRequestOpen}
+              object={object}
+              onClose={() => setIsMaterialRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+            />
+            <TransportRequestModal
+              isOpen={isTransportRequestOpen}
+              object={object}
+              onClose={() => setIsTransportRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+            />
           </>
         )}
       </section>
@@ -545,7 +585,7 @@ function toNumber(value: string | number | null | undefined) {
 }
 
 function formatMoney(value: number) {
-  return `${value.toLocaleString("ru-KZ")} тг`;
+  return `${value.toLocaleString("ru-KZ")} ₸`;
 }
 
 function Field({

@@ -15,6 +15,7 @@ import { getMyObjects } from "@/lib/objects-api";
 import { AuthResponse, User, UserObjectAccess } from "@/lib/types";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
+import { SupplyRequestsPanel } from "@/components/dashboard/supply-requests-panel";
 
 const roleLabels: Record<NonNullable<User["role"]>, string> = {
   FOREMAN: "Прораб",
@@ -181,6 +182,12 @@ export function DashboardClient() {
           ) : null}
         </div>
 
+        <SupplyRequestsPanel
+          user={user}
+          onError={showError}
+          onSuccess={showSuccess}
+        />
+
         <div className="grid gap-4 md:grid-cols-[1fr_340px]">
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4">
@@ -238,6 +245,18 @@ export function DashboardClient() {
           </section>
 
           <aside className="grid gap-4">
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-semibold text-slate-950">Банк заявок</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Все заявки системы, включая исполненные и архивные.
+              </p>
+              <Link
+                className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                href="/dashboard/requests"
+              >
+                Открыть банк заявок
+              </Link>
+            </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="font-semibold text-slate-950">Создать объект</h2>
