@@ -1,10 +1,4 @@
-import {
-  IsBoolean,
-  IsNotEmpty,
-  IsNumberString,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsNotEmpty, IsNumberString, IsOptional, IsString } from "class-validator";
 
 export class UpdateObjectMaterialDto {
   @IsOptional()
@@ -26,7 +20,4 @@ export class UpdateObjectMaterialDto {
   @IsNumberString()
   estimatedPrice?: string;
 
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 }

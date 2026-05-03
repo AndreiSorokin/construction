@@ -6,6 +6,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
 import { Prisma, UserObjectRole, UserRole } from "@prisma/client";
+import * as XLSX from "xlsx";
 import { MailService } from "../mail/mail.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AddObjectAccessDto } from "./dto/add-object-access.dto";
@@ -74,6 +75,28 @@ export class ObjectsService {
         materials: true,
         userAccesses: {
           include: { user: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  findMine(userId: string) {
+    return this.prisma.userObjectAccess.findMany({
+      where: { userId },
+      include: {
+        object: {
+          include: {
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+            materials: true,
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -251,6 +274,69 @@ export class ObjectsService {
     });
   }
 
+  createMaterialsTemplate() {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ["Название", "Тип материала", "Ед. измерения", "Сметная стоимость"],
+    ]);
+    worksheet["!cols"] = [
+      { wch: 28 },
+      { wch: 24 },
+      { wch: 16 },
+      { wch: 20 },
+    ];
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Материалы");
+
+    return XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "buffer",
+    }) as Buffer;
+  }
+
+  async importMaterials(objectId: string, file?: Express.Multer.File) {
+    await this.ensureObjectExists(objectId);
+
+    if (!file) {
+      throw new BadRequestException("Excel file is required");
+    }
+
+    const workbook = XLSX.read(file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+
+    if (!sheetName) {
+      throw new BadRequestException("Excel file has no sheets");
+    }
+
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, {
+      defval: "",
+    });
+    const materials = rows
+      .map((row, index) => this.parseMaterialRow(row, index + 2))
+      .filter((row) => row !== null);
+
+    if (!materials.length) {
+      throw new BadRequestException("Excel file has no material rows");
+    }
+
+    const result = await this.prisma.objectMaterial.createMany({
+      data: materials.map((material) => ({
+        objectId,
+        name: material.name,
+        type: material.type,
+        measurementUnit: material.measurementUnit,
+        estimatedPrice: new Prisma.Decimal(material.estimatedPrice),
+      })),
+      skipDuplicates: true,
+    });
+
+    return {
+      imported: result.count,
+      skipped: materials.length - result.count,
+    };
+  }
+
   async findMaterials(objectId: string) {
     await this.ensureObjectExists(objectId);
 
@@ -287,9 +373,72 @@ export class ObjectsService {
           dto.estimatedPrice === undefined
             ? undefined
             : new Prisma.Decimal(dto.estimatedPrice),
-        isActive: dto.isActive,
       },
     });
+  }
+
+  async deleteMaterial(objectId: string, materialId: string) {
+    const material = await this.prisma.objectMaterial.findFirst({
+      where: { id: materialId, objectId },
+      select: {
+        id: true,
+        requestItems: {
+          select: { id: true },
+          take: 1,
+        },
+      },
+    });
+
+    if (!material) {
+      throw new NotFoundException("Object material not found");
+    }
+
+    if (material.requestItems.length > 0) {
+      throw new BadRequestException(
+        "Material is already used in requests and cannot be deleted",
+      );
+    }
+
+    await this.prisma.objectMaterial.delete({
+      where: { id: materialId },
+    });
+
+    return { deleted: true };
+  }
+
+  async delete(id: string, actorId: string) {
+    const object = await this.prisma.objectEntity.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        ownerId: true,
+        _count: {
+          select: {
+            supplyRequests: true,
+          },
+        },
+      },
+    });
+
+    if (!object) {
+      throw new NotFoundException("Object not found");
+    }
+
+    if (object.ownerId !== actorId) {
+      throw new BadRequestException("Only object owner can delete object");
+    }
+
+    if (object._count.supplyRequests > 0) {
+      throw new BadRequestException(
+        "Object with supply requests cannot be deleted",
+      );
+    }
+
+    await this.prisma.objectEntity.delete({
+      where: { id },
+    });
+
+    return { success: true };
   }
 
   private async ensureObjectExists(id: string) {
@@ -323,5 +472,39 @@ export class ObjectsService {
 
   private hashInvitationToken(token: string) {
     return createHash("sha256").update(token).digest("hex");
+  }
+
+  private parseMaterialRow(row: Record<string, unknown>, rowNumber: number) {
+    const name = this.readCell(row, "Название");
+    const type = this.readCell(row, "Тип материала");
+    const measurementUnit = this.readCell(row, "Ед. измерения");
+    const estimatedPrice = this.readCell(row, "Сметная стоимость");
+
+    if (!name && !type && !measurementUnit && !estimatedPrice) {
+      return null;
+    }
+
+    if (!name || !type || !measurementUnit || !estimatedPrice) {
+      throw new BadRequestException(
+        `Row ${rowNumber}: all material fields are required`,
+      );
+    }
+
+    if (Number.isNaN(Number(estimatedPrice)) || Number(estimatedPrice) < 0) {
+      throw new BadRequestException(
+        `Row ${rowNumber}: estimated price must be a positive number`,
+      );
+    }
+
+    return {
+      name,
+      type,
+      measurementUnit,
+      estimatedPrice,
+    };
+  }
+
+  private readCell(row: Record<string, unknown>, column: string) {
+    return String(row[column] ?? "").trim();
   }
 }

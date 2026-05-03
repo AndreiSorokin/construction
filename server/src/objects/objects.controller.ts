@@ -1,13 +1,20 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
+  Res,
+  StreamableFile,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { UserRole } from "@prisma/client";
+import { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Roles } from "../auth/roles.decorator";
@@ -35,6 +42,23 @@ export class ObjectsController {
     return this.objectsService.findAll();
   }
 
+  @Get("materials/template")
+  @Roles(UserRole.DIRECTOR, UserRole.CHIEF_ENGINEER)
+  downloadMaterialsTemplate(@Res({ passthrough: true }) response: Response) {
+    response.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": 'attachment; filename="materials-template.xlsx"',
+    });
+
+    return new StreamableFile(this.objectsService.createMaterialsTemplate());
+  }
+
+  @Get("access/mine")
+  findMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.objectsService.findMine(user.id);
+  }
+
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.objectsService.findOne(id);
@@ -57,12 +81,22 @@ export class ObjectsController {
   }
 
   @Post(":id/materials")
-  @Roles(UserRole.DIRECTOR, UserRole.PTO)
+  @Roles(UserRole.DIRECTOR, UserRole.CHIEF_ENGINEER)
   createMaterial(
     @Param("id") id: string,
     @Body() dto: CreateObjectMaterialDto,
   ) {
     return this.objectsService.createMaterial(id, dto);
+  }
+
+  @Post(":id/materials/import")
+  @Roles(UserRole.DIRECTOR, UserRole.CHIEF_ENGINEER)
+  @UseInterceptors(FileInterceptor("file"))
+  importMaterials(
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.objectsService.importMaterials(id, file);
   }
 
   @Get(":id/materials")
@@ -71,12 +105,27 @@ export class ObjectsController {
   }
 
   @Patch(":id/materials/:materialId")
-  @Roles(UserRole.DIRECTOR, UserRole.PTO)
+  @Roles(UserRole.DIRECTOR)
   updateMaterial(
     @Param("id") id: string,
     @Param("materialId") materialId: string,
     @Body() dto: UpdateObjectMaterialDto,
   ) {
     return this.objectsService.updateMaterial(id, materialId, dto);
+  }
+
+  @Delete(":id/materials/:materialId")
+  @Roles(UserRole.DIRECTOR)
+  deleteMaterial(
+    @Param("id") id: string,
+    @Param("materialId") materialId: string,
+  ) {
+    return this.objectsService.deleteMaterial(id, materialId);
+  }
+
+  @Delete(":id")
+  @Roles(UserRole.DIRECTOR)
+  delete(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.objectsService.delete(id, user.id);
   }
 }

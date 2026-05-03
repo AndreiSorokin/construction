@@ -1,0 +1,105 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
+import { register } from "@/lib/auth-api";
+import { saveAuthSession } from "@/lib/auth-storage";
+import { useErrorMessage } from "@/hooks/use-error-message";
+import { useSuccessMessage } from "@/hooks/use-success-message";
+
+export function RegisterForm() {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { errorMessage, showError, clearError } = useErrorMessage();
+  const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    clearError();
+    clearSuccess();
+
+    const form = new FormData(event.currentTarget);
+
+    try {
+      const auth = await register({
+        name: String(form.get("name")),
+        email: String(form.get("email")),
+        password: String(form.get("password")),
+      });
+
+      saveAuthSession(auth);
+      showSuccess("Аккаунт создан");
+      router.replace("/dashboard");
+    } catch (error) {
+      showError(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <form className="grid gap-4" onSubmit={onSubmit}>
+      <label className="grid gap-1.5">
+        <span className="text-sm font-medium text-slate-700">Имя</span>
+        <input
+          className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+          name="name"
+          autoComplete="name"
+          minLength={2}
+          required
+        />
+      </label>
+
+      <label className="grid gap-1.5">
+        <span className="text-sm font-medium text-slate-700">Email</span>
+        <input
+          className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+        />
+      </label>
+
+      <label className="grid gap-1.5">
+        <span className="text-sm font-medium text-slate-700">Пароль</span>
+        <input
+          className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+          name="password"
+          type="password"
+          autoComplete="new-password"
+          minLength={6}
+          required
+        />
+      </label>
+
+      <Message text={errorMessage} tone="error" />
+      <Message text={successMessage} tone="success" />
+
+      <button
+        className="h-10 rounded-md bg-teal-700 px-4 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={isSubmitting}
+        type="submit"
+      >
+        {isSubmitting ? "Создаем..." : "Создать аккаунт"}
+      </button>
+    </form>
+  );
+}
+
+function Message({ text, tone }: { text: string; tone: "error" | "success" }) {
+  if (!text) return null;
+
+  return (
+    <div
+      className={
+        tone === "error"
+          ? "rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+          : "rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+      }
+    >
+      {text}
+    </div>
+  );
+}

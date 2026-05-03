@@ -55,13 +55,12 @@ export class SupplyRequestsService {
       where: {
         id: { in: materialIds },
         objectId: dto.objectId,
-        isActive: true,
       },
     });
 
     if (materials.length !== new Set(materialIds).size) {
       throw new BadRequestException(
-        "All materials must be active and belong to the selected object",
+        "All materials must belong to the selected object",
       );
     }
 
