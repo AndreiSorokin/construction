@@ -33,20 +33,9 @@ export class SupplyRequestsService {
       throw new BadRequestException("Request must contain at least one item");
     }
 
-    const author = await this.ensureUserWithRole(authorId, [UserRole.FOREMAN]);
-
-    const objectAccess = await this.prisma.userObjectAccess.findUnique({
-      where: {
-        userId_objectId: {
-          userId: author.id,
-          objectId: dto.objectId,
-        },
-      },
-    });
-
-    if (!objectAccess) {
-      throw new ForbiddenException("User has no access to this object");
-    }
+    await this.ensureUserObjectRole(authorId, dto.objectId, [
+      UserRole.FOREMAN,
+    ]);
 
     const materialIds = dto.items.map((item) => item.objectMaterialId);
     const materials = await this.prisma.objectMaterial.findMany({
@@ -113,11 +102,9 @@ export class SupplyRequestsService {
     dto: CreateTransportSupplyRequestDto,
     authorId: string,
   ) {
-    const author = await this.ensureUserWithRole(authorId, [
+    await this.ensureUserObjectRole(authorId, dto.objectId, [
       UserRole.SITE_MANAGER,
     ]);
-
-    await this.ensureUserObjectAccess(author.id, dto.objectId);
 
     return this.prisma.$transaction(async (tx) =>
       tx.supplyRequest.create({
@@ -277,12 +264,12 @@ export class SupplyRequestsService {
     dto: SetPtoLimitPricesDto,
     actorId: string,
   ) {
-    await this.ensureUserWithRole(actorId, [UserRole.PTO]);
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_PTO],
       SupplyRequestType.MATERIAL,
     );
+    await this.ensureUserObjectRole(actorId, request.objectId, [UserRole.PTO]);
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -331,12 +318,14 @@ export class SupplyRequestsService {
     dto: RequestActionDto,
     actorId: string,
   ) {
-    await this.ensureUserWithRole(actorId, [UserRole.CHIEF_ENGINEER]);
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
       SupplyRequestType.MATERIAL,
     );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.CHIEF_ENGINEER,
+    ]);
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -356,8 +345,6 @@ export class SupplyRequestsService {
     dto: RequestActionDto,
     actorId: string,
   ) {
-    await this.ensureUserWithRole(actorId, [UserRole.CHIEF_ENGINEER]);
-
     if (!dto.comment?.trim()) {
       throw new BadRequestException("Return comment is required");
     }
@@ -367,6 +354,9 @@ export class SupplyRequestsService {
       [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
       SupplyRequestType.MATERIAL,
     );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.CHIEF_ENGINEER,
+    ]);
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -386,7 +376,6 @@ export class SupplyRequestsService {
     dto: SetSupplierPurchasePricesDto,
     actorId: string,
   ) {
-    await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
     const request = await this.ensureRequestStatus(
       id,
       [
@@ -395,6 +384,9 @@ export class SupplyRequestsService {
       ],
       SupplyRequestType.MATERIAL,
     );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY,
+    ]);
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -443,7 +435,6 @@ export class SupplyRequestsService {
     dto: RequestActionDto,
     actorId: string,
   ) {
-    await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
     const request = await this.ensureRequestStatus(
       id,
       [
@@ -452,6 +443,9 @@ export class SupplyRequestsService {
       ],
       SupplyRequestType.TRANSPORT,
     );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY,
+    ]);
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -467,9 +461,11 @@ export class SupplyRequestsService {
   }
 
   async approveByDirector(id: string, dto: RequestActionDto, actorId: string) {
-    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DIRECTOR,
     ]);
 
     return this.prisma.$transaction((tx) =>
@@ -486,9 +482,11 @@ export class SupplyRequestsService {
   }
 
   async returnToSupply(id: string, dto: RequestActionDto, actorId: string) {
-    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DIRECTOR,
     ]);
 
     if (request.type === SupplyRequestType.MONEY) {
@@ -511,9 +509,11 @@ export class SupplyRequestsService {
   }
 
   async rejectByDirector(id: string, dto: RequestActionDto, actorId: string) {
-    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DIRECTOR,
     ]);
 
     return this.prisma.$transaction((tx) =>
@@ -530,10 +530,12 @@ export class SupplyRequestsService {
   }
 
   async archiveByDirector(id: string, dto: RequestActionDto, actorId: string) {
-    await this.ensureUserWithRole(actorId, [UserRole.DIRECTOR]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DIRECTOR,
     ]);
 
     return this.prisma.$transaction((tx) =>
@@ -550,9 +552,11 @@ export class SupplyRequestsService {
   }
 
   async complete(id: string, dto: RequestActionDto, actorId: string) {
-    await this.ensureUserWithRole(actorId, [UserRole.SUPPLY]);
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.IN_PROGRESS,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY,
     ]);
 
     return this.prisma.$transaction((tx) =>
@@ -571,6 +575,10 @@ export class SupplyRequestsService {
   async archive(id: string, dto: RequestActionDto, actorId: string) {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.COMPLETED,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY,
+      UserRole.DIRECTOR,
     ]);
 
     return this.prisma.$transaction((tx) =>
@@ -617,22 +625,6 @@ export class SupplyRequestsService {
     const count = await tx.supplyRequest.count();
 
     return `${prefix}-${datePart}-${String(count + 1).padStart(6, "0")}`;
-  }
-
-  private async ensureUserWithRole(id: string, roles: UserRole[]) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      throw new NotFoundException("User not found");
-    }
-
-    if (!user.role || !roles.includes(user.role)) {
-      throw new ForbiddenException("User role is not allowed for this action");
-    }
-
-    return user;
   }
 
   private async ensureUserExists(id: string) {
@@ -687,6 +679,27 @@ export class SupplyRequestsService {
 
     if (!objectAccess) {
       throw new ForbiddenException("User has no access to this object");
+    }
+  }
+
+  private async ensureUserObjectRole(
+    userId: string,
+    objectId: string,
+    roles: UserRole[],
+  ) {
+    const objectAccess = await this.prisma.userObjectAccess.findUnique({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    if (!objectAccess || !roles.includes(objectAccess.role)) {
+      throw new ForbiddenException(
+        "User role is not allowed for this object",
+      );
     }
   }
 

@@ -69,12 +69,16 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const { errorMessage, showError, clearError } = useErrorMessage();
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
 
+  const currentObjectRole = object?.userAccesses?.find(
+    (access) => access.userId === user?.id,
+  )?.role;
   const canAddMaterials =
-    user?.role === "DIRECTOR" || user?.role === "CHIEF_ENGINEER";
-  const canManageMaterials = user?.role === "DIRECTOR";
-  const canDeleteObject = user?.role === "DIRECTOR";
-  const canCreateMaterialRequest = user?.role === "FOREMAN";
-  const canCreateTransportRequest = user?.role === "SITE_MANAGER";
+    currentObjectRole === "DIRECTOR" ||
+    currentObjectRole === "CHIEF_ENGINEER";
+  const canManageMaterials = currentObjectRole === "DIRECTOR";
+  const canDeleteObject = currentObjectRole === "DIRECTOR";
+  const canCreateMaterialRequest = currentObjectRole === "FOREMAN";
+  const canCreateTransportRequest = currentObjectRole === "SITE_MANAGER";
   const materialsTotalAmount =
     object?.materials?.reduce(
       (total, material) => total + toNumber(material.estimatedPrice),

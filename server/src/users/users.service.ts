@@ -15,7 +15,6 @@ export class UsersService {
         email: dto.email,
         passwordHash,
         name: dto.name,
-        role: dto.role,
       },
       select: this.safeUserSelect,
     });
@@ -32,7 +31,6 @@ export class UsersService {
     id: true,
     email: true,
     name: true,
-    role: true,
     createdAt: true,
     updatedAt: true,
   };

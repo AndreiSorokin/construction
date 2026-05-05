@@ -13,11 +13,9 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { UserRole } from "@prisma/client";
 import { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AddObjectAccessDto } from "./dto/add-object-access.dto";
@@ -43,7 +41,6 @@ export class ObjectsController {
   }
 
   @Get("materials/template")
-  @Roles(UserRole.DIRECTOR, UserRole.CHIEF_ENGINEER)
   downloadMaterialsTemplate(@Res({ passthrough: true }) response: Response) {
     response.set({
       "Content-Type":
@@ -65,13 +62,15 @@ export class ObjectsController {
   }
 
   @Post(":id/access")
-  @Roles(UserRole.DIRECTOR)
-  addAccess(@Param("id") id: string, @Body() dto: AddObjectAccessDto) {
-    return this.objectsService.addAccess(id, dto);
+  addAccess(
+    @Param("id") id: string,
+    @Body() dto: AddObjectAccessDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.objectsService.addAccess(id, dto, user.id);
   }
 
   @Post(":id/invitations")
-  @Roles(UserRole.DIRECTOR)
   inviteUser(
     @Param("id") id: string,
     @Body() dto: InviteUserDto,
@@ -81,22 +80,22 @@ export class ObjectsController {
   }
 
   @Post(":id/materials")
-  @Roles(UserRole.DIRECTOR, UserRole.CHIEF_ENGINEER)
   createMaterial(
     @Param("id") id: string,
     @Body() dto: CreateObjectMaterialDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.objectsService.createMaterial(id, dto);
+    return this.objectsService.createMaterial(id, dto, user.id);
   }
 
   @Post(":id/materials/import")
-  @Roles(UserRole.DIRECTOR, UserRole.CHIEF_ENGINEER)
   @UseInterceptors(FileInterceptor("file"))
   importMaterials(
     @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.objectsService.importMaterials(id, file);
+    return this.objectsService.importMaterials(id, user.id, file);
   }
 
   @Get(":id/materials")
@@ -105,26 +104,25 @@ export class ObjectsController {
   }
 
   @Patch(":id/materials/:materialId")
-  @Roles(UserRole.DIRECTOR)
   updateMaterial(
     @Param("id") id: string,
     @Param("materialId") materialId: string,
     @Body() dto: UpdateObjectMaterialDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.objectsService.updateMaterial(id, materialId, dto);
+    return this.objectsService.updateMaterial(id, materialId, dto, user.id);
   }
 
   @Delete(":id/materials/:materialId")
-  @Roles(UserRole.DIRECTOR)
   deleteMaterial(
     @Param("id") id: string,
     @Param("materialId") materialId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.objectsService.deleteMaterial(id, materialId);
+    return this.objectsService.deleteMaterial(id, materialId, user.id);
   }
 
   @Delete(":id")
-  @Roles(UserRole.DIRECTOR)
   delete(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.objectsService.delete(id, user.id);
   }

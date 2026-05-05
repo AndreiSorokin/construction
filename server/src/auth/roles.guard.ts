@@ -22,6 +22,6 @@ export class RolesGuard implements CanActivate {
       user?: AuthenticatedUser;
     }>();
 
-    return !!request.user?.role && requiredRoles.includes(request.user.role);
+    return Boolean(request.user) && requiredRoles.length === 0;
   }
 }

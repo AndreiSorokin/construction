@@ -8,10 +8,8 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
-import { UserRole } from "@prisma/client";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
@@ -29,7 +27,6 @@ export class SupplyRequestsController {
   constructor(private readonly supplyRequestsService: SupplyRequestsService) {}
 
   @Post("materials")
-  @Roles(UserRole.FOREMAN)
   createMaterialRequest(
     @Body() dto: CreateMaterialSupplyRequestDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -38,7 +35,6 @@ export class SupplyRequestsController {
   }
 
   @Post("transport")
-  @Roles(UserRole.SITE_MANAGER)
   createTransportRequest(
     @Body() dto: CreateTransportSupplyRequestDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -65,7 +61,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/pto-limit-prices")
-  @Roles(UserRole.PTO)
   setPtoLimitPrices(
     @Param("id") id: string,
     @Body() dto: SetPtoLimitPricesDto,
@@ -75,7 +70,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/chief-engineer/approve")
-  @Roles(UserRole.CHIEF_ENGINEER)
   approveByChiefEngineer(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -85,7 +79,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/chief-engineer/return-to-pto")
-  @Roles(UserRole.CHIEF_ENGINEER)
   returnToPtoByChiefEngineer(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -99,7 +92,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/supplier-purchase-prices")
-  @Roles(UserRole.SUPPLY)
   setSupplierPurchasePrices(
     @Param("id") id: string,
     @Body() dto: SetSupplierPurchasePricesDto,
@@ -113,7 +105,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/transport/supply/approve")
-  @Roles(UserRole.SUPPLY)
   approveTransportBySupply(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -127,7 +118,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/director/approve")
-  @Roles(UserRole.DIRECTOR)
   approveByDirector(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -137,7 +127,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/director/return")
-  @Roles(UserRole.DIRECTOR)
   returnToSupply(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -147,7 +136,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/director/reject")
-  @Roles(UserRole.DIRECTOR)
   rejectByDirector(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -157,7 +145,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/director/archive")
-  @Roles(UserRole.DIRECTOR)
   archiveByDirector(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -167,7 +154,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/complete")
-  @Roles(UserRole.SUPPLY)
   complete(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
@@ -177,7 +163,6 @@ export class SupplyRequestsController {
   }
 
   @Patch(":id/archive")
-  @Roles(UserRole.SUPPLY, UserRole.DIRECTOR)
   archive(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,

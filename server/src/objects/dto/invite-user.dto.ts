@@ -1,11 +1,5 @@
-import { UserObjectRole, UserRole } from "@prisma/client";
-import {
-  IsEmail,
-  IsEnum,
-  IsOptional,
-  IsString,
-  MinLength,
-} from "class-validator";
+import { UserRole } from "@prisma/client";
+import { IsEmail, IsEnum, IsString, MinLength } from "class-validator";
 
 export class InviteUserDto {
   @IsEmail()
@@ -17,8 +11,4 @@ export class InviteUserDto {
 
   @IsEnum(UserRole)
   userRole: UserRole;
-
-  @IsOptional()
-  @IsEnum(UserObjectRole)
-  objectRole?: UserObjectRole;
 }

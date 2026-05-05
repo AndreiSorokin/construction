@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
-import { Prisma, UserObjectRole, UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import * as XLSX from "xlsx";
 import { MailService } from "../mail/mail.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -26,27 +26,14 @@ export class ObjectsService {
   async create(dto: CreateObjectDto, ownerId: string) {
     const owner = await this.prisma.user.findUnique({
       where: { id: ownerId },
-      select: { id: true, role: true },
+      select: { id: true },
     });
 
     if (!owner) {
       throw new NotFoundException("User not found");
     }
 
-    if (owner.role && owner.role !== UserRole.DIRECTOR) {
-      throw new BadRequestException(
-        "Only users without role or directors can create objects",
-      );
-    }
-
     return this.prisma.$transaction(async (tx) => {
-      if (!owner.role) {
-        await tx.user.update({
-          where: { id: ownerId },
-          data: { role: UserRole.DIRECTOR },
-        });
-      }
-
       const object = await tx.objectEntity.create({
         data: {
           name: dto.name,
@@ -60,7 +47,7 @@ export class ObjectsService {
         data: {
           objectId: object.id,
           userId: ownerId,
-          role: UserObjectRole.OWNER,
+          role: UserRole.DIRECTOR,
         },
       });
 
@@ -92,7 +79,6 @@ export class ObjectsService {
                 id: true,
                 name: true,
                 email: true,
-                role: true,
               },
             },
             materials: true,
@@ -122,8 +108,9 @@ export class ObjectsService {
     return object;
   }
 
-  async addAccess(objectId: string, dto: AddObjectAccessDto) {
+  async addAccess(objectId: string, dto: AddObjectAccessDto, actorId: string) {
     await this.ensureObjectExists(objectId);
+    await this.ensureUserObjectRole(actorId, objectId, [UserRole.DIRECTOR]);
     await this.ensureUserExists(dto.userId);
 
     return this.prisma.userObjectAccess.upsert({
@@ -136,10 +123,10 @@ export class ObjectsService {
       create: {
         userId: dto.userId,
         objectId,
-        role: dto.role ?? UserObjectRole.VIEWER,
+        role: dto.role,
       },
       update: {
-        role: dto.role ?? UserObjectRole.VIEWER,
+        role: dto.role,
       },
     });
   }
@@ -154,9 +141,7 @@ export class ObjectsService {
       throw new NotFoundException("Object not found");
     }
 
-    if (object.ownerId !== inviterId) {
-      throw new BadRequestException("Only object owner can invite users");
-    }
+    await this.ensureUserObjectRole(inviterId, objectId, [UserRole.DIRECTOR]);
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -174,10 +159,9 @@ export class ObjectsService {
 
     if (existingUser) {
       const result = await this.prisma.$transaction(async (tx) => {
-        const user = await tx.user.update({
+        const user = await tx.user.findUniqueOrThrow({
           where: { id: existingUser.id },
-          data: { role: dto.userRole },
-          select: { id: true, email: true, name: true, role: true },
+          select: { id: true, email: true, name: true },
         });
 
         const access = await tx.userObjectAccess.upsert({
@@ -190,10 +174,10 @@ export class ObjectsService {
           create: {
             userId: existingUser.id,
             objectId,
-            role: dto.objectRole ?? UserObjectRole.RESPONSIBLE,
+            role: dto.userRole,
           },
           update: {
-            role: dto.objectRole ?? UserObjectRole.RESPONSIBLE,
+            role: dto.userRole,
           },
         });
 
@@ -228,7 +212,6 @@ export class ObjectsService {
         name: dto.name,
         tokenHash,
         userRole: dto.userRole,
-        objectRole: dto.objectRole ?? UserObjectRole.RESPONSIBLE,
         objectId,
         inviterId,
         expiresAt,
@@ -238,7 +221,6 @@ export class ObjectsService {
         email: true,
         name: true,
         userRole: true,
-        objectRole: true,
         expiresAt: true,
         createdAt: true,
       },
@@ -260,8 +242,16 @@ export class ObjectsService {
     };
   }
 
-  async createMaterial(objectId: string, dto: CreateObjectMaterialDto) {
+  async createMaterial(
+    objectId: string,
+    dto: CreateObjectMaterialDto,
+    actorId: string,
+  ) {
     await this.ensureObjectExists(objectId);
+    await this.ensureUserObjectRole(actorId, objectId, [
+      UserRole.DIRECTOR,
+      UserRole.CHIEF_ENGINEER,
+    ]);
 
     return this.prisma.objectMaterial.create({
       data: {
@@ -294,8 +284,16 @@ export class ObjectsService {
     }) as Buffer;
   }
 
-  async importMaterials(objectId: string, file?: Express.Multer.File) {
+  async importMaterials(
+    objectId: string,
+    actorId: string,
+    file?: Express.Multer.File,
+  ) {
     await this.ensureObjectExists(objectId);
+    await this.ensureUserObjectRole(actorId, objectId, [
+      UserRole.DIRECTOR,
+      UserRole.CHIEF_ENGINEER,
+    ]);
 
     if (!file) {
       throw new BadRequestException("Excel file is required");
@@ -350,7 +348,10 @@ export class ObjectsService {
     objectId: string,
     materialId: string,
     dto: UpdateObjectMaterialDto,
+    actorId: string,
   ) {
+    await this.ensureUserObjectRole(actorId, objectId, [UserRole.DIRECTOR]);
+
     const material = await this.prisma.objectMaterial.findFirst({
       where: { id: materialId, objectId },
     });
@@ -377,7 +378,9 @@ export class ObjectsService {
     });
   }
 
-  async deleteMaterial(objectId: string, materialId: string) {
+  async deleteMaterial(objectId: string, materialId: string, actorId: string) {
+    await this.ensureUserObjectRole(actorId, objectId, [UserRole.DIRECTOR]);
+
     const material = await this.prisma.objectMaterial.findFirst({
       where: { id: materialId, objectId },
       select: {
@@ -460,6 +463,25 @@ export class ObjectsService {
 
     if (!user) {
       throw new NotFoundException("User not found");
+    }
+  }
+
+  private async ensureUserObjectRole(
+    userId: string,
+    objectId: string,
+    roles: UserRole[],
+  ) {
+    const access = await this.prisma.userObjectAccess.findUnique({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    if (!access || !roles.includes(access.role)) {
+      throw new BadRequestException("User role is not allowed for this object");
     }
   }
 

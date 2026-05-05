@@ -10,12 +10,9 @@ export type User = {
   id: string;
   email: string;
   name: string;
-  role: UserRole | null;
 };
 
 export type ObjectType = "CONSTRUCTION_OBJECT" | "INTERNAL_DEPARTMENT";
-
-export type UserObjectRole = "OWNER" | "RESPONSIBLE" | "VIEWER";
 
 export type ObjectMaterial = {
   id: string;
@@ -32,6 +29,7 @@ export type ObjectEntity = {
   closingLimit: string;
   owner?: User;
   materials?: ObjectMaterial[];
+  userAccesses?: UserObjectAccess[];
 };
 
 export type SupplyRequestStatus =
@@ -107,9 +105,10 @@ export type UserObjectAccess = {
   id: string;
   userId: string;
   objectId: string;
-  role: UserObjectRole;
+  role: UserRole;
   createdAt: string;
   object: ObjectEntity;
+  user?: User;
 };
 
 export type AuthResponse = {

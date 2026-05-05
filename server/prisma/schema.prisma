@@ -21,12 +21,6 @@ enum ObjectType {
   INTERNAL_DEPARTMENT
 }
 
-enum UserObjectRole {
-  OWNER
-  RESPONSIBLE
-  VIEWER
-}
-
 enum SupplyRequestStatus {
   CREATED
   PENDING_PTO
@@ -73,7 +67,6 @@ model User {
   passwordHash     String
   refreshTokenHash String?
   name             String
-  role             UserRole?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   ownedObjects     ObjectEntity[]        @relation("ObjectOwner")
@@ -102,32 +95,31 @@ model ObjectEntity {
 }
 
 model UserObjectAccess {
-  id        String         @id @default(cuid())
+  id        String       @id @default(cuid())
   userId    String
   objectId  String
-  role      UserObjectRole @default(VIEWER)
-  createdAt DateTime       @default(now())
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  object    ObjectEntity   @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  role      UserRole
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  object    ObjectEntity @relation(fields: [objectId], references: [id], onDelete: Cascade)
 
   @@unique([userId, objectId])
   @@index([objectId])
 }
 
 model Invitation {
-  id         String         @id @default(cuid())
+  id         String       @id @default(cuid())
   email      String
   name       String
-  tokenHash  String         @unique
+  tokenHash  String       @unique
   userRole   UserRole
-  objectRole UserObjectRole @default(VIEWER)
   objectId   String
   inviterId  String
   acceptedAt DateTime?
   expiresAt  DateTime
-  createdAt  DateTime       @default(now())
-  object     ObjectEntity   @relation(fields: [objectId], references: [id], onDelete: Cascade)
-  inviter    User           @relation("InvitationInviter", fields: [inviterId], references: [id])
+  createdAt  DateTime     @default(now())
+  object     ObjectEntity @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  inviter    User         @relation("InvitationInviter", fields: [inviterId], references: [id])
 
   @@index([email])
   @@index([objectId])
