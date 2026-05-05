@@ -247,9 +247,6 @@ export function DashboardClient() {
           <aside className="grid gap-4">
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="font-semibold text-slate-950">Банк заявок</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Все заявки системы, включая исполненные и архивные.
-              </p>
               <Link
                 className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 href="/dashboard/requests"

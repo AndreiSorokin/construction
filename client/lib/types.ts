@@ -48,6 +48,33 @@ export type SupplyRequestStatus =
 
 export type SupplyRequestType = "MATERIAL" | "TRANSPORT" | "MONEY";
 
+export type ApprovalAction =
+  | "CREATED"
+  | "APPROVED"
+  | "REJECTED"
+  | "RETURNED"
+  | "SENT_TO_PTO"
+  | "SENT_TO_CHIEF_ENGINEER"
+  | "SENT_TO_SUPPLY"
+  | "SENT_TO_DIRECTOR"
+  | "MARKED_IN_PROGRESS"
+  | "COMPLETED"
+  | "ARCHIVED"
+  | "COMMENTED"
+  | "PRICE_UPDATED";
+
+export type ApprovalHistoryEntry = {
+  id: string;
+  requestId: string;
+  actorId: string;
+  action: ApprovalAction;
+  fromStatus?: SupplyRequestStatus | null;
+  toStatus?: SupplyRequestStatus | null;
+  comment?: string | null;
+  createdAt: string;
+  actor?: User;
+};
+
 export type SupplyRequestItem = {
   id: string;
   objectMaterialId: string;
@@ -73,6 +100,7 @@ export type SupplyRequest = {
   object?: ObjectEntity;
   author?: User;
   items: SupplyRequestItem[];
+  approvalHistory?: ApprovalHistoryEntry[];
 };
 
 export type UserObjectAccess = {

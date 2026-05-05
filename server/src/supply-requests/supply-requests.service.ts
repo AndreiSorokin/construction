@@ -16,6 +16,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
+import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
@@ -97,7 +98,7 @@ export class SupplyRequestsService {
               action: ApprovalAction.CREATED,
               fromStatus: null,
               toStatus: SupplyRequestStatus.PENDING_PTO,
-              comment: "Material supply request created and sent to PTO",
+              comment: "Заявка на материалы создана и отправлена в ПТО",
             },
           },
         },
@@ -134,7 +135,7 @@ export class SupplyRequestsService {
               action: ApprovalAction.CREATED,
               fromStatus: null,
               toStatus: SupplyRequestStatus.PENDING_SUPPLY,
-              comment: "Transport request created and sent to supply",
+              comment: "Заявка на транспорт создана и отправлена в снабжение",
             },
           },
         },
@@ -163,7 +164,7 @@ export class SupplyRequestsService {
               action: ApprovalAction.CREATED,
               fromStatus: null,
               toStatus: SupplyRequestStatus.PENDING_DIRECTOR,
-              comment: "Money request created and sent to director",
+              comment: "Заявка на деньги создана и отправлена директору",
             },
           },
         },
@@ -172,11 +173,90 @@ export class SupplyRequestsService {
     );
   }
 
-  findAll() {
-    return this.prisma.supplyRequest.findMany({
-      include: this.requestInclude,
-      orderBy: { createdAt: "desc" },
-    });
+  async findAll(query: FindSupplyRequestsDto = {}) {
+    const hasPaginationOrFilters = Boolean(
+      query.page ||
+        query.limit ||
+        query.objectSearch ||
+        query.type ||
+        query.status ||
+        query.dateFrom ||
+        query.dateTo,
+    );
+
+    if (!hasPaginationOrFilters) {
+      return this.prisma.supplyRequest.findMany({
+        include: this.requestInclude,
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    const page = this.parsePositiveInteger(query.page, 1);
+    const limit = Math.min(this.parsePositiveInteger(query.limit, 10), 100);
+    const where = this.buildFindAllWhere(query);
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.supplyRequest.findMany({
+        where,
+        include: this.requestInclude,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.supplyRequest.count({ where }),
+    ]);
+
+    return {
+      items,
+      limit,
+      page,
+      total,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+    };
+  }
+
+  private buildFindAllWhere(query: FindSupplyRequestsDto) {
+    const where: Prisma.SupplyRequestWhereInput = {};
+
+    if (query.objectSearch?.trim()) {
+      where.object = {
+        name: {
+          contains: query.objectSearch.trim(),
+          mode: "insensitive",
+        },
+      };
+    }
+
+    if (query.type) {
+      where.type = query.type;
+    }
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.dateFrom || query.dateTo) {
+      where.createdAt = {};
+
+      if (query.dateFrom) {
+        where.createdAt.gte = new Date(`${query.dateFrom}T00:00:00`);
+      }
+
+      if (query.dateTo) {
+        where.createdAt.lte = new Date(`${query.dateTo}T23:59:59`);
+      }
+    }
+
+    return where;
+  }
+
+  private parsePositiveInteger(value: string | undefined, fallback: number) {
+    const parsedValue = Number(value);
+
+    if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+      return fallback;
+    }
+
+    return parsedValue;
   }
 
   async findOne(id: string) {

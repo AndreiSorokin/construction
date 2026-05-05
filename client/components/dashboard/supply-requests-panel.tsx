@@ -2,6 +2,7 @@
 
 import { Check, RefreshCcw, Send, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import { ApprovalHistoryList } from "@/components/dashboard/approval-history-list";
 import {
   approveTransportBySupply,
   approveSupplyRequestByChiefEngineer,
@@ -306,6 +307,7 @@ function PtoRequestCard({
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestHeader request={request} />
+      <ApprovalHistoryList history={request.approvalHistory} />
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
@@ -379,6 +381,7 @@ function ChiefEngineerRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestHeader request={request} />
+      <ApprovalHistoryList history={request.approvalHistory} />
       <PriceComparisonTable request={request} mode="pto" />
       <Totals request={request} mode="pto" />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -419,6 +422,7 @@ function SupplyRequestCard({
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestHeader request={request} />
+      <ApprovalHistoryList history={request.approvalHistory} />
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead>
@@ -498,6 +502,7 @@ function SupplyTransportRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestHeader request={request} />
+      <ApprovalHistoryList history={request.approvalHistory} />
       <TransportDetails request={request} />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <button
@@ -523,6 +528,7 @@ function SupplyInProgressCard({
   return (
     <div className="rounded-md border border-emerald-200 bg-emerald-50/40 p-4">
       <RequestHeader request={request} />
+      <ApprovalHistoryList history={request.approvalHistory} />
       {request.type === "TRANSPORT" ? (
         <TransportDetails request={request} />
       ) : (
@@ -557,6 +563,7 @@ function DirectorRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestHeader request={request} />
+      <ApprovalHistoryList history={request.approvalHistory} />
       {request.type === "TRANSPORT" ? (
         <TransportDetails request={request} />
       ) : (

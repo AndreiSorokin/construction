@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { UserRole } from "@prisma/client";
@@ -16,6 +17,7 @@ import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
+import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
@@ -53,8 +55,8 @@ export class SupplyRequestsController {
   }
 
   @Get()
-  findAll() {
-    return this.supplyRequestsService.findAll();
+  findAll(@Query() query: FindSupplyRequestsDto) {
+    return this.supplyRequestsService.findAll(query);
   }
 
   @Get(":id")
