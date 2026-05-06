@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
-import { Prisma, UserRole } from "@prisma/client";
+import { ObjectLimitType, ObjectType, Prisma, UserRole } from "@prisma/client";
 import * as XLSX from "xlsx";
 import { MailService } from "../mail/mail.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -38,8 +38,29 @@ export class ObjectsService {
         data: {
           name: dto.name,
           type: dto.type,
-          closingLimit: new Prisma.Decimal(dto.closingLimit),
           ownerId,
+          limits:
+            dto.type === ObjectType.CONSTRUCTION_OBJECT
+              ? {
+                  create: [
+                    {
+                      type: ObjectLimitType.MATERIAL,
+                      limitAmount: new Prisma.Decimal(dto.materialsLimit ?? 0),
+                    },
+                    {
+                      type: ObjectLimitType.TRANSPORT,
+                      limitAmount: new Prisma.Decimal(dto.transportLimit ?? 0),
+                    },
+                    {
+                      type: ObjectLimitType.MONEY,
+                      limitAmount: new Prisma.Decimal(dto.moneyLimit ?? 0),
+                    },
+                  ],
+                }
+              : undefined,
+        },
+        include: {
+          limits: true,
         },
       });
 
@@ -59,6 +80,7 @@ export class ObjectsService {
     return this.prisma.objectEntity.findMany({
       include: {
         owner: true,
+        limits: true,
         materials: true,
         userAccesses: {
           include: { user: true },
@@ -82,6 +104,10 @@ export class ObjectsService {
               },
             },
             materials: true,
+            limits: true,
+            userAccesses: {
+              include: { user: true },
+            },
           },
         },
       },
@@ -94,6 +120,7 @@ export class ObjectsService {
       where: { id },
       include: {
         owner: true,
+        limits: true,
         materials: true,
         userAccesses: {
           include: { user: true },

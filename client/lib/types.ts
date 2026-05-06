@@ -1,6 +1,7 @@
 export type UserRole =
   | "FOREMAN"
   | "SITE_MANAGER"
+  | "SUPPLY_MANAGER"
   | "SUPPLY"
   | "PTO"
   | "CHIEF_ENGINEER"
@@ -14,6 +15,16 @@ export type User = {
 
 export type ObjectType = "CONSTRUCTION_OBJECT" | "INTERNAL_DEPARTMENT";
 
+export type ObjectLimitType = "MATERIAL" | "TRANSPORT" | "MONEY";
+
+export type ObjectLimit = {
+  id: string;
+  objectId: string;
+  type: ObjectLimitType;
+  limitAmount: string;
+  spentAmount: string;
+};
+
 export type ObjectMaterial = {
   id: string;
   name: string;
@@ -26,8 +37,8 @@ export type ObjectEntity = {
   id: string;
   name: string;
   type: ObjectType;
-  closingLimit: string;
   owner?: User;
+  limits?: ObjectLimit[];
   materials?: ObjectMaterial[];
   userAccesses?: UserObjectAccess[];
 };
@@ -36,6 +47,7 @@ export type SupplyRequestStatus =
   | "CREATED"
   | "PENDING_PTO"
   | "PENDING_CHIEF_ENGINEER"
+  | "PENDING_SUPPLY_MANAGER"
   | "PENDING_SUPPLY"
   | "PENDING_DIRECTOR"
   | "RETURNED_TO_SUPPLY"
@@ -53,13 +65,17 @@ export type ApprovalAction =
   | "RETURNED"
   | "SENT_TO_PTO"
   | "SENT_TO_CHIEF_ENGINEER"
+  | "SENT_TO_SUPPLY_MANAGER"
   | "SENT_TO_SUPPLY"
+  | "ASSIGNED_TO_SUPPLY"
   | "SENT_TO_DIRECTOR"
   | "MARKED_IN_PROGRESS"
   | "COMPLETED"
   | "ARCHIVED"
   | "COMMENTED"
-  | "PRICE_UPDATED";
+  | "PRICE_UPDATED"
+  | "REQUEST_ITEM_UPDATED"
+  | "REQUEST_ITEM_DELETED";
 
 export type ApprovalHistoryEntry = {
   id: string;
@@ -69,6 +85,7 @@ export type ApprovalHistoryEntry = {
   fromStatus?: SupplyRequestStatus | null;
   toStatus?: SupplyRequestStatus | null;
   comment?: string | null;
+  changesJson?: unknown;
   createdAt: string;
   actor?: User;
 };
@@ -93,10 +110,15 @@ export type SupplyRequest = {
   objectId: string;
   authorId: string;
   createdAt: string;
+  assignedSupplyUserId?: string | null;
+  assignedById?: string | null;
+  assignedAt?: string | null;
   transportType?: string | null;
   purpose?: string | null;
   object?: ObjectEntity;
   author?: User;
+  assignedSupplyUser?: User | null;
+  assignedBy?: User | null;
   items: SupplyRequestItem[];
   approvalHistory?: ApprovalHistoryEntry[];
 };

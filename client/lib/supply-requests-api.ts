@@ -130,6 +130,37 @@ export function setPtoLimitPrices(
   );
 }
 
+export function updateSupplyRequestItem(
+  requestId: string,
+  itemId: string,
+  payload: {
+    quantity: string;
+    comment?: string;
+  },
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/items/${itemId}`,
+    {
+      method: "PATCH",
+      body: payload,
+    },
+  );
+}
+
+export function deleteSupplyRequestItem(
+  requestId: string,
+  itemId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/items/${itemId}/delete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function approveSupplyRequestByChiefEngineer(
   requestId: string,
   comment?: string,
@@ -168,6 +199,22 @@ export function setSupplierPurchasePrices(
 ) {
   return apiClient<SupplyRequest>(
     `/supply-requests/${requestId}/supplier-purchase-prices`,
+    {
+      method: "PATCH",
+      body: payload,
+    },
+  );
+}
+
+export function assignSupplyRequest(
+  requestId: string,
+  payload: {
+    supplyUserId: string;
+    comment?: string;
+  },
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/supply-manager/assign`,
     {
       method: "PATCH",
       body: payload,

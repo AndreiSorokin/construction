@@ -38,6 +38,7 @@ const objectTypeLabels = {
 const inviteRoleLabels: Record<UserRole, string> = {
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
+  SUPPLY_MANAGER: "Начальник снабжения",
   SUPPLY: "Снабжение",
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
@@ -84,7 +85,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
       (total, material) => total + toNumber(material.estimatedPrice),
       0,
     ) ?? 0;
-  const objectLimitAmount = toNumber(object?.closingLimit);
+  const objectLimitAmount = getObjectLimitAmount(object, "MATERIAL");
   const isMaterialsLimitExceeded =
     objectLimitAmount > 0 && materialsTotalAmount > objectLimitAmount;
 
@@ -314,7 +315,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                       {object.name}
                     </h1>
                     <p className="mt-1 text-sm text-slate-600">
-                      {objectTypeLabels[object.type]} · лимит{" "}
+                      {objectTypeLabels[object.type]} · лимит материалов{" "}
                       {formatMoney(objectLimitAmount)}
                     </p>
                   </div>
@@ -663,6 +664,15 @@ function toNumber(value: string | number | null | undefined) {
   const numberValue = Number(value);
 
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function getObjectLimitAmount(
+  object: ObjectEntity | null,
+  type: "MATERIAL" | "TRANSPORT" | "MONEY",
+) {
+  return toNumber(
+    object?.limits?.find((limit) => limit.type === type)?.limitAmount,
+  );
 }
 
 function formatMoney(value: number) {

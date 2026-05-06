@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   FOREMAN
   SITE_MANAGER
+  SUPPLY_MANAGER
   SUPPLY
   PTO
   CHIEF_ENGINEER
@@ -25,6 +26,7 @@ enum SupplyRequestStatus {
   CREATED
   PENDING_PTO
   PENDING_CHIEF_ENGINEER
+  PENDING_SUPPLY_MANAGER
   PENDING_SUPPLY
   PENDING_DIRECTOR
   RETURNED_TO_SUPPLY
@@ -40,6 +42,12 @@ enum SupplyRequestType {
   MONEY
 }
 
+enum ObjectLimitType {
+  MATERIAL
+  TRANSPORT
+  MONEY
+}
+
 enum ApprovalAction {
   CREATED
   APPROVED
@@ -47,13 +55,17 @@ enum ApprovalAction {
   RETURNED
   SENT_TO_PTO
   SENT_TO_CHIEF_ENGINEER
+  SENT_TO_SUPPLY_MANAGER
   SENT_TO_SUPPLY
+  ASSIGNED_TO_SUPPLY
   SENT_TO_DIRECTOR
   MARKED_IN_PROGRESS
   COMPLETED
   ARCHIVED
   COMMENTED
   PRICE_UPDATED
+  REQUEST_ITEM_UPDATED
+  REQUEST_ITEM_DELETED
 }
 
 enum PriceField {
@@ -62,36 +74,52 @@ enum PriceField {
 }
 
 model User {
-  id               String                @id @default(cuid())
-  email            String                @unique
-  passwordHash     String
-  refreshTokenHash String?
-  name             String
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  ownedObjects     ObjectEntity[]        @relation("ObjectOwner")
-  objectAccesses   UserObjectAccess[]
-  supplyRequests   SupplyRequest[]       @relation("SupplyRequestAuthor")
-  approvalActions  ApprovalHistory[]     @relation("ApprovalActor")
-  priceChanges     RequestPriceHistory[] @relation("PriceChangeActor")
-  sentInvitations  Invitation[]          @relation("InvitationInviter")
+  id                 String                @id @default(cuid())
+  email              String                @unique
+  passwordHash       String
+  refreshTokenHash   String?
+  name               String
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  ownedObjects       ObjectEntity[]        @relation("ObjectOwner")
+  objectAccesses     UserObjectAccess[]
+  supplyRequests     SupplyRequest[]       @relation("SupplyRequestAuthor")
+  assignedRequests   SupplyRequest[]       @relation("AssignedSupplyUser")
+  assignedByRequests SupplyRequest[]       @relation("AssignedByUser")
+  approvalActions    ApprovalHistory[]     @relation("ApprovalActor")
+  priceChanges       RequestPriceHistory[] @relation("PriceChangeActor")
+  sentInvitations    Invitation[]          @relation("InvitationInviter")
 }
 
 model ObjectEntity {
   id             String             @id @default(cuid())
   name           String
   type           ObjectType
-  closingLimit   Decimal            @db.Decimal(18, 2)
   ownerId        String
   owner          User               @relation("ObjectOwner", fields: [ownerId], references: [id])
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  limits         ObjectLimit[]
   materials      ObjectMaterial[]
   userAccesses   UserObjectAccess[]
   supplyRequests SupplyRequest[]
   invitations    Invitation[]
 
   @@index([ownerId])
+}
+
+model ObjectLimit {
+  id          String          @id @default(cuid())
+  objectId    String
+  type        ObjectLimitType
+  limitAmount Decimal         @db.Decimal(18, 2)
+  spentAmount Decimal         @default(0) @db.Decimal(18, 2)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  object      ObjectEntity    @relation(fields: [objectId], references: [id], onDelete: Cascade)
+
+  @@unique([objectId, type])
+  @@index([objectId])
 }
 
 model UserObjectAccess {
@@ -143,25 +171,32 @@ model ObjectMaterial {
 }
 
 model SupplyRequest {
-  id              String              @id @default(cuid())
-  requestNumber   String              @unique
-  type            SupplyRequestType
-  status          SupplyRequestStatus @default(CREATED)
-  objectId        String
-  authorId        String
-  transportType   String?
-  purpose         String?
-  amount          Decimal?            @db.Decimal(18, 2)
-  paymentPurpose  String?
-  object          ObjectEntity        @relation(fields: [objectId], references: [id])
-  author          User                @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  items           SupplyRequestItem[]
-  approvalHistory ApprovalHistory[]
+  id                   String              @id @default(cuid())
+  requestNumber        String              @unique
+  type                 SupplyRequestType
+  status               SupplyRequestStatus @default(CREATED)
+  objectId             String
+  authorId             String
+  assignedSupplyUserId String?
+  assignedById         String?
+  assignedAt           DateTime?
+  transportType        String?
+  purpose              String?
+  amount               Decimal?            @db.Decimal(18, 2)
+  paymentPurpose       String?
+  object               ObjectEntity        @relation(fields: [objectId], references: [id])
+  author               User                @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
+  assignedSupplyUser   User?               @relation("AssignedSupplyUser", fields: [assignedSupplyUserId], references: [id])
+  assignedBy           User?               @relation("AssignedByUser", fields: [assignedById], references: [id])
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  items                SupplyRequestItem[]
+  approvalHistory      ApprovalHistory[]
 
   @@index([objectId])
   @@index([authorId])
+  @@index([assignedSupplyUserId])
+  @@index([assignedById])
   @@index([status])
   @@index([type])
 }

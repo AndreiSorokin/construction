@@ -6,6 +6,8 @@ import {
 } from "@nestjs/common";
 import {
   ApprovalAction,
+  ObjectLimitType,
+  ObjectType,
   PriceField,
   Prisma,
   SupplyRequestStatus,
@@ -13,13 +15,16 @@ import {
   UserRole,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
+import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
+import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
 @Injectable()
 export class SupplyRequestsService {
@@ -115,13 +120,13 @@ export class SupplyRequestsService {
           authorId,
           transportType: dto.transportType,
           purpose: dto.purpose,
-          status: SupplyRequestStatus.PENDING_SUPPLY,
+          status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
           approvalHistory: {
             create: {
               actorId: authorId,
               action: ApprovalAction.CREATED,
               fromStatus: null,
-              toStatus: SupplyRequestStatus.PENDING_SUPPLY,
+              toStatus: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
               comment: "Заявка на транспорт создана и отправлена в снабжение",
             },
           },
@@ -132,8 +137,9 @@ export class SupplyRequestsService {
   }
 
   async createMoneyRequest(dto: CreateMoneySupplyRequestDto, authorId: string) {
-    await this.ensureUserExists(authorId);
-    await this.ensureUserObjectAccess(authorId, dto.objectId);
+    await this.ensureUserObjectRole(authorId, dto.objectId, [
+      UserRole.SITE_MANAGER,
+    ]);
 
     return this.prisma.$transaction(async (tx) =>
       tx.supplyRequest.create({
@@ -259,6 +265,143 @@ export class SupplyRequestsService {
     return request;
   }
 
+  async updateRequestItem(
+    id: string,
+    itemId: string,
+    dto: UpdateSupplyRequestItemDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_PTO,
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+      SupplyRequestStatus.PENDING_DIRECTOR,
+    ]);
+
+    const actorRole = await this.ensureCanModifyRequestItems(
+      actorId,
+      request.objectId,
+      request.status,
+    );
+
+    if (request.type !== SupplyRequestType.MATERIAL) {
+      throw new BadRequestException(
+        "Only material request items can be edited",
+      );
+    }
+
+    const requestItem = request.items.find((item) => item.id === itemId);
+
+    if (!requestItem) {
+      throw new NotFoundException("Supply request item not found");
+    }
+
+    const newQuantity = new Prisma.Decimal(dto.quantity);
+
+    if (newQuantity.lessThanOrEqualTo(0)) {
+      throw new BadRequestException("Quantity must be greater than zero");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.supplyRequestItem.update({
+        where: { id: itemId },
+        data: {
+          quantity: newQuantity,
+        },
+      });
+
+      await tx.approvalHistory.create({
+        data: {
+          requestId: id,
+          actorId,
+          action: ApprovalAction.REQUEST_ITEM_UPDATED,
+          fromStatus: request.status,
+          toStatus: request.status,
+          comment: dto.comment,
+          changesJson: {
+            actorRole,
+            itemId,
+            materialName: requestItem.materialNameSnapshot,
+            oldQuantity: requestItem.quantity.toString(),
+            newQuantity: newQuantity.toString(),
+          },
+        },
+      });
+
+      return tx.supplyRequest.findUnique({
+        where: { id },
+        include: this.requestInclude,
+      });
+    });
+  }
+
+  async deleteRequestItem(
+    id: string,
+    itemId: string,
+    dto: DeleteSupplyRequestItemDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_PTO,
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+      SupplyRequestStatus.PENDING_DIRECTOR,
+    ]);
+
+    const actorRole = await this.ensureCanModifyRequestItems(
+      actorId,
+      request.objectId,
+      request.status,
+    );
+
+    if (request.type !== SupplyRequestType.MATERIAL) {
+      throw new BadRequestException(
+        "Only material request items can be deleted",
+      );
+    }
+
+    if (request.items.length <= 1) {
+      throw new BadRequestException(
+        "Material request must contain at least one item",
+      );
+    }
+
+    const requestItem = request.items.find((item) => item.id === itemId);
+
+    if (!requestItem) {
+      throw new NotFoundException("Supply request item not found");
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.supplyRequestItem.delete({
+        where: { id: itemId },
+      });
+
+      await tx.approvalHistory.create({
+        data: {
+          requestId: id,
+          actorId,
+          action: ApprovalAction.REQUEST_ITEM_DELETED,
+          fromStatus: request.status,
+          toStatus: request.status,
+          comment: dto.comment,
+          changesJson: {
+            actorRole,
+            itemId,
+            materialName: requestItem.materialNameSnapshot,
+            quantity: requestItem.quantity.toString(),
+            estimatedPriceSnapshot: requestItem.estimatedPriceSnapshot.toString(),
+          },
+        },
+      });
+
+      return tx.supplyRequest.findUnique({
+        where: { id },
+        include: this.requestInclude,
+      });
+    });
+  }
+
   async setPtoLimitPrices(
     id: string,
     dto: SetPtoLimitPricesDto,
@@ -332,12 +475,68 @@ export class SupplyRequestsService {
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_SUPPLY,
+        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
         request.status,
-        SupplyRequestStatus.PENDING_SUPPLY,
+        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
         dto.comment,
       ),
     );
+  }
+
+  async assignToSupplyUser(
+    id: string,
+    dto: AssignSupplyRequestDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY_MANAGER,
+    ]);
+    await this.ensureUserObjectRole(dto.supplyUserId, request.objectId, [
+      UserRole.SUPPLY,
+    ]);
+
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.TRANSPORT
+    ) {
+      throw new BadRequestException(
+        "Only material and transport requests can be assigned to supply",
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.supplyRequest.update({
+        where: { id },
+        data: {
+          assignedSupplyUserId: dto.supplyUserId,
+          assignedById: actorId,
+          assignedAt: new Date(),
+          status: SupplyRequestStatus.PENDING_SUPPLY,
+        },
+      });
+
+      await tx.approvalHistory.create({
+        data: {
+          requestId: id,
+          actorId,
+          action: ApprovalAction.ASSIGNED_TO_SUPPLY,
+          fromStatus: request.status,
+          toStatus: SupplyRequestStatus.PENDING_SUPPLY,
+          comment: dto.comment,
+          changesJson: {
+            assignedSupplyUserId: dto.supplyUserId,
+          },
+        },
+      });
+
+      return tx.supplyRequest.findUnique({
+        where: { id },
+        include: this.requestInclude,
+      });
+    });
   }
 
   async returnToPtoByChiefEngineer(
@@ -387,6 +586,7 @@ export class SupplyRequestsService {
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY,
     ]);
+    this.ensureAssignedSupplyUser(request, actorId);
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -446,6 +646,7 @@ export class SupplyRequestsService {
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY,
     ]);
+    this.ensureAssignedSupplyUser(request, actorId);
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -468,17 +669,41 @@ export class SupplyRequestsService {
       UserRole.DIRECTOR,
     ]);
 
-    return this.prisma.$transaction((tx) =>
-      this.moveRequest(
-        tx,
-        id,
-        actorId,
-        ApprovalAction.MARKED_IN_PROGRESS,
-        request.status,
-        SupplyRequestStatus.IN_PROGRESS,
-        dto.comment,
-      ),
-    );
+    return this.prisma.$transaction(async (tx) => {
+      const statusUpdate = await tx.supplyRequest.updateMany({
+        where: {
+          id,
+          status: SupplyRequestStatus.PENDING_DIRECTOR,
+        },
+        data: {
+          status: SupplyRequestStatus.IN_PROGRESS,
+        },
+      });
+
+      if (statusUpdate.count !== 1) {
+        throw new BadRequestException(
+          "Request is no longer pending director approval",
+        );
+      }
+
+      await this.spendObjectLimitIfNeeded(tx, request);
+
+      await tx.approvalHistory.create({
+        data: {
+          requestId: id,
+          actorId,
+          action: ApprovalAction.MARKED_IN_PROGRESS,
+          fromStatus: request.status,
+          toStatus: SupplyRequestStatus.IN_PROGRESS,
+          comment: dto.comment,
+        },
+      });
+
+      return tx.supplyRequest.findUnique({
+        where: { id },
+        include: this.requestInclude,
+      });
+    });
   }
 
   async returnToSupply(id: string, dto: RequestActionDto, actorId: string) {
@@ -558,6 +783,12 @@ export class SupplyRequestsService {
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY,
     ]);
+    if (
+      request.type === SupplyRequestType.MATERIAL ||
+      request.type === SupplyRequestType.TRANSPORT
+    ) {
+      this.ensureAssignedSupplyUser(request, actorId);
+    }
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -596,6 +827,8 @@ export class SupplyRequestsService {
 
   private readonly requestInclude = {
     author: true,
+    assignedSupplyUser: true,
+    assignedBy: true,
     object: true,
     items: {
       include: {
@@ -645,7 +878,16 @@ export class SupplyRequestsService {
   ) {
     const request = await this.prisma.supplyRequest.findUnique({
       where: { id },
-      include: { items: true },
+      include: {
+        items: true,
+        assignedSupplyUser: true,
+        object: {
+          select: {
+            id: true,
+            type: true,
+          },
+        },
+      },
     });
 
     if (!request) {
@@ -701,6 +943,131 @@ export class SupplyRequestsService {
         "User role is not allowed for this object",
       );
     }
+  }
+
+  private async ensureCanModifyRequestItems(
+    userId: string,
+    objectId: string,
+    status: SupplyRequestStatus,
+  ) {
+    const allowedRole = this.getRequestItemEditorRole(status);
+
+    if (!allowedRole) {
+      throw new ForbiddenException(
+        "Request items cannot be edited at this stage",
+      );
+    }
+
+    const objectAccess = await this.prisma.userObjectAccess.findUnique({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    if (!objectAccess || objectAccess.role !== allowedRole) {
+      throw new ForbiddenException(
+        "Only the current stage role can edit request items",
+      );
+    }
+
+    return objectAccess.role;
+  }
+
+  private getRequestItemEditorRole(status: SupplyRequestStatus) {
+    const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
+      PENDING_PTO: UserRole.PTO,
+      PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
+      PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
+      PENDING_DIRECTOR: UserRole.DIRECTOR,
+    };
+
+    return roleByStatus[status] ?? null;
+  }
+
+  private ensureAssignedSupplyUser(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+    actorId: string,
+  ) {
+    if (request.assignedSupplyUserId !== actorId) {
+      throw new ForbiddenException(
+        "Only the assigned supply user can process this request",
+      );
+    }
+  }
+
+  private async spendObjectLimitIfNeeded(
+    tx: Prisma.TransactionClient,
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+  ) {
+    if (request.object.type === ObjectType.INTERNAL_DEPARTMENT) {
+      return;
+    }
+
+    const limitType = this.getObjectLimitType(request.type);
+    const amount = this.calculateRequestDebitAmount(request);
+
+    if (amount.lessThanOrEqualTo(0)) {
+      return;
+    }
+
+    const updatedLimits = await tx.$queryRaw<Array<{ id: string }>>`
+      UPDATE "ObjectLimit"
+      SET
+        "spentAmount" = "spentAmount" + ${amount},
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE
+        "objectId" = ${request.objectId}
+        AND "type" = ${limitType}::"ObjectLimitType"
+        AND ("spentAmount" + ${amount}) <= "limitAmount"
+      RETURNING "id"
+    `;
+
+    if (updatedLimits.length !== 1) {
+      throw new BadRequestException(
+        "Request amount exceeds the remaining object limit",
+      );
+    }
+  }
+
+  private getObjectLimitType(requestType: SupplyRequestType) {
+    if (requestType === SupplyRequestType.MATERIAL) {
+      return ObjectLimitType.MATERIAL;
+    }
+
+    if (requestType === SupplyRequestType.TRANSPORT) {
+      return ObjectLimitType.TRANSPORT;
+    }
+
+    return ObjectLimitType.MONEY;
+  }
+
+  private calculateRequestDebitAmount(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+  ) {
+    if (request.type === SupplyRequestType.MATERIAL) {
+      return request.items.reduce((total, item) => {
+        if (!item.supplierPurchasePrice) {
+          throw new BadRequestException(
+            "Supplier purchase price is required before director approval",
+          );
+        }
+
+        return total.add(item.supplierPurchasePrice.mul(item.quantity));
+      }, new Prisma.Decimal(0));
+    }
+
+    if (request.type === SupplyRequestType.MONEY) {
+      if (!request.amount) {
+        throw new BadRequestException("Money request amount is required");
+      }
+
+      return request.amount;
+    }
+
+    return request.amount ?? new Prisma.Decimal(0);
   }
 
   private async moveRequest(

@@ -12,14 +12,17 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
+import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
+import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
 import { SupplyRequestsService } from "./supply-requests.service";
+import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
 @Controller("supply-requests")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -58,6 +61,36 @@ export class SupplyRequestsController {
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.supplyRequestsService.findOne(id);
+  }
+
+  @Patch(":id/items/:itemId")
+  updateRequestItem(
+    @Param("id") id: string,
+    @Param("itemId") itemId: string,
+    @Body() dto: UpdateSupplyRequestItemDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.updateRequestItem(
+      id,
+      itemId,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/items/:itemId/delete")
+  deleteRequestItem(
+    @Param("id") id: string,
+    @Param("itemId") itemId: string,
+    @Body() dto: DeleteSupplyRequestItemDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.deleteRequestItem(
+      id,
+      itemId,
+      dto,
+      user.id,
+    );
   }
 
   @Patch(":id/pto-limit-prices")
@@ -102,6 +135,15 @@ export class SupplyRequestsController {
       dto,
       user.id,
     );
+  }
+
+  @Patch(":id/supply-manager/assign")
+  assignToSupplyUser(
+    @Param("id") id: string,
+    @Body() dto: AssignSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.assignToSupplyUser(id, dto, user.id);
   }
 
   @Patch(":id/transport/supply/approve")
