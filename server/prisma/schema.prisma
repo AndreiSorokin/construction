@@ -74,21 +74,22 @@ enum PriceField {
 }
 
 model User {
-  id                 String                @id @default(cuid())
-  email              String                @unique
+  id                 String                 @id @default(cuid())
+  email              String                 @unique
   passwordHash       String
   refreshTokenHash   String?
   name               String
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  ownedObjects       ObjectEntity[]        @relation("ObjectOwner")
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  ownedObjects       ObjectEntity[]         @relation("ObjectOwner")
   objectAccesses     UserObjectAccess[]
-  supplyRequests     SupplyRequest[]       @relation("SupplyRequestAuthor")
-  assignedRequests   SupplyRequest[]       @relation("AssignedSupplyUser")
-  assignedByRequests SupplyRequest[]       @relation("AssignedByUser")
-  approvalActions    ApprovalHistory[]     @relation("ApprovalActor")
-  priceChanges       RequestPriceHistory[] @relation("PriceChangeActor")
-  sentInvitations    Invitation[]          @relation("InvitationInviter")
+  supplyRequests     SupplyRequest[]        @relation("SupplyRequestAuthor")
+  assignedRequests   SupplyRequest[]        @relation("AssignedSupplyUser")
+  assignedByRequests SupplyRequest[]        @relation("AssignedByUser")
+  approvalActions    ApprovalHistory[]      @relation("ApprovalActor")
+  priceChanges       RequestPriceHistory[]  @relation("PriceChangeActor")
+  uploadedInvoices   SupplyRequestInvoice[] @relation("InvoiceUploader")
+  sentInvitations    Invitation[]           @relation("InvitationInviter")
 }
 
 model ObjectEntity {
@@ -171,10 +172,10 @@ model ObjectMaterial {
 }
 
 model SupplyRequest {
-  id                   String              @id @default(cuid())
-  requestNumber        String              @unique
+  id                   String                 @id @default(cuid())
+  requestNumber        String                 @unique
   type                 SupplyRequestType
-  status               SupplyRequestStatus @default(CREATED)
+  status               SupplyRequestStatus    @default(CREATED)
   objectId             String
   authorId             String
   assignedSupplyUserId String?
@@ -182,15 +183,16 @@ model SupplyRequest {
   assignedAt           DateTime?
   transportType        String?
   purpose              String?
-  amount               Decimal?            @db.Decimal(18, 2)
+  amount               Decimal?               @db.Decimal(18, 2)
   paymentPurpose       String?
-  object               ObjectEntity        @relation(fields: [objectId], references: [id])
-  author               User                @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
-  assignedSupplyUser   User?               @relation("AssignedSupplyUser", fields: [assignedSupplyUserId], references: [id])
-  assignedBy           User?               @relation("AssignedByUser", fields: [assignedById], references: [id])
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  object               ObjectEntity           @relation(fields: [objectId], references: [id])
+  author               User                   @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
+  assignedSupplyUser   User?                  @relation("AssignedSupplyUser", fields: [assignedSupplyUserId], references: [id])
+  assignedBy           User?                  @relation("AssignedByUser", fields: [assignedById], references: [id])
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
   items                SupplyRequestItem[]
+  invoices             SupplyRequestInvoice[]
   approvalHistory      ApprovalHistory[]
 
   @@index([objectId])
@@ -220,6 +222,23 @@ model SupplyRequestItem {
 
   @@index([requestId])
   @@index([objectMaterialId])
+}
+
+model SupplyRequestInvoice {
+  id           String        @id @default(cuid())
+  requestId    String
+  uploadedById String
+  originalName String
+  storedName   String
+  mimeType     String
+  size         Int
+  path         String
+  createdAt    DateTime      @default(now())
+  request      SupplyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy   User          @relation("InvoiceUploader", fields: [uploadedById], references: [id])
+
+  @@index([requestId])
+  @@index([uploadedById])
 }
 
 model ApprovalHistory {

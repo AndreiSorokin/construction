@@ -4,6 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { randomUUID } from "crypto";
+import { createReadStream } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import { extname, join } from "path";
 import {
   ApprovalAction,
   ObjectLimitType,
@@ -28,6 +32,12 @@ import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto
 
 @Injectable()
 export class SupplyRequestsService {
+  private readonly invoiceUploadsDir = join(
+    process.cwd(),
+    "uploads",
+    "invoices",
+  );
+
   constructor(private readonly prisma: PrismaService) {}
 
   async createMaterialRequest(
@@ -263,6 +273,34 @@ export class SupplyRequestsService {
     }
 
     return request;
+  }
+
+  async findInvoiceFile(id: string, invoiceId: string, actorId: string) {
+    const invoice = await this.prisma.supplyRequestInvoice.findFirst({
+      where: {
+        id: invoiceId,
+        requestId: id,
+      },
+      include: {
+        request: {
+          select: {
+            objectId: true,
+          },
+        },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    await this.ensureUserObjectAccess(actorId, invoice.request.objectId);
+
+    return {
+      file: createReadStream(invoice.path),
+      mimeType: invoice.mimeType,
+      originalName: invoice.originalName,
+    };
   }
 
   async updateRequestItem(
@@ -575,6 +613,13 @@ export class SupplyRequestsService {
     dto: SetSupplierPurchasePricesDto,
     actorId: string,
   ) {
+    void id;
+    void dto;
+    void actorId;
+    throw new BadRequestException(
+      "Supply users must attach invoices instead of entering purchase prices",
+    );
+
     const request = await this.ensureRequestStatus(
       id,
       [
@@ -630,11 +675,84 @@ export class SupplyRequestsService {
     });
   }
 
+  async attachInvoicesAndSendToDirector(
+    id: string,
+    files: Express.Multer.File[] | undefined,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [
+        SupplyRequestStatus.PENDING_SUPPLY,
+        SupplyRequestStatus.RETURNED_TO_SUPPLY,
+      ],
+    );
+
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.TRANSPORT
+    ) {
+      throw new BadRequestException(
+        "Only material and transport requests can be sent with invoices",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY,
+    ]);
+    this.ensureAssignedSupplyUser(request, actorId);
+
+    if (!files?.length) {
+      throw new BadRequestException("At least one invoice file is required");
+    }
+
+    await mkdir(this.invoiceUploadsDir, { recursive: true });
+
+    return this.prisma.$transaction(async (tx) => {
+      for (const file of files) {
+        const storedName = `${randomUUID()}${extname(file.originalname)}`;
+        const filePath = join(this.invoiceUploadsDir, storedName);
+
+        await writeFile(filePath, file.buffer);
+
+        await tx.supplyRequestInvoice.create({
+          data: {
+            requestId: id,
+            uploadedById: actorId,
+            originalName: file.originalname,
+            storedName,
+            mimeType: file.mimetype,
+            size: file.size,
+            path: filePath,
+          },
+        });
+      }
+
+      return this.moveRequest(
+        tx,
+        id,
+        actorId,
+        ApprovalAction.SENT_TO_DIRECTOR,
+        request.status,
+        SupplyRequestStatus.PENDING_DIRECTOR,
+        dto.comment,
+      );
+    });
+  }
+
   async approveTransportBySupply(
     id: string,
     dto: RequestActionDto,
     actorId: string,
   ) {
+    void id;
+    void dto;
+    void actorId;
+    throw new BadRequestException(
+      "Supply users must attach invoices before sending request to director",
+    );
+
     const request = await this.ensureRequestStatus(
       id,
       [
@@ -830,6 +948,10 @@ export class SupplyRequestsService {
     assignedSupplyUser: true,
     assignedBy: true,
     object: true,
+    invoices: {
+      include: { uploadedBy: true },
+      orderBy: { createdAt: "asc" as const },
+    },
     items: {
       include: {
         objectMaterial: true,
@@ -980,7 +1102,6 @@ export class SupplyRequestsService {
     const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
       PENDING_PTO: UserRole.PTO,
       PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
-      PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
     };
 
@@ -1049,13 +1170,15 @@ export class SupplyRequestsService {
   ) {
     if (request.type === SupplyRequestType.MATERIAL) {
       return request.items.reduce((total, item) => {
-        if (!item.supplierPurchasePrice) {
+        const debitPrice = item.supplierPurchasePrice ?? item.ptoLimitPrice;
+
+        if (!debitPrice) {
           throw new BadRequestException(
-            "Supplier purchase price is required before director approval",
+            "PTO price is required before director approval",
           );
         }
 
-        return total.add(item.supplierPurchasePrice.mul(item.quantity));
+        return total.add(debitPrice.mul(item.quantity));
       }, new Prisma.Decimal(0));
     }
 

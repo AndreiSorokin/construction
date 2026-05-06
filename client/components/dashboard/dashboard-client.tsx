@@ -1,34 +1,35 @@
-﻿"use client";
+"use client";
 
-import { Building2, Factory, LogOut, RefreshCcw } from "lucide-react";
+import { Building2, Factory, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { SupplyRequestsPanel } from "@/components/dashboard/supply-requests-panel";
+import { useErrorMessage } from "@/hooks/use-error-message";
+import { useSuccessMessage } from "@/hooks/use-success-message";
+import { apiClient } from "@/lib/api";
 import { getCurrentUser, logout } from "@/lib/auth-api";
 import {
   clearAuthSession,
   getStoredUser,
   saveAuthSession,
 } from "@/lib/auth-storage";
-import { apiClient } from "@/lib/api";
 import { getMyObjects } from "@/lib/objects-api";
 import { AuthResponse, ObjectLimit, User, UserObjectAccess } from "@/lib/types";
-import { useErrorMessage } from "@/hooks/use-error-message";
-import { useSuccessMessage } from "@/hooks/use-success-message";
-import { SupplyRequestsPanel } from "@/components/dashboard/supply-requests-panel";
 
 const accessRoleLabels: Record<UserObjectAccess["role"], string> = {
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
   SUPPLY_MANAGER: "Начальник снабжения",
-  SUPPLY: "Снабжение",
+  SUPPLY: "Снабженец",
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
   DIRECTOR: "Директор",
 };
+
 const objectTypeLabels = {
-  CONSTRUCTION_OBJECT: "РЎС‚СЂРѕРёС‚РµР»СЊРЅС‹Р№ РѕР±СЉРµРєС‚",
-  INTERNAL_DEPARTMENT: "Р’РЅСѓС‚СЂРµРЅРЅРёР№ РѕС‚РґРµР»",
+  CONSTRUCTION_OBJECT: "Строительный объект",
+  INTERNAL_DEPARTMENT: "Внутренний отдел",
 };
 
 export function DashboardClient() {
@@ -113,7 +114,7 @@ export function DashboardClient() {
       });
 
       formElement.reset();
-      showSuccess("РћР±СЉРµРєС‚ СЃРѕР·РґР°РЅ");
+      showSuccess("Объект создан");
       await refreshDashboard();
     } catch (error) {
       showError(error);
@@ -123,7 +124,7 @@ export function DashboardClient() {
   if (!user) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100">
-        <div className="text-sm text-slate-500">РџСЂРѕРІРµСЂСЏРµРј СЃРµСЃСЃРёСЋ...</div>
+        <div className="text-sm text-slate-500">Проверяем сессию...</div>
       </main>
     );
   }
@@ -137,8 +138,8 @@ export function DashboardClient() {
               <Factory size={20} />
             </span>
             <div>
-              <div className="font-semibold text-slate-950">РЎС‚СЂРѕР№РљРѕРЅС‚СЂРѕР»СЊ</div>
-              <div className="text-sm text-slate-500">Dashboard</div>
+              <div className="font-semibold text-slate-950">СтройКонтроль</div>
+              <div className="text-sm text-slate-500">Панель управления</div>
             </div>
           </div>
 
@@ -147,7 +148,7 @@ export function DashboardClient() {
             onClick={handleLogout}
           >
             <LogOut size={16} />
-            Р’С‹Р№С‚Рё
+            Выйти
           </button>
         </div>
       </header>
@@ -161,7 +162,6 @@ export function DashboardClient() {
               </h1>
               <p className="mt-1 text-sm text-slate-600">{user.email}</p>
             </div>
-            
           </div>
 
           {errorMessage ? (
@@ -187,9 +187,9 @@ export function DashboardClient() {
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="font-semibold text-slate-950">РњРѕРё РѕР±СЉРµРєС‚С‹</h2>
+                <h2 className="font-semibold text-slate-950">Мои объекты</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  РћР±СЉРµРєС‚С‹ Рё РѕС‚РґРµР»С‹, Рє РєРѕС‚РѕСЂС‹Рј Сѓ РІР°СЃ РµСЃС‚СЊ РґРѕСЃС‚СѓРї.
+                  Объекты и отделы, к которым у вас есть доступ.
                 </p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">
@@ -226,10 +226,10 @@ export function DashboardClient() {
                 </Link>
               ))}
 
-              {!objects.length ? (
+              {!objects.length && !isLoading ? (
                 <div className="rounded-md border border-dashed border-slate-300 p-5 text-sm text-slate-600">
-                  РџРѕРєР° РЅРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РѕР±СЉРµРєС‚РѕРІ. РЎРѕР·РґР°Р№С‚Рµ РїРµСЂРІС‹Р№ РѕР±СЉРµРєС‚ РёР»Рё
-                  РїРѕРїСЂРѕСЃРёС‚Рµ РґРёСЂРµРєС‚РѕСЂР° РїСЂРёРіР»Р°СЃРёС‚СЊ РІР°СЃ.
+                  Пока нет доступных объектов. Создайте первый объект или
+                  попросите директора пригласить вас.
                 </div>
               ) : null}
             </div>
@@ -237,24 +237,25 @@ export function DashboardClient() {
 
           <aside className="grid gap-4">
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-950">Р‘Р°РЅРє Р·Р°СЏРІРѕРє</h2>
+              <h2 className="font-semibold text-slate-950">Банк заявок</h2>
               <Link
                 className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 href="/dashboard/requests"
               >
-                РћС‚РєСЂС‹С‚СЊ Р±Р°РЅРє Р·Р°СЏРІРѕРє
+                Открыть банк заявок
               </Link>
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-950">РЎРѕР·РґР°С‚СЊ РѕР±СЉРµРєС‚</h2>
+              <h2 className="font-semibold text-slate-950">Создать объект</h2>
               <p className="mt-1 text-sm text-slate-600">
-                РџСЂРё РїРµСЂРІРѕРј СЃРѕР·РґР°РЅРёРё РѕР±СЉРµРєС‚Р° РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РїРѕР»СѓС‡Р°РµС‚ СЂРѕР»СЊ РґРёСЂРµРєС‚РѕСЂР°.
+                При создании объекта пользователь получает роль директора на
+                этом объекте.
               </p>
               <form className="mt-4 grid gap-3" onSubmit={createObject}>
                 <label className="grid gap-1.5">
                   <span className="text-sm font-medium text-slate-700">
-                    РќР°Р·РІР°РЅРёРµ
+                    Название
                   </span>
                   <input
                     className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
@@ -263,17 +264,17 @@ export function DashboardClient() {
                   />
                 </label>
                 <label className="grid gap-1.5">
-                  <span className="text-sm font-medium text-slate-700">РўРёРї</span>
+                  <span className="text-sm font-medium text-slate-700">Тип</span>
                   <select
                     className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
                     name="type"
                     required
                   >
                     <option value="CONSTRUCTION_OBJECT">
-                      РЎС‚СЂРѕРёС‚РµР»СЊРЅС‹Р№ РѕР±СЉРµРєС‚
+                      Строительный объект
                     </option>
                     <option value="INTERNAL_DEPARTMENT">
-                      Р’РЅСѓС‚СЂРµРЅРЅРёР№ РѕС‚РґРµР»
+                      Внутренний отдел
                     </option>
                   </select>
                 </label>
@@ -281,51 +282,15 @@ export function DashboardClient() {
                   <div className="text-sm font-medium text-slate-700">
                     Лимиты для строительного объекта
                   </div>
-                  <label className="grid gap-1.5">
-                    <span className="text-sm font-medium text-slate-700">
-                      Материалы
-                    </span>
-                    <input
-                      className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                      name="materialsLimit"
-                      type="number"
-                      min="0"
-                      defaultValue="0"
-                      required
-                    />
-                  </label>
-                  <label className="grid gap-1.5">
-                    <span className="text-sm font-medium text-slate-700">
-                      Транспорт
-                    </span>
-                    <input
-                      className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                      name="transportLimit"
-                      type="number"
-                      min="0"
-                      defaultValue="0"
-                      required
-                    />
-                  </label>
-                  <label className="grid gap-1.5">
-                    <span className="text-sm font-medium text-slate-700">
-                      Деньги
-                    </span>
-                    <input
-                      className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                      name="moneyLimit"
-                      type="number"
-                      min="0"
-                      defaultValue="0"
-                      required
-                    />
-                  </label>
+                  <LimitInput name="materialsLimit" label="Материалы" />
+                  <LimitInput name="transportLimit" label="Транспорт" />
+                  <LimitInput name="moneyLimit" label="Деньги" />
                 </div>
                 <button
                   className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
                   type="submit"
                 >
-                  РЎРѕР·РґР°С‚СЊ
+                  Создать
                 </button>
               </form>
             </section>
@@ -333,6 +298,22 @@ export function DashboardClient() {
         </div>
       </section>
     </main>
+  );
+}
+
+function LimitInput({ label, name }: { label: string; name: string }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <input
+        className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+        defaultValue="0"
+        min="0"
+        name={name}
+        required
+        type="number"
+      />
+    </label>
   );
 }
 
@@ -361,6 +342,3 @@ function getLimitAmount(limits: ObjectLimit[], type: ObjectLimit["type"]) {
 function formatMoney(value: number) {
   return `${value.toLocaleString("ru-KZ")} тг`;
 }
-
-
-

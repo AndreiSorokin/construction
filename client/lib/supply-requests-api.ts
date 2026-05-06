@@ -1,4 +1,6 @@
 import { apiClient } from "./api";
+import { getAccessToken } from "./auth-storage";
+import { API_URL } from "./config";
 import { SupplyRequest, SupplyRequestStatus, SupplyRequestType } from "./types";
 
 export type CreateMaterialSupplyRequestPayload = {
@@ -206,6 +208,32 @@ export function setSupplierPurchasePrices(
   );
 }
 
+export function attachInvoicesAndSendToDirector(
+  requestId: string,
+  payload: {
+    files: File[];
+    comment?: string;
+  },
+) {
+  const form = new FormData();
+
+  for (const file of payload.files) {
+    form.append("files", file);
+  }
+
+  if (payload.comment) {
+    form.append("comment", payload.comment);
+  }
+
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/invoices/send-to-director`,
+    {
+      method: "PATCH",
+      body: form,
+    },
+  );
+}
+
 export function assignSupplyRequest(
   requestId: string,
   payload: {
@@ -263,4 +291,31 @@ export function approveTransportBySupply(requestId: string, comment?: string) {
       body: { comment },
     },
   );
+}
+
+export async function downloadSupplyRequestInvoice(
+  requestId: string,
+  invoiceId: string,
+  fileName: string,
+) {
+  const token = getAccessToken();
+  const response = await fetch(
+    `${API_URL}/supply-requests/${requestId}/invoices/${invoiceId}/download`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Не удалось скачать счет");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }

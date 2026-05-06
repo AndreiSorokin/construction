@@ -6,14 +6,8 @@ import {
   Param,
   Patch,
   Post,
-  Res,
-  StreamableFile,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
@@ -38,17 +32,6 @@ export class ObjectsController {
   @Get()
   findAll() {
     return this.objectsService.findAll();
-  }
-
-  @Get("materials/template")
-  downloadMaterialsTemplate(@Res({ passthrough: true }) response: Response) {
-    response.set({
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": 'attachment; filename="materials-template.xlsx"',
-    });
-
-    return new StreamableFile(this.objectsService.createMaterialsTemplate());
   }
 
   @Get("access/mine")
@@ -86,16 +69,6 @@ export class ObjectsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.objectsService.createMaterial(id, dto, user.id);
-  }
-
-  @Post(":id/materials/import")
-  @UseInterceptors(FileInterceptor("file"))
-  importMaterials(
-    @Param("id") id: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    return this.objectsService.importMaterials(id, user.id, file);
   }
 
   @Get(":id/materials")

@@ -103,8 +103,8 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
               <th className="py-2 pr-3 font-medium">Автор</th>
               <th className="py-2 pr-3 font-medium">Снабженец</th>
               <th className="py-2 pr-3 font-medium">Статус</th>
-              <th className="py-2 pr-3 font-medium">Детали / сумма заявки</th>
-              <th className="py-2 pr-3 font-medium">Сумма снабжения</th>
+              <th className="py-2 pr-3 font-medium">Детали / сумма</th>
+              <th className="py-2 pr-3 font-medium">Счета</th>
               <th className="py-2 pr-3 font-medium">Дата</th>
             </tr>
           </thead>
@@ -142,8 +142,8 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
                       : formatMoney(getEstimatedTotal(request))}
                   </td>
                   <td className="py-3 pr-3 text-slate-600">
-                    {request.items.length
-                      ? formatMoney(getSupplierTotal(request))
+                    {request.invoices?.length
+                      ? `${request.invoices.length} шт.`
                       : "-"}
                   </td>
                   <td className="py-3 pr-3 text-slate-600">
@@ -191,14 +191,6 @@ function getEstimatedTotal(request: SupplyRequest) {
   return request.items.reduce(
     (total, item) =>
       total + toNumber(item.estimatedPriceSnapshot) * toNumber(item.quantity),
-    0,
-  );
-}
-
-function getSupplierTotal(request: SupplyRequest) {
-  return request.items.reduce(
-    (total, item) =>
-      total + toNumber(item.supplierPurchasePrice) * toNumber(item.quantity),
     0,
   );
 }

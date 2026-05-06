@@ -6,8 +6,14 @@ import {
   Patch,
   Post,
   Query,
+  Res,
+  StreamableFile,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FilesInterceptor } from "@nestjs/platform-express";
+import { Response } from "express";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
@@ -61,6 +67,29 @@ export class SupplyRequestsController {
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.supplyRequestsService.findOne(id);
+  }
+
+  @Get(":id/invoices/:invoiceId/download")
+  async downloadInvoice(
+    @Param("id") id: string,
+    @Param("invoiceId") invoiceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const invoice = await this.supplyRequestsService.findInvoiceFile(
+      id,
+      invoiceId,
+      user.id,
+    );
+
+    response.set({
+      "Content-Type": invoice.mimeType,
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(
+        invoice.originalName,
+      )}"`,
+    });
+
+    return new StreamableFile(invoice.file);
   }
 
   @Patch(":id/items/:itemId")
@@ -132,6 +161,22 @@ export class SupplyRequestsController {
   ) {
     return this.supplyRequestsService.setSupplierPurchasePrices(
       id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/invoices/send-to-director")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  attachInvoicesAndSendToDirector(
+    @Param("id") id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.attachInvoicesAndSendToDirector(
+      id,
+      files,
       dto,
       user.id,
     );

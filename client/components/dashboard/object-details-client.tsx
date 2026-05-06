@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChangeEvent, FormEvent, ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
 import { TransportRequestModal } from "@/components/dashboard/transport-request-modal";
 import { useErrorMessage } from "@/hooks/use-error-message";
@@ -22,9 +22,7 @@ import {
   createObjectMaterial,
   deleteObject,
   deleteObjectMaterial,
-  downloadMaterialsTemplate,
   getObject,
-  importObjectMaterials,
   inviteObjectUser,
   updateObjectMaterial,
 } from "@/lib/objects-api";
@@ -39,7 +37,7 @@ const inviteRoleLabels: Record<UserRole, string> = {
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
   SUPPLY_MANAGER: "Начальник снабжения",
-  SUPPLY: "Снабжение",
+  SUPPLY: "Снабженец",
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
   DIRECTOR: "Директор",
@@ -151,38 +149,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
         result.mail?.sent === false && result.inviteLink
           ? `Приглашение создано. SMTP не отправил письмо, ссылка: ${result.inviteLink}`
           : "Приглашение отправлено",
-      );
-      await loadPage();
-    } catch (error) {
-      showError(error);
-    }
-  }
-
-  async function handleTemplateDownload() {
-    clearError();
-
-    try {
-      await downloadMaterialsTemplate();
-    } catch (error) {
-      showError(error);
-    }
-  }
-
-  async function handleImportMaterials(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    clearError();
-    clearSuccess();
-
-    try {
-      const result = await importObjectMaterials(objectId, file);
-      event.target.value = "";
-      showSuccess(
-        `Импортировано: ${result.imported}. Пропущено дублей: ${result.skipped}.`,
       );
       await loadPage();
     } catch (error) {
@@ -585,37 +551,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
                   <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h2 className="font-semibold text-slate-950">
-                      Excel импорт
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Скачайте шаблон, заполните материалы и загрузите файл.
-                    </p>
-                    <div className="mt-4 grid gap-3">
-                      <button
-                        className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        onClick={() => void handleTemplateDownload()}
-                        type="button"
-                      >
-                        Скачать шаблон
-                      </button>
-                      <label className="grid cursor-pointer gap-1.5">
-                        <span className="text-sm font-medium text-slate-700">
-                          Загрузить Excel
-                        </span>
-                        <input
-                          accept=".xlsx,.xls"
-                          className="block w-full text-sm text-slate-600 file:mr-3 file:h-10 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:text-sm file:font-medium file:text-white"
-                          onChange={(event) =>
-                            void handleImportMaterials(event)
-                          }
-                          type="file"
-                        />
-                      </label>
-                    </div>
-                  </section>
-
-                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                    <h2 className="font-semibold text-slate-950">
                       Добавить вручную
                     </h2>
                     <form className="mt-4 grid gap-3" onSubmit={createMaterial}>
@@ -676,7 +611,7 @@ function getObjectLimitAmount(
 }
 
 function formatMoney(value: number) {
-  return `${value.toLocaleString("ru-KZ")} ₸`;
+  return `${value.toLocaleString("ru-KZ")} тг`;
 }
 
 function Field({

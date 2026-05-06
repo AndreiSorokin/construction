@@ -1,6 +1,4 @@
 import { apiClient } from "./api";
-import { getAccessToken } from "./auth-storage";
-import { API_URL } from "./config";
 import {
   ObjectEntity,
   ObjectMaterial,
@@ -83,57 +81,4 @@ export function inviteObjectUser(
     method: "POST",
     body: payload,
   });
-}
-
-export async function downloadMaterialsTemplate() {
-  const response = await fetch(`${API_URL}/objects/materials/template`, {
-    headers: {
-      ...(getAccessToken()
-        ? { Authorization: `Bearer ${getAccessToken()}` }
-        : {}),
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Не удалось скачать шаблон");
-  }
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "materials-template.xlsx";
-  link.click();
-  window.URL.revokeObjectURL(url);
-}
-
-export async function importObjectMaterials(objectId: string, file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const response = await fetch(`${API_URL}/objects/${objectId}/materials/import`, {
-    method: "POST",
-    headers: {
-      ...(getAccessToken()
-        ? { Authorization: `Bearer ${getAccessToken()}` }
-        : {}),
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as {
-      message?: string | string[];
-    } | null;
-    const message = Array.isArray(body?.message)
-      ? body.message.join(", ")
-      : body?.message;
-
-    throw new Error(message ?? "Не удалось импортировать материалы");
-  }
-
-  return response.json() as Promise<{
-    imported: number;
-    skipped: number;
-  }>;
 }

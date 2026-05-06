@@ -48,12 +48,19 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}) {
 }
 
 function request(path: string, options: ApiOptions, token?: string | null) {
+  const body = options.body;
+  const isFormData = body instanceof FormData;
+
   return fetch(`${API_URL}${path}`, {
     ...options,
     body:
-      options.body === undefined ? undefined : JSON.stringify(options.body),
+      body === undefined
+        ? undefined
+        : isFormData
+          ? body
+          : JSON.stringify(body),
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },

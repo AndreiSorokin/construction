@@ -102,6 +102,18 @@ export type SupplyRequestItem = {
   supplierPurchasePrice?: string | null;
 };
 
+export type SupplyRequestInvoice = {
+  id: string;
+  requestId: string;
+  uploadedById: string;
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  uploadedBy?: User;
+};
+
 export type SupplyRequest = {
   id: string;
   requestNumber: string;
@@ -119,6 +131,7 @@ export type SupplyRequest = {
   author?: User;
   assignedSupplyUser?: User | null;
   assignedBy?: User | null;
+  invoices?: SupplyRequestInvoice[];
   items: SupplyRequestItem[];
   approvalHistory?: ApprovalHistoryEntry[];
 };
