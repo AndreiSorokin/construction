@@ -156,16 +156,15 @@ model Invitation {
 }
 
 model ObjectMaterial {
-  id              String              @id @default(cuid())
+  id              String       @id @default(cuid())
   objectId        String
-  object          ObjectEntity        @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  object          ObjectEntity @relation(fields: [objectId], references: [id], onDelete: Cascade)
   name            String
   type            String
   measurementUnit String
-  estimatedPrice  Decimal             @db.Decimal(18, 2)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  requestItems    SupplyRequestItem[]
+  estimatedPrice  Decimal      @db.Decimal(18, 2)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@unique([objectId, name, measurementUnit])
   @@index([objectId])
@@ -206,9 +205,7 @@ model SupplyRequest {
 model SupplyRequestItem {
   id                      String                @id @default(cuid())
   requestId               String
-  objectMaterialId        String
   request                 SupplyRequest         @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  objectMaterial          ObjectMaterial        @relation(fields: [objectMaterialId], references: [id])
   materialNameSnapshot    String
   materialTypeSnapshot    String
   measurementUnitSnapshot String
@@ -221,7 +218,6 @@ model SupplyRequestItem {
   priceHistory            RequestPriceHistory[]
 
   @@index([requestId])
-  @@index([objectMaterialId])
 }
 
 model SupplyRequestInvoice {

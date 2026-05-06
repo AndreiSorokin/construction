@@ -92,7 +92,6 @@ export type ApprovalHistoryEntry = {
 
 export type SupplyRequestItem = {
   id: string;
-  objectMaterialId: string;
   materialNameSnapshot: string;
   materialTypeSnapshot: string;
   measurementUnitSnapshot: string;

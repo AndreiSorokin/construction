@@ -17,6 +17,11 @@ type AccessGrantedEmail = {
   invitedBy: string;
 };
 
+type MailResult = {
+  sent: boolean;
+  error?: string;
+};
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -34,6 +39,9 @@ export class MailService {
         port,
         secure: this.config.get<string>("SMTP_SECURE") === "true",
         auth: { user, pass },
+        connectionTimeout: 15_000,
+        greetingTimeout: 15_000,
+        socketTimeout: 30_000,
         tls: {
           rejectUnauthorized:
             this.config.get<string>("SMTP_TLS_REJECT_UNAUTHORIZED") !== "false",
@@ -42,51 +50,73 @@ export class MailService {
     }
   }
 
-  async sendInvitationEmail(email: InviteEmail) {
+  async sendInvitationEmail(email: InviteEmail): Promise<MailResult> {
     if (!this.transporter) {
       this.logger.warn(
         `SMTP is not configured. Invitation link for ${email.to}: ${email.inviteLink}`,
       );
-      return { sent: false };
+      return { sent: false, error: "SMTP is not configured" };
     }
 
-    await this.transporter.sendMail({
-      from:
-        this.config.get<string>("SMTP_FROM") ??
-        this.config.get<string>("SMTP_USER"),
-      to: email.to,
-      subject: `Invitation to ${email.objectName}`,
-      text: [
+    return this.sendSafely(
+      email.to,
+      `Invitation to ${email.objectName}`,
+      [
         `Здравствуйте, ${email.name}.`,
         `${email.invitedBy} пригласил вас в систему управления строительного контроля для "${email.objectName}".`,
         `Завершите регистрацию, используя эту ссылку: ${email.inviteLink}`,
       ].join("\n\n"),
-    });
-
-    return { sent: true };
+      "invitation",
+    );
   }
 
-  async sendAccessGrantedEmail(email: AccessGrantedEmail) {
+  async sendAccessGrantedEmail(email: AccessGrantedEmail): Promise<MailResult> {
     if (!this.transporter) {
       this.logger.warn(
         `SMTP is not configured. Access granted notification for ${email.to}`,
       );
-      return { sent: false };
+      return { sent: false, error: "SMTP is not configured" };
     }
 
-    await this.transporter.sendMail({
-      from:
-        this.config.get<string>("SMTP_FROM") ??
-        this.config.get<string>("SMTP_USER"),
-      to: email.to,
-      subject: `Access granted to ${email.objectName}`,
-      text: [
+    return this.sendSafely(
+      email.to,
+      `Access granted to ${email.objectName}`,
+      [
         `Здравствуйте, ${email.name}.`,
         `${email.invitedBy} выдал вам доступ к "${email.objectName}" в системе управления строительного контроля.`,
         "Вы можете войти в систему с использованием существующей учетной записи.",
       ].join("\n\n"),
-    });
+      "access granted",
+    );
+  }
 
-    return { sent: true };
+  private async sendSafely(
+    to: string,
+    subject: string,
+    text: string,
+    purpose: string,
+  ): Promise<MailResult> {
+    try {
+      await this.transporter?.sendMail({
+        from:
+          this.config.get<string>("SMTP_FROM") ??
+          this.config.get<string>("SMTP_USER"),
+        to,
+        subject,
+        text,
+      });
+
+      return { sent: true };
+    } catch (error) {
+      this.logger.error(
+        `Failed to send ${purpose} email to ${to}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+
+      return {
+        sent: false,
+        error: error instanceof Error ? error.message : "Unknown SMTP error",
+      };
+    }
   }
 }

@@ -76,7 +76,7 @@ export function inviteObjectUser(
   return apiClient<{
     type?: string;
     inviteLink?: string;
-    mail?: { sent?: boolean };
+    mail?: { sent?: boolean; error?: string };
   }>(`/objects/${objectId}/invitations`, {
     method: "POST",
     body: payload,

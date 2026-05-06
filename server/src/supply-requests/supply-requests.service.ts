@@ -52,23 +52,19 @@ export class SupplyRequestsService {
       UserRole.FOREMAN,
     ]);
 
-    const materialIds = dto.items.map((item) => item.objectMaterialId);
-    const materials = await this.prisma.objectMaterial.findMany({
-      where: {
-        id: { in: materialIds },
-        objectId: dto.objectId,
-      },
-    });
-
-    if (materials.length !== new Set(materialIds).size) {
-      throw new BadRequestException(
-        "All materials must belong to the selected object",
-      );
+    for (const item of dto.items) {
+      if (
+        !item.materialName.trim() ||
+        !item.materialType.trim() ||
+        !item.measurementUnit.trim() ||
+        new Prisma.Decimal(item.estimatedPrice).lte(0) ||
+        new Prisma.Decimal(item.quantity).lte(0)
+      ) {
+        throw new BadRequestException(
+          "Each material item must contain name, type, measurement unit, positive estimated price and positive quantity",
+        );
+      }
     }
-
-    const materialsById = new Map(
-      materials.map((material) => [material.id, material]),
-    );
 
     return this.prisma.$transaction(async (tx) => {
       const request = await tx.supplyRequest.create({
@@ -79,22 +75,13 @@ export class SupplyRequestsService {
           authorId,
           status: SupplyRequestStatus.PENDING_PTO,
           items: {
-            create: dto.items.map((item) => {
-              const material = materialsById.get(item.objectMaterialId);
-
-              if (!material) {
-                throw new BadRequestException("Material not found");
-              }
-
-              return {
-                objectMaterialId: material.id,
-                materialNameSnapshot: material.name,
-                materialTypeSnapshot: material.type,
-                measurementUnitSnapshot: material.measurementUnit,
-                estimatedPriceSnapshot: material.estimatedPrice,
-                quantity: new Prisma.Decimal(item.quantity),
-              };
-            }),
+            create: dto.items.map((item) => ({
+              materialNameSnapshot: item.materialName.trim(),
+              materialTypeSnapshot: item.materialType.trim(),
+              measurementUnitSnapshot: item.measurementUnit.trim(),
+              estimatedPriceSnapshot: new Prisma.Decimal(item.estimatedPrice),
+              quantity: new Prisma.Decimal(item.quantity),
+            })),
           },
           approvalHistory: {
             create: {
@@ -954,7 +941,6 @@ export class SupplyRequestsService {
     },
     items: {
       include: {
-        objectMaterial: true,
         priceHistory: {
           include: { actor: true },
           orderBy: { createdAt: "desc" as const },

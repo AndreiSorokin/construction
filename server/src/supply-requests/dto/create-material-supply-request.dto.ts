@@ -11,7 +11,18 @@ import {
 export class CreateMaterialSupplyRequestItemDto {
   @IsString()
   @IsNotEmpty()
-  objectMaterialId: string;
+  materialName: string;
+
+  @IsString()
+  @IsNotEmpty()
+  materialType: string;
+
+  @IsString()
+  @IsNotEmpty()
+  measurementUnit: string;
+
+  @IsNumberString()
+  estimatedPrice: string;
 
   @IsNumberString()
   quantity: string;

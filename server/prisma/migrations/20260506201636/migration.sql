@@ -1,0 +1,3 @@
+-- No-op.
+-- This migration was generated while objectMaterialId was temporarily nullable.
+-- The previous migration already removes objectMaterialId and its relation.

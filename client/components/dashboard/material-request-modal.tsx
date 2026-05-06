@@ -6,7 +6,10 @@ import { createMaterialSupplyRequest } from "@/lib/supply-requests-api";
 import { ObjectEntity } from "@/lib/types";
 
 type MaterialRequestFormItem = {
-  objectMaterialId: string;
+  materialName: string;
+  materialType: string;
+  measurementUnit: string;
+  estimatedPrice: string;
   quantity: string;
 };
 
@@ -18,6 +21,14 @@ type MaterialRequestModalProps = {
   onSuccess: (message: string) => void;
 };
 
+const emptyItem: MaterialRequestFormItem = {
+  materialName: "",
+  materialType: "",
+  measurementUnit: "",
+  estimatedPrice: "",
+  quantity: "1",
+};
+
 export function MaterialRequestModal({
   isOpen,
   object,
@@ -26,16 +37,14 @@ export function MaterialRequestModal({
   onSuccess,
 }: MaterialRequestModalProps) {
   const [requestItems, setRequestItems] = useState<MaterialRequestFormItem[]>([
-    { objectMaterialId: "", quantity: "1" },
+    emptyItem,
   ]);
 
-  const requestTotalAmount = requestItems.reduce((total, item) => {
-    const material = object.materials?.find(
-      (current) => current.id === item.objectMaterialId,
-    );
-
-    return total + toNumber(material?.estimatedPrice) * toNumber(item.quantity);
-  }, 0);
+  const requestTotalAmount = requestItems.reduce(
+    (total, item) =>
+      total + toNumber(item.estimatedPrice) * toNumber(item.quantity),
+    0,
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -70,16 +79,13 @@ export function MaterialRequestModal({
   }
 
   function addRequestItem() {
-    setRequestItems((current) => [
-      ...current,
-      { objectMaterialId: "", quantity: "1" },
-    ]);
+    setRequestItems((current) => [...current, { ...emptyItem }]);
   }
 
   function removeRequestItem(index: number) {
     setRequestItems((current) =>
       current.length === 1
-        ? [{ objectMaterialId: "", quantity: "1" }]
+        ? [{ ...emptyItem }]
         : current.filter((_, itemIndex) => itemIndex !== index),
     );
   }
@@ -89,13 +95,23 @@ export function MaterialRequestModal({
 
     const items = requestItems
       .map((item) => ({
-        objectMaterialId: item.objectMaterialId,
+        materialName: item.materialName.trim(),
+        materialType: item.materialType.trim(),
+        measurementUnit: item.measurementUnit.trim(),
+        estimatedPrice: item.estimatedPrice,
         quantity: item.quantity,
       }))
-      .filter((item) => item.objectMaterialId && toNumber(item.quantity) > 0);
+      .filter(
+        (item) =>
+          item.materialName &&
+          item.materialType &&
+          item.measurementUnit &&
+          toNumber(item.estimatedPrice) > 0 &&
+          toNumber(item.quantity) > 0,
+      );
 
     if (!items.length) {
-      onError("Добавьте хотя бы один материал в заявку");
+      onError("Добавьте хотя бы одну позицию с названием, типом, единицей, ценой и количеством");
       return;
     }
 
@@ -105,7 +121,7 @@ export function MaterialRequestModal({
         items,
       });
 
-      setRequestItems([{ objectMaterialId: "", quantity: "1" }]);
+      setRequestItems([{ ...emptyItem }]);
       onSuccess(`Заявка ${request.requestNumber} создана и отправлена в ПТО`);
       onClose();
     } catch (error) {
@@ -119,14 +135,14 @@ export function MaterialRequestModal({
       className="fixed inset-0 z-50 flex items-end bg-slate-950/45 px-3 py-3 sm:items-center sm:px-6"
       role="dialog"
     >
-      <div className="mx-auto flex max-h-[92vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
+      <div className="mx-auto flex max-h-[92vh] w-full max-w-5xl flex-col rounded-lg bg-white shadow-xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">
               Заявка на материалы
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {object.name}: выберите материалы из справочника объекта.
+              {object.name}: добавьте позиции вручную. Справочник материалов не требуется.
             </p>
           </div>
           <button
@@ -154,42 +170,90 @@ export function MaterialRequestModal({
 
             <div className="grid gap-3">
               {requestItems.map((item, index) => {
-                const selectedMaterial = object.materials?.find(
-                  (material) => material.id === item.objectMaterialId,
-                );
                 const rowAmount =
-                  toNumber(selectedMaterial?.estimatedPrice) *
-                  toNumber(item.quantity);
+                  toNumber(item.estimatedPrice) * toNumber(item.quantity);
 
                 return (
                   <div
-                    className="grid min-w-0 gap-3 rounded-md border border-slate-200 p-3 md:grid-cols-[minmax(0,1fr)_130px_130px_40px]"
-                    key={`${index}-${item.objectMaterialId}`}
+                    className="grid min-w-0 gap-3 rounded-md border border-slate-200 p-3 lg:grid-cols-[minmax(180px,1.2fr)_minmax(150px,0.9fr)_120px_140px_120px_40px]"
+                    key={index}
                   >
                     <label className="grid min-w-0 gap-1.5">
                       <span className="text-sm font-medium text-slate-700">
-                        Материал
+                        Название
                       </span>
-                      <select
+                      <input
                         className="h-10 w-full min-w-0 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-700"
                         onChange={(event) =>
                           updateRequestItem(
                             index,
-                            "objectMaterialId",
+                            "materialName",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Например: Болт М12"
+                        required
+                        value={item.materialName}
+                      />
+                    </label>
+
+                    <label className="grid min-w-0 gap-1.5">
+                      <span className="text-sm font-medium text-slate-700">
+                        Тип материала
+                      </span>
+                      <input
+                        className="h-10 w-full min-w-0 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-700"
+                        onChange={(event) =>
+                          updateRequestItem(
+                            index,
+                            "materialType",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Метизы"
+                        required
+                        value={item.materialType}
+                      />
+                    </label>
+
+                    <label className="grid min-w-0 gap-1.5">
+                      <span className="text-sm font-medium text-slate-700">
+                        Ед. изм.
+                      </span>
+                      <input
+                        className="h-10 w-full min-w-0 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-700"
+                        onChange={(event) =>
+                          updateRequestItem(
+                            index,
+                            "measurementUnit",
+                            event.target.value,
+                          )
+                        }
+                        placeholder="шт"
+                        required
+                        value={item.measurementUnit}
+                      />
+                    </label>
+
+                    <label className="grid min-w-0 gap-1.5">
+                      <span className="text-sm font-medium text-slate-700">
+                        Цена за ед.
+                      </span>
+                      <input
+                        className="h-10 w-full min-w-0 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-700"
+                        min="0.01"
+                        onChange={(event) =>
+                          updateRequestItem(
+                            index,
+                            "estimatedPrice",
                             event.target.value,
                           )
                         }
                         required
-                        value={item.objectMaterialId}
-                      >
-                        <option value="">Выберите материал</option>
-                        {object.materials?.map((material) => (
-                          <option key={material.id} value={material.id}>
-                            {material.name} · {material.measurementUnit} ·{" "}
-                            {formatMoney(toNumber(material.estimatedPrice))}
-                          </option>
-                        ))}
-                      </select>
+                        step="0.01"
+                        type="number"
+                        value={item.estimatedPrice}
+                      />
                     </label>
 
                     <label className="grid min-w-0 gap-1.5">
@@ -220,7 +284,7 @@ export function MaterialRequestModal({
 
                     <button
                       aria-label="Удалить позицию"
-                      className="grid size-10 place-items-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 md:mt-6"
+                      className="grid size-10 place-items-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50 lg:mt-6"
                       onClick={() => removeRequestItem(index)}
                       title="Удалить позицию"
                       type="button"
@@ -243,8 +307,7 @@ export function MaterialRequestModal({
               Добавить позицию
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              disabled={!object.materials?.length}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
               type="submit"
             >
               <Send size={16} />

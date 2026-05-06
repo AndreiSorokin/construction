@@ -6,7 +6,10 @@ import { SupplyRequest, SupplyRequestStatus, SupplyRequestType } from "./types";
 export type CreateMaterialSupplyRequestPayload = {
   objectId: string;
   items: Array<{
-    objectMaterialId: string;
+    materialName: string;
+    materialType: string;
+    measurementUnit: string;
+    estimatedPrice: string;
     quantity: string;
   }>;
 };

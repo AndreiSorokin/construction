@@ -158,6 +158,7 @@ export class ObjectsService {
   }
 
   async inviteUser(objectId: string, dto: InviteUserDto, inviterId: string) {
+    const inviteEmail = dto.email.trim().toLowerCase();
     const object = await this.prisma.objectEntity.findUnique({
       where: { id: objectId },
       select: { id: true, name: true, ownerId: true },
@@ -169,19 +170,23 @@ export class ObjectsService {
 
     await this.ensureUserObjectRole(inviterId, objectId, [UserRole.DIRECTOR]);
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-      select: { id: true, email: true, name: true },
-    });
-
     const inviter = await this.prisma.user.findUnique({
       where: { id: inviterId },
-      select: { name: true },
+      select: { id: true, email: true, name: true },
     });
 
     if (!inviter) {
       throw new NotFoundException("Inviter not found");
     }
+
+    if (inviter.email.trim().toLowerCase() === inviteEmail) {
+      throw new BadRequestException("You cannot invite yourself");
+    }
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: inviteEmail },
+      select: { id: true, email: true, name: true },
+    });
 
     if (existingUser) {
       const result = await this.prisma.$transaction(async (tx) => {
@@ -234,7 +239,7 @@ export class ObjectsService {
 
     const invitation = await this.prisma.invitation.create({
       data: {
-        email: dto.email,
+        email: inviteEmail,
         name: dto.name,
         tokenHash,
         userRole: dto.userRole,
@@ -254,7 +259,7 @@ export class ObjectsService {
 
     const inviteLink = this.createInviteLink(token);
     const mail = await this.mail.sendInvitationEmail({
-      to: dto.email,
+      to: inviteEmail,
       name: dto.name,
       objectName: object.name,
       invitedBy: inviter.name,
@@ -338,23 +343,11 @@ export class ObjectsService {
 
     const material = await this.prisma.objectMaterial.findFirst({
       where: { id: materialId, objectId },
-      select: {
-        id: true,
-        requestItems: {
-          select: { id: true },
-          take: 1,
-        },
-      },
+      select: { id: true },
     });
 
     if (!material) {
       throw new NotFoundException("Object material not found");
-    }
-
-    if (material.requestItems.length > 0) {
-      throw new BadRequestException(
-        "Material is already used in requests and cannot be deleted",
-      );
     }
 
     await this.prisma.objectMaterial.delete({

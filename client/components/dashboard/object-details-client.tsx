@@ -65,6 +65,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   });
   const [isMaterialRequestOpen, setIsMaterialRequestOpen] = useState(false);
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
 
@@ -136,23 +137,42 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const email = String(form.get("email")).trim();
+
+    if (user?.email.trim().toLowerCase() === email.toLowerCase()) {
+      showError("Нельзя пригласить самого себя");
+      return;
+    }
 
     try {
+      setIsInviting(true);
       const result = await inviteObjectUser(objectId, {
-        email: String(form.get("email")),
+        email,
         name: String(form.get("name")),
         userRole: String(form.get("userRole")) as UserRole,
       });
 
       formElement.reset();
-      showSuccess(
-        result.mail?.sent === false && result.inviteLink
-          ? `Приглашение создано. SMTP не отправил письмо, ссылка: ${result.inviteLink}`
-          : "Приглашение отправлено",
-      );
+
+      if (result.mail?.sent === false) {
+        showSuccess(
+          result.inviteLink
+            ? `Приглашение создано, но письмо отправить не удалось. Ссылка: ${result.inviteLink}`
+            : "Доступ выдан, но письмо-уведомление не отправлено. Пользователь может войти в свой аккаунт.",
+        );
+      } else {
+        showSuccess(
+          result.type === "existing_user_access_granted"
+            ? "Доступ пользователю выдан"
+            : "Приглашение отправлено",
+        );
+      }
+
       await loadPage();
     } catch (error) {
       showError(error);
+    } finally {
+      setIsInviting(false);
     }
   }
 
@@ -290,8 +310,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                 <div className="flex flex-col gap-2 sm:flex-row">
                   {canCreateMaterialRequest ? (
                     <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                      disabled={!object.materials?.length}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
                       onClick={() => setIsMaterialRequestOpen(true)}
                       type="button"
                     >
@@ -540,10 +559,11 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                           </select>
                         </label>
                         <button
-                          className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+                          className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          disabled={isInviting}
                           type="submit"
                         >
-                          Пригласить
+                          {isInviting ? "Отправляем..." : "Пригласить"}
                         </button>
                       </form>
                     </section>
