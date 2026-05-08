@@ -20,16 +20,20 @@ import { AuthResponse, ObjectLimit, User, UserObjectAccess } from "@/lib/types";
 const accessRoleLabels: Record<UserObjectAccess["role"], string> = {
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
+  WORKSHOP_MANAGER: "Начальник цеха",
+  DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
   SUPPLY_MANAGER: "Начальник снабжения",
   SUPPLY: "Снабженец",
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
+  GARAGE_MANAGER: "Заведующий гаражом",
   DIRECTOR: "Директор",
 };
 
 const objectTypeLabels = {
   CONSTRUCTION_OBJECT: "Строительный объект",
   INTERNAL_DEPARTMENT: "Внутренний отдел",
+  WORKSHOP: "Цех",
 };
 
 export function DashboardClient() {
@@ -276,6 +280,7 @@ export function DashboardClient() {
                     <option value="INTERNAL_DEPARTMENT">
                       Внутренний отдел
                     </option>
+                    <option value="WORKSHOP">Цех</option>
                   </select>
                 </label>
                 <div className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">

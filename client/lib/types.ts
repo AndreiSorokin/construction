@@ -1,10 +1,13 @@
 export type UserRole =
   | "FOREMAN"
   | "SITE_MANAGER"
+  | "WORKSHOP_MANAGER"
+  | "DEPUTY_PRODUCTION_DIRECTOR"
   | "SUPPLY_MANAGER"
   | "SUPPLY"
   | "PTO"
   | "CHIEF_ENGINEER"
+  | "GARAGE_MANAGER"
   | "DIRECTOR";
 
 export type User = {
@@ -13,7 +16,10 @@ export type User = {
   name: string;
 };
 
-export type ObjectType = "CONSTRUCTION_OBJECT" | "INTERNAL_DEPARTMENT";
+export type ObjectType =
+  | "CONSTRUCTION_OBJECT"
+  | "INTERNAL_DEPARTMENT"
+  | "WORKSHOP";
 
 export type ObjectLimitType = "MATERIAL" | "TRANSPORT" | "MONEY";
 
@@ -47,9 +53,11 @@ export type SupplyRequestStatus =
   | "CREATED"
   | "PENDING_PTO"
   | "PENDING_CHIEF_ENGINEER"
+  | "PENDING_DEPUTY_PRODUCTION_DIRECTOR"
   | "PENDING_SUPPLY_MANAGER"
   | "PENDING_SUPPLY"
   | "PENDING_DIRECTOR"
+  | "PENDING_GARAGE_MANAGER"
   | "RETURNED_TO_SUPPLY"
   | "REJECTED"
   | "IN_PROGRESS"
@@ -67,6 +75,7 @@ export type ApprovalAction =
   | "SENT_TO_CHIEF_ENGINEER"
   | "SENT_TO_SUPPLY_MANAGER"
   | "SENT_TO_SUPPLY"
+  | "SENT_TO_GARAGE_MANAGER"
   | "ASSIGNED_TO_SUPPLY"
   | "SENT_TO_DIRECTOR"
   | "MARKED_IN_PROGRESS"
@@ -126,6 +135,8 @@ export type SupplyRequest = {
   assignedAt?: string | null;
   transportType?: string | null;
   purpose?: string | null;
+  amount?: string | null;
+  paymentPurpose?: string | null;
   object?: ObjectEntity;
   author?: User;
   assignedSupplyUser?: User | null;

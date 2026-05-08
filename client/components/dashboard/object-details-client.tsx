@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
+import { MoneyRequestModal } from "@/components/dashboard/money-request-modal";
 import { TransportRequestModal } from "@/components/dashboard/transport-request-modal";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
@@ -31,15 +32,19 @@ import { ObjectEntity, ObjectMaterial, User, UserRole } from "@/lib/types";
 const objectTypeLabels = {
   CONSTRUCTION_OBJECT: "Строительный объект",
   INTERNAL_DEPARTMENT: "Внутренний отдел",
+  WORKSHOP: "Цех",
 };
 
 const inviteRoleLabels: Record<UserRole, string> = {
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
+  WORKSHOP_MANAGER: "Начальник цеха",
+  DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
   SUPPLY_MANAGER: "Начальник снабжения",
   SUPPLY: "Снабженец",
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
+  GARAGE_MANAGER: "Заведующий гаражом",
   DIRECTOR: "Директор",
 };
 
@@ -65,6 +70,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   });
   const [isMaterialRequestOpen, setIsMaterialRequestOpen] = useState(false);
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
+  const [isMoneyRequestOpen, setIsMoneyRequestOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
@@ -79,6 +85,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const canDeleteObject = currentObjectRole === "DIRECTOR";
   const canCreateMaterialRequest = currentObjectRole === "FOREMAN";
   const canCreateTransportRequest = currentObjectRole === "SITE_MANAGER";
+  const canCreateMoneyRequest = currentObjectRole === "SITE_MANAGER";
   const materialsTotalAmount =
     object?.materials?.reduce(
       (total, material) => total + toNumber(material.estimatedPrice),
@@ -327,6 +334,17 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     >
                       <Send size={16} />
                       Заявка на транспорт
+                    </button>
+                  ) : null}
+
+                  {canCreateMoneyRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
+                      onClick={() => setIsMoneyRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Заявка на деньги
                     </button>
                   ) : null}
 
@@ -605,6 +623,13 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               isOpen={isTransportRequestOpen}
               object={object}
               onClose={() => setIsTransportRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+            />
+            <MoneyRequestModal
+              isOpen={isMoneyRequestOpen}
+              object={object}
+              onClose={() => setIsMoneyRequestOpen(false)}
               onError={showError}
               onSuccess={showSuccess}
             />

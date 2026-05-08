@@ -29,6 +29,7 @@ const actionLabels: Record<ApprovalAction, string> = {
   SENT_TO_CHIEF_ENGINEER: "Отправлена главному инженеру",
   SENT_TO_SUPPLY_MANAGER: "Отправлена начальнику снабжения",
   SENT_TO_SUPPLY: "Отправлена в снабжение",
+  SENT_TO_GARAGE_MANAGER: "Отправлена заведующему гаражом",
   ASSIGNED_TO_SUPPLY: "Назначена снабженцу",
   SENT_TO_DIRECTOR: "Отправлена директору",
   MARKED_IN_PROGRESS: "Взята в работу",
@@ -44,9 +45,11 @@ const statusLabels: Record<SupplyRequestStatus, string> = {
   CREATED: "Создана",
   PENDING_PTO: "В ПТО",
   PENDING_CHIEF_ENGINEER: "У главного инженера",
+  PENDING_DEPUTY_PRODUCTION_DIRECTOR: "У зам. директора по производству",
   PENDING_SUPPLY_MANAGER: "У начальника снабжения",
   PENDING_SUPPLY: "У снабженца",
   PENDING_DIRECTOR: "У директора",
+  PENDING_GARAGE_MANAGER: "У заведующего гаражом",
   RETURNED_TO_SUPPLY: "Возвращена снабжению",
   REJECTED: "Отклонена",
   IN_PROGRESS: "В работе",
@@ -57,10 +60,13 @@ const statusLabels: Record<SupplyRequestStatus, string> = {
 const roleLabels: Record<UserRole, string> = {
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
+  WORKSHOP_MANAGER: "Начальник цеха",
+  DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
   SUPPLY_MANAGER: "Начальник снабжения",
   SUPPLY: "Снабженец",
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
+  GARAGE_MANAGER: "Заведующий гаражом",
   DIRECTOR: "Директор",
 };
 

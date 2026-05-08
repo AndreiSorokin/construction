@@ -7,9 +7,7 @@ export type CreateMaterialSupplyRequestPayload = {
   objectId: string;
   items: Array<{
     materialName: string;
-    materialType: string;
     measurementUnit: string;
-    estimatedPrice: string;
     quantity: string;
   }>;
 };
@@ -38,8 +36,27 @@ export function createTransportSupplyRequest(
   });
 }
 
+export type CreateMoneySupplyRequestPayload = {
+  objectId: string;
+  amount: string;
+  paymentPurpose: string;
+};
+
+export function createMoneySupplyRequest(
+  payload: CreateMoneySupplyRequestPayload,
+) {
+  return apiClient<SupplyRequest>("/supply-requests/money", {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export function getSupplyRequests() {
   return apiClient<SupplyRequest[]>("/supply-requests");
+}
+
+export function getSupplyRequest(id: string) {
+  return apiClient<SupplyRequest>(`/supply-requests/${id}`);
 }
 
 export type SupplyRequestsPage = {
@@ -192,21 +209,28 @@ export function returnSupplyRequestToPtoByChiefEngineer(
   );
 }
 
-export function setSupplierPurchasePrices(
+export function approveSupplyRequestByDeputyProductionDirector(
   requestId: string,
-  payload: {
-    comment?: string;
-    items: Array<{
-      requestItemId: string;
-      supplierPurchasePrice: string;
-    }>;
-  },
+  comment?: string,
 ) {
   return apiClient<SupplyRequest>(
-    `/supply-requests/${requestId}/supplier-purchase-prices`,
+    `/supply-requests/${requestId}/deputy-production-director/approve`,
     {
       method: "PATCH",
-      body: payload,
+      body: { comment },
+    },
+  );
+}
+
+export function rejectSupplyRequestByDeputyProductionDirector(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/deputy-production-director/reject`,
+    {
+      method: "PATCH",
+      body: { comment },
     },
   );
 }
@@ -237,6 +261,19 @@ export function attachInvoicesAndSendToDirector(
   );
 }
 
+export function sendMoneyRequestToDirector(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/money/send-to-director`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function assignSupplyRequest(
   requestId: string,
   payload: {
@@ -249,6 +286,32 @@ export function assignSupplyRequest(
     {
       method: "PATCH",
       body: payload,
+    },
+  );
+}
+
+export function sendTransportToGarageManager(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/supply-manager/send-to-garage`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function completeTransportByGarageManager(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/garage-manager/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
     },
   );
 }

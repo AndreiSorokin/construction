@@ -25,8 +25,8 @@ import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-r
 import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
+import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
-import { SetSupplierPurchasePricesDto } from "./dto/set-supplier-purchase-prices.dto";
 import { SupplyRequestsService } from "./supply-requests.service";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
@@ -140,6 +140,19 @@ export class SupplyRequestsController {
     return this.supplyRequestsService.approveByChiefEngineer(id, dto, user.id);
   }
 
+  @Patch(":id/chief-engineer/review-items")
+  reviewItemsByChiefEngineer(
+    @Param("id") id: string,
+    @Body() dto: ReviewRequestItemsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.reviewItemsByChiefEngineer(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/chief-engineer/return-to-pto")
   returnToPtoByChiefEngineer(
     @Param("id") id: string,
@@ -153,13 +166,26 @@ export class SupplyRequestsController {
     );
   }
 
-  @Patch(":id/supplier-purchase-prices")
-  setSupplierPurchasePrices(
+  @Patch(":id/deputy-production-director/approve")
+  approveByDeputyProductionDirector(
     @Param("id") id: string,
-    @Body() dto: SetSupplierPurchasePricesDto,
+    @Body() dto: RequestActionDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.supplyRequestsService.setSupplierPurchasePrices(
+    return this.supplyRequestsService.approveByDeputyProductionDirector(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/deputy-production-director/reject")
+  rejectByDeputyProductionDirector(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.rejectByDeputyProductionDirector(
       id,
       dto,
       user.id,
@@ -182,6 +208,19 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/money/send-to-director")
+  sendMoneyToDirectorBySupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.sendMoneyToDirectorBySupply(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/supply-manager/assign")
   assignToSupplyUser(
     @Param("id") id: string,
@@ -189,6 +228,28 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.assignToSupplyUser(id, dto, user.id);
+  }
+
+  @Patch(":id/supply-manager/send-to-garage")
+  sendTransportToGarageManager(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.sendTransportToGarageManager(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/garage-manager/complete")
+  completeByGarageManager(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeByGarageManager(id, dto, user.id);
   }
 
   @Patch(":id/transport/supply/approve")

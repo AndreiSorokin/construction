@@ -15,14 +15,7 @@ export class CreateMaterialSupplyRequestItemDto {
 
   @IsString()
   @IsNotEmpty()
-  materialType: string;
-
-  @IsString()
-  @IsNotEmpty()
   measurementUnit: string;
-
-  @IsNumberString()
-  estimatedPrice: string;
 
   @IsNumberString()
   quantity: string;
