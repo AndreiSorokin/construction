@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Check, Send, X } from "lucide-react";
 import { FormEvent, ReactNode, useState } from "react";
@@ -564,6 +564,7 @@ export function DirectorRequestCard({
   onApprove,
   onDeleteItem,
   onReject,
+  onReturn,
   onUpdateItem,
   request,
 }: {
@@ -573,6 +574,7 @@ export function DirectorRequestCard({
     item: SupplyRequest["items"][number],
   ) => void;
   onReject: (request: SupplyRequest) => void;
+  onReturn: (request: SupplyRequest) => void;
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -600,6 +602,14 @@ export function DirectorRequestCard({
       )}
       <InvoiceList request={request} />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
+          onClick={() => onReturn(request)}
+          type="button"
+        >
+          <X size={16} />
+          Вернуть
+        </button>
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReject(request)}

@@ -1115,7 +1115,7 @@ export class SupplyRequestsService {
         actorId,
         ApprovalAction.REJECTED,
         request.status,
-        SupplyRequestStatus.RETURNED_TO_SUPPLY,
+        SupplyRequestStatus.REJECTED,
         dto.comment,
       ),
     );

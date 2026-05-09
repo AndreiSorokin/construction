@@ -342,6 +342,19 @@ export function rejectSupplyRequestByDirector(
   );
 }
 
+export function returnSupplyRequestToSupplyByDirector(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/director/return`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function completeSupplyRequest(requestId: string, comment?: string) {
   return apiClient<SupplyRequest>(`/supply-requests/${requestId}/complete`, {
     method: "PATCH",

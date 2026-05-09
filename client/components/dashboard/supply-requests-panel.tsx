@@ -30,6 +30,7 @@ import {
   getSupplyRequests,
   rejectSupplyRequestByDirector,
   rejectSupplyRequestByDeputyProductionDirector,
+  returnSupplyRequestToSupplyByDirector,
   returnSupplyRequestToPtoByChiefEngineer,
   sendMoneyRequestToDirector,
   sendTransportToGarageManager,
@@ -410,6 +411,22 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function returnByDirector(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к возврату заявки снабженцу");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await returnSupplyRequestToSupplyByDirector(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} возвращена снабженцу`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -564,6 +581,7 @@ export function SupplyRequestsPanel({
                     onApprove={approveByDirector}
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectByDirector}
+                    onReturn={returnByDirector}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
