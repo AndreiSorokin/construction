@@ -15,7 +15,7 @@ import {
   saveAuthSession,
 } from "@/lib/auth-storage";
 import { getMyObjects } from "@/lib/objects-api";
-import { AuthResponse, ObjectLimit, User, UserObjectAccess } from "@/lib/types";
+import { AuthResponse, User, UserObjectAccess } from "@/lib/types";
 
 const accessRoleLabels: Record<UserObjectAccess["role"], string> = {
   FOREMAN: "Прораб",
@@ -111,9 +111,6 @@ export function DashboardClient() {
         body: {
           name: String(form.get("name")),
           type: String(form.get("type")),
-          materialsLimit: String(form.get("materialsLimit") ?? "0"),
-          transportLimit: String(form.get("transportLimit") ?? "0"),
-          moneyLimit: String(form.get("moneyLimit") ?? "0"),
         },
       });
 
@@ -226,7 +223,6 @@ export function DashboardClient() {
                       {accessRoleLabels[access.role]}
                     </span>
                   </div>
-                  <ObjectLimitsSummary limits={access.object.limits} />
                 </Link>
               ))}
 
@@ -283,14 +279,6 @@ export function DashboardClient() {
                     <option value="WORKSHOP">Цех</option>
                   </select>
                 </label>
-                <div className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <div className="text-sm font-medium text-slate-700">
-                    Лимиты для строительного объекта
-                  </div>
-                  <LimitInput name="materialsLimit" label="Материалы" />
-                  <LimitInput name="transportLimit" label="Транспорт" />
-                  <LimitInput name="moneyLimit" label="Деньги" />
-                </div>
                 <button
                   className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
                   type="submit"
@@ -304,46 +292,4 @@ export function DashboardClient() {
       </section>
     </main>
   );
-}
-
-function LimitInput({ label, name }: { label: string; name: string }) {
-  return (
-    <label className="grid gap-1.5">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
-      <input
-        className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-        defaultValue="0"
-        min="0"
-        name={name}
-        required
-        type="number"
-      />
-    </label>
-  );
-}
-
-function ObjectLimitsSummary({ limits }: { limits?: ObjectLimit[] }) {
-  if (!limits?.length) {
-    return <div className="text-sm text-slate-600">Лимиты не заданы</div>;
-  }
-
-  const materialLimit = getLimitAmount(limits, "MATERIAL");
-  const transportLimit = getLimitAmount(limits, "TRANSPORT");
-  const moneyLimit = getLimitAmount(limits, "MONEY");
-
-  return (
-    <div className="grid gap-1 text-sm text-slate-600 sm:grid-cols-3">
-      <span>Материалы: {formatMoney(materialLimit)}</span>
-      <span>Транспорт: {formatMoney(transportLimit)}</span>
-      <span>Деньги: {formatMoney(moneyLimit)}</span>
-    </div>
-  );
-}
-
-function getLimitAmount(limits: ObjectLimit[], type: ObjectLimit["type"]) {
-  return Number(limits.find((limit) => limit.type === type)?.limitAmount ?? 0);
-}
-
-function formatMoney(value: number) {
-  return `${value.toLocaleString("ru-KZ")} тг`;
 }

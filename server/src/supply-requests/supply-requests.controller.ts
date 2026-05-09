@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -90,6 +91,15 @@ export class SupplyRequestsController {
     });
 
     return new StreamableFile(invoice.file);
+  }
+
+  @Delete(":id/invoices/:invoiceId")
+  deleteInvoice(
+    @Param("id") id: string,
+    @Param("invoiceId") invoiceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.deleteInvoice(id, invoiceId, user.id);
   }
 
   @Patch(":id/items/:itemId")

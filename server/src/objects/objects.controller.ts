@@ -16,6 +16,7 @@ import { AddObjectAccessDto } from "./dto/add-object-access.dto";
 import { CreateObjectMaterialDto } from "./dto/create-object-material.dto";
 import { CreateObjectDto } from "./dto/create-object.dto";
 import { InviteUserDto } from "./dto/invite-user.dto";
+import { UpdateObjectAccessDto } from "./dto/update-object-access.dto";
 import { UpdateObjectMaterialDto } from "./dto/update-object-material.dto";
 import { ObjectsService } from "./objects.service";
 
@@ -51,6 +52,30 @@ export class ObjectsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.objectsService.addAccess(id, dto, user.id);
+  }
+
+  @Patch(":id/access/:userId")
+  updateAccessRole(
+    @Param("id") id: string,
+    @Param("userId") userId: string,
+    @Body() dto: UpdateObjectAccessDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.objectsService.updateAccessRole(
+      id,
+      userId,
+      dto.role,
+      user.id,
+    );
+  }
+
+  @Delete(":id/access/:userId")
+  deleteAccess(
+    @Param("id") id: string,
+    @Param("userId") userId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.objectsService.deleteAccess(id, userId, user.id);
   }
 
   @Post(":id/invitations")

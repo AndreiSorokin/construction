@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Send, X } from "lucide-react";
+import { Send, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { createMaterialSupplyRequest } from "@/lib/supply-requests-api";
 import { ObjectEntity } from "@/lib/types";
@@ -31,11 +31,13 @@ const measurementUnitOptions = [
   "т",
 ];
 
-const emptyItem: MaterialRequestFormItem = {
-  materialName: "",
-  measurementUnit: measurementUnitOptions[0],
-  quantity: "1",
-};
+function createEmptyItem(): MaterialRequestFormItem {
+  return {
+    materialName: "",
+    measurementUnit: measurementUnitOptions[0],
+    quantity: "1",
+  };
+}
 
 export function MaterialRequestModal({
   isOpen,
@@ -45,7 +47,7 @@ export function MaterialRequestModal({
   onSuccess,
 }: MaterialRequestModalProps) {
   const [requestItems, setRequestItems] = useState<MaterialRequestFormItem[]>([
-    emptyItem,
+    createEmptyItem(),
   ]);
 
   useEffect(() => {
@@ -73,23 +75,32 @@ export function MaterialRequestModal({
     field: keyof MaterialRequestFormItem,
     value: string,
   ) {
-    setRequestItems((current) =>
-      current.map((item, itemIndex) =>
+    setRequestItems((current) => {
+      const updatedItems = current.map((item, itemIndex) =>
         itemIndex === index ? { ...item, [field]: value } : item,
-      ),
-    );
-  }
+      );
+      const updatedItem = updatedItems[index];
+      const isLastItem = index === updatedItems.length - 1;
 
-  function addRequestItem() {
-    setRequestItems((current) => [...current, { ...emptyItem }]);
+      if (isLastItem && hasMaterialName(updatedItem)) {
+        return [...updatedItems, createEmptyItem()];
+      }
+
+      return updatedItems;
+    });
   }
 
   function removeRequestItem(index: number) {
-    setRequestItems((current) =>
-      current.length === 1
-        ? [{ ...emptyItem }]
-        : current.filter((_, itemIndex) => itemIndex !== index),
-    );
+    setRequestItems((current) => {
+      const nextItems =
+        current.length === 1
+          ? [createEmptyItem()]
+          : current.filter((_, itemIndex) => itemIndex !== index);
+
+      return hasMaterialName(nextItems[nextItems.length - 1])
+        ? [...nextItems, createEmptyItem()]
+        : nextItems;
+    });
   }
 
   async function submitMaterialRequest(event: FormEvent<HTMLFormElement>) {
@@ -119,7 +130,7 @@ export function MaterialRequestModal({
         items,
       });
 
-      setRequestItems([{ ...emptyItem }]);
+      setRequestItems([createEmptyItem()]);
       onSuccess(`Заявка ${request.requestNumber} создана и отправлена в ПТО`);
       onClose();
     } catch (error) {
@@ -180,7 +191,6 @@ export function MaterialRequestModal({
                           )
                         }
                         placeholder="Например: Болт М12"
-                        required
                         value={item.materialName}
                       />
                     </label>
@@ -198,7 +208,6 @@ export function MaterialRequestModal({
                             event.target.value,
                           )
                         }
-                        required
                         value={item.measurementUnit}
                       >
                         {measurementUnitOptions.map((unit) => (
@@ -219,7 +228,6 @@ export function MaterialRequestModal({
                         onChange={(event) =>
                           updateRequestItem(index, "quantity", event.target.value)
                         }
-                        required
                         step="0.001"
                         type="number"
                         value={item.quantity}
@@ -241,21 +249,16 @@ export function MaterialRequestModal({
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:justify-between sm:px-5">
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              onClick={addRequestItem}
-              type="button"
-            >
-              <Plus size={16} />
-              Добавить позицию
-            </button>
+          <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="text-sm text-slate-500">
+              Новая строка появится автоматически после заполнения названия.
+            </div>
             <button
               className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
               type="submit"
             >
               <Send size={16} />
-              Отправить в ПТО
+              Отправить заявку
             </button>
           </div>
         </form>
@@ -268,4 +271,8 @@ function toNumber(value: string | number | null | undefined) {
   const numberValue = Number(value);
 
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function hasMaterialName(item: MaterialRequestFormItem | undefined) {
+  return Boolean(item?.materialName.trim());
 }

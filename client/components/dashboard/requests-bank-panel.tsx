@@ -43,7 +43,7 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
         <div>
           <h2 className="font-semibold text-slate-950">Банк заявок</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Все заявки с текущими статусами. Детали открываются внутри карточки.
+            Общий список заявок с текущими статусами, ответственными и деталями.
           </p>
         </div>
         <button
@@ -87,19 +87,26 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
 
 function RequestDetails({ request }: { request: SupplyRequest }) {
   return (
-    <div className="grid gap-3 text-sm sm:grid-cols-3">
+    <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
       <Info label="Автор" value={request.author?.name ?? request.authorId} />
       <Info
         label="Снабженец"
-        value={request.assignedSupplyUser?.name ?? request.assignedSupplyUser?.email ?? "-"}
+        value={
+          request.assignedSupplyUser?.name ??
+          request.assignedSupplyUser?.email ??
+          "-"
+        }
       />
-      <Info label="Сумма / детали" value={getRequestDetailText(request)} />
-      <Info label="Счета" value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"} />
+      <Info label={getDetailLabel(request)} value={getDetailValue(request)} />
+      <Info
+        label="Счета"
+        value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"}
+      />
       {request.type === "MONEY" ? (
-        <Info label="Назначение" value={request.paymentPurpose ?? "-"} />
+        <Info label="Назначение платежа" value={request.paymentPurpose ?? "-"} />
       ) : null}
       {request.type === "TRANSPORT" ? (
-        <Info label="Назначение" value={request.purpose ?? "-"} />
+        <Info label="Назначение техники" value={request.purpose ?? "-"} />
       ) : null}
     </div>
   );
@@ -114,26 +121,34 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function getRequestDetailText(request: SupplyRequest) {
-  if (request.type === "TRANSPORT") {
-    return request.transportType ?? "Транспорт";
+function getDetailLabel(request: SupplyRequest) {
+  if (request.type === "MONEY") {
+    return "Сумма";
   }
 
-  return formatMoney(getEstimatedTotal(request));
+  if (request.type === "TRANSPORT") {
+    return "Вид техники";
+  }
+
+  return "Материалы";
 }
 
-function getEstimatedTotal(request: SupplyRequest) {
-  if (request.type === "MONEY") {
-    return toNumber(request.amount);
+function getDetailValue(request: SupplyRequest) {
+  if (request.type === "TRANSPORT") {
+    return request.transportType ?? "Спецтехника";
   }
 
-  return request.items.reduce(
-    (total, item) =>
-      total +
-      toNumber(item.ptoLimitPrice ?? item.estimatedPriceSnapshot) *
-        toNumber(item.quantity),
+  if (request.type === "MONEY") {
+    return formatMoney(toNumber(request.amount));
+  }
+
+  const itemsCount = request.items.length;
+  const totalQuantity = request.items.reduce(
+    (total, item) => total + toNumber(item.quantity),
     0,
   );
+
+  return `${itemsCount} поз., ${totalQuantity.toLocaleString("ru-KZ")} ед.`;
 }
 
 function toNumber(value: string | number | null | undefined) {

@@ -1,20 +1,33 @@
-"use client";
+﻿"use client";
 
-import { ChevronDown, History } from "lucide-react";
+import {
+  Banknote,
+  Boxes,
+  CalendarDays,
+  ChevronDown,
+  ClipboardList,
+  History,
+  Truck,
+} from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useState } from "react";
-import { SupplyRequest, SupplyRequestStatus, SupplyRequestType } from "@/lib/types";
+import {
+  SupplyRequest,
+  SupplyRequestStatus,
+  SupplyRequestType,
+} from "@/lib/types";
 
 type RequestSummaryCardProps = {
   children?: ReactNode;
   defaultOpen?: boolean;
   request: SupplyRequest;
+  variant?: "default" | "approval";
 };
 
 const typeLabels: Record<SupplyRequestType, string> = {
   MATERIAL: "Материалы",
-  TRANSPORT: "Транспорт",
-  MONEY: "Деньги",
+  TRANSPORT: "Спецтехника",
+  MONEY: "Средства",
 };
 
 const statusLabels: Record<SupplyRequestStatus, string> = {
@@ -49,40 +62,44 @@ const statusClasses: Record<SupplyRequestStatus, string> = {
   ARCHIVED: "bg-slate-100 text-slate-500",
 };
 
+const typeClasses: Record<SupplyRequestType, string> = {
+  MATERIAL: "bg-teal-50 text-teal-700",
+  TRANSPORT: "bg-lime-50 text-lime-700",
+  MONEY: "bg-violet-50 text-violet-700",
+};
+
 export function RequestSummaryCard({
   children,
   defaultOpen = false,
   request,
+  variant = "default",
 }: RequestSummaryCardProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const TypeIcon = getTypeIcon(request.type);
+  const isApproval = variant === "approval";
 
   return (
-    <div className="rounded-md border border-slate-200 bg-white">
-      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="grid gap-3 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
         <button
-          className="flex min-w-0 flex-1 items-start gap-3 text-left"
+          className="grid min-w-0 grid-cols-[2rem_1fr] gap-3 text-left"
           onClick={() => setIsOpen((current) => !current)}
           type="button"
         >
-          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-600">
-            <ChevronDown
-              className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
-              size={16}
-            />
+          <span
+            className={`grid size-8 shrink-0 place-items-center rounded-md ${typeClasses[request.type]}`}
+          >
+            <TypeIcon size={16} />
           </span>
+
           <span className="min-w-0">
             <span className="block truncate font-medium text-slate-950">
               {request.object?.name ?? request.objectId}
             </span>
-            <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-500">
-              <span>{typeLabels[request.type]}</span>
-              <span>{new Date(request.createdAt).toLocaleDateString("ru-KZ")}</span>
-              <span>{request.requestNumber}</span>
-            </span>
           </span>
         </button>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <span
             className={`rounded-full px-3 py-1 text-xs font-medium ${statusClasses[request.status]}`}
           >
@@ -95,11 +112,29 @@ export function RequestSummaryCard({
             <History size={14} />
             История
           </Link>
+          {children ? (
+            <button
+              aria-label={isOpen ? "Свернуть заявку" : "Раскрыть заявку"}
+              className="grid size-8 place-items-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50"
+              onClick={() => setIsOpen((current) => !current)}
+              type="button"
+            >
+              <ChevronDown
+                className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                size={16}
+              />
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {isOpen ? <div className="border-t border-slate-100 p-4">{children}</div> : null}
-    </div>
+      {isOpen && children ? (
+        <div className="border-t border-slate-100 p-4">
+          {isApproval ? <ExpandedRequestMeta request={request} /> : null}
+          {children}
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -109,4 +144,38 @@ export function getRequestTypeLabel(type: SupplyRequestType) {
 
 export function getRequestStatusLabel(status: SupplyRequestStatus) {
   return statusLabels[status];
+}
+
+function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mb-4 grid gap-2 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-3">
+      <MetaItem label="Номер" value={request.requestNumber} />
+      <MetaItem label="Тип" value={typeLabels[request.type]} />
+      <MetaItem
+        label="Дата"
+        value={new Date(request.createdAt).toLocaleDateString("ru-KZ")}
+      />
+    </div>
+  );
+}
+
+function MetaItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-slate-500">{label}</div>
+      <div className="mt-1 font-medium text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function getTypeIcon(type: SupplyRequestType) {
+  if (type === "TRANSPORT") {
+    return Truck;
+  }
+
+  if (type === "MONEY") {
+    return Banknote;
+  }
+
+  return Boxes;
 }

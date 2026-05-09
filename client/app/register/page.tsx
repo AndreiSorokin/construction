@@ -5,7 +5,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Регистрация"
-      description="Самостоятельная регистрация создает аккаунт без роли."
+      description="Зарегистрируйтесь, чтобы начать работу в системе."
       switchHref="/login"
       switchText="Уже есть аккаунт"
     >

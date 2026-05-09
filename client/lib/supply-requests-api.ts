@@ -385,3 +385,15 @@ export async function downloadSupplyRequestInvoice(
   link.click();
   URL.revokeObjectURL(url);
 }
+
+export function deleteSupplyRequestInvoice(
+  requestId: string,
+  invoiceId: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/invoices/${invoiceId}`,
+    {
+      method: "DELETE",
+    },
+  );
+}

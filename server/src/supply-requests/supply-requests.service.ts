@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { createReadStream } from "fs";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 import {
   ApprovalAction,
@@ -304,6 +304,51 @@ export class SupplyRequestsService {
       mimeType: invoice.mimeType,
       originalName: invoice.originalName,
     };
+  }
+
+  async deleteInvoice(id: string, invoiceId: string, actorId: string) {
+    const invoice = await this.prisma.supplyRequestInvoice.findFirst({
+      where: {
+        id: invoiceId,
+        requestId: id,
+      },
+      include: {
+        request: {
+          include: this.requestInclude,
+        },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException("Invoice not found");
+    }
+
+    if (
+      invoice.request.type !== SupplyRequestType.MATERIAL ||
+      (invoice.request.status !== SupplyRequestStatus.PENDING_SUPPLY &&
+        invoice.request.status !== SupplyRequestStatus.RETURNED_TO_SUPPLY)
+    ) {
+      throw new BadRequestException(
+        "Invoices can be deleted only before sending material request to director",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, invoice.request.objectId, [
+      UserRole.SUPPLY,
+    ]);
+    this.ensureAssignedSupplyUser(invoice.request, actorId);
+
+    await this.prisma.supplyRequestInvoice.delete({
+      where: { id: invoice.id },
+    });
+
+    await unlink(invoice.path).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    });
+
+    return this.findOne(id);
   }
 
   async updateRequestItem(

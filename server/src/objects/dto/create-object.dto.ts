@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumberString,
+  IsOptional,
   IsString,
   ValidateIf,
 } from "class-validator";
@@ -16,14 +17,17 @@ export class CreateObjectDto {
   type: ObjectType;
 
   @ValidateIf((dto: CreateObjectDto) => dto.type === ObjectType.CONSTRUCTION_OBJECT)
+  @IsOptional()
   @IsNumberString()
   materialsLimit?: string;
 
   @ValidateIf((dto: CreateObjectDto) => dto.type === ObjectType.CONSTRUCTION_OBJECT)
+  @IsOptional()
   @IsNumberString()
   transportLimit?: string;
 
   @ValidateIf((dto: CreateObjectDto) => dto.type === ObjectType.CONSTRUCTION_OBJECT)
+  @IsOptional()
   @IsNumberString()
   moneyLimit?: string;
 }

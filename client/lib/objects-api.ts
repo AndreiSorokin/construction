@@ -63,6 +63,23 @@ export function deleteObject(id: string) {
   });
 }
 
+export function updateObjectUserRole(
+  objectId: string,
+  userId: string,
+  role: UserRole,
+) {
+  return apiClient<UserObjectAccess>(`/objects/${objectId}/access/${userId}`, {
+    method: "PATCH",
+    body: { role },
+  });
+}
+
+export function deleteObjectUserAccess(objectId: string, userId: string) {
+  return apiClient<{ deleted: boolean }>(`/objects/${objectId}/access/${userId}`, {
+    method: "DELETE",
+  });
+}
+
 export type InviteObjectUserPayload = {
   email: string;
   name: string;

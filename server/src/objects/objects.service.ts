@@ -157,6 +157,101 @@ export class ObjectsService {
     });
   }
 
+  async updateAccessRole(
+    objectId: string,
+    userId: string,
+    role: UserRole,
+    actorId: string,
+  ) {
+    const object = await this.prisma.objectEntity.findUnique({
+      where: { id: objectId },
+      select: { id: true, ownerId: true },
+    });
+
+    if (!object) {
+      throw new NotFoundException("Object not found");
+    }
+
+    await this.ensureUserObjectRole(actorId, objectId, [UserRole.DIRECTOR]);
+
+    if (actorId === userId) {
+      throw new BadRequestException("You cannot change your own object role");
+    }
+
+    if (object.ownerId === userId) {
+      throw new BadRequestException("Object owner role cannot be changed");
+    }
+
+    const access = await this.prisma.userObjectAccess.findUnique({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    if (!access) {
+      throw new NotFoundException("Object access not found");
+    }
+
+    return this.prisma.userObjectAccess.update({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+      data: { role },
+      include: { user: true },
+    });
+  }
+
+  async deleteAccess(objectId: string, userId: string, actorId: string) {
+    const object = await this.prisma.objectEntity.findUnique({
+      where: { id: objectId },
+      select: { id: true, ownerId: true },
+    });
+
+    if (!object) {
+      throw new NotFoundException("Object not found");
+    }
+
+    await this.ensureUserObjectRole(actorId, objectId, [UserRole.DIRECTOR]);
+
+    if (actorId === userId) {
+      throw new BadRequestException("You cannot remove yourself from object");
+    }
+
+    if (object.ownerId === userId) {
+      throw new BadRequestException("Object owner cannot be removed");
+    }
+
+    const access = await this.prisma.userObjectAccess.findUnique({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    if (!access) {
+      throw new NotFoundException("Object access not found");
+    }
+
+    await this.prisma.userObjectAccess.delete({
+      where: {
+        userId_objectId: {
+          userId,
+          objectId,
+        },
+      },
+    });
+
+    return { deleted: true };
+  }
+
   async inviteUser(objectId: string, dto: InviteUserDto, inviterId: string) {
     const inviteEmail = dto.email.trim().toLowerCase();
     const object = await this.prisma.objectEntity.findUnique({
