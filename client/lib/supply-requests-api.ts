@@ -209,6 +209,19 @@ export function returnSupplyRequestToPtoByChiefEngineer(
   );
 }
 
+export function rejectSupplyRequestByChiefEngineer(
+  requestId: string,
+  comment: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/chief-engineer/reject`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function approveSupplyRequestByDeputyProductionDirector(
   requestId: string,
   comment?: string,

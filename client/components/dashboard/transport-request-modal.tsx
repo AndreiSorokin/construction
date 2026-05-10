@@ -125,7 +125,7 @@ export function TransportRequestModal({
               type="submit"
             >
               <Send size={16} />
-              Отправить в снабжение
+              Отправить заявку
             </button>
           </div>
         </form>

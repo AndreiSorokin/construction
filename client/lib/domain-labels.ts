@@ -1,0 +1,41 @@
+import {
+  SupplyRequestStatus,
+  SupplyRequestType,
+  UserRole,
+} from "@/lib/types";
+
+export const requestTypeLabels: Record<SupplyRequestType, string> = {
+  MATERIAL: "Материалы",
+  TRANSPORT: "Транспорт",
+  MONEY: "Денежные средства",
+};
+
+export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
+  CREATED: "Создана",
+  PENDING_PTO: "В ПТО",
+  PENDING_CHIEF_ENGINEER: "У главного инженера",
+  PENDING_DEPUTY_PRODUCTION_DIRECTOR: "У зам. директора по производству",
+  PENDING_SUPPLY_MANAGER: "У начальника снабжения",
+  PENDING_SUPPLY: "У снабженца",
+  PENDING_DIRECTOR: "У директора",
+  PENDING_GARAGE_MANAGER: "У заведующего гаражом",
+  RETURNED_TO_SUPPLY: "Возвращена снабжению",
+  REJECTED: "Отклонена",
+  IN_PROGRESS: "В работе",
+  COMPLETED: "Исполнена",
+  ARCHIVED: "Архив",
+};
+
+export const userRoleLabels: Record<UserRole, string> = {
+  FOREMAN: "Прораб",
+  SITE_MANAGER: "Начальник участка",
+  WORKSHOP_MANAGER: "Начальник цеха",
+  DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
+  SUPPLY_MANAGER: "Начальник снабжения",
+  SUPPLY: "Снабженец",
+  PTO: "ПТО",
+  CHIEF_ENGINEER: "Главный инженер",
+  GARAGE_MANAGER: "Заведующий гаражом",
+  SECRETARY: "Секретарь",
+  DIRECTOR: "Директор",
+};

@@ -8,12 +8,20 @@ export type UserRole =
   | "PTO"
   | "CHIEF_ENGINEER"
   | "GARAGE_MANAGER"
+  | "SECRETARY"
   | "DIRECTOR";
 
 export type User = {
   id: string;
   email: string;
   name: string;
+  objectAccesses?: Array<{
+    id: string;
+    userId: string;
+    objectId: string;
+    role: UserRole;
+    createdAt: string;
+  }>;
 };
 
 export type ObjectType =
@@ -137,6 +145,7 @@ export type SupplyRequest = {
   purpose?: string | null;
   amount?: string | null;
   paymentPurpose?: string | null;
+  authorObjectRole?: UserRole | null;
   object?: ObjectEntity;
   author?: User;
   assignedSupplyUser?: User | null;

@@ -191,10 +191,12 @@ export class SupplyRequestsService {
     );
 
     if (!hasPaginationOrFilters) {
-      return this.prisma.supplyRequest.findMany({
+      const requests = await this.prisma.supplyRequest.findMany({
         include: this.requestInclude,
         orderBy: { createdAt: "desc" },
       });
+
+      return requests.map((request) => this.withAuthorObjectRole(request));
     }
 
     const page = this.parsePositiveInteger(query.page, 1);
@@ -212,7 +214,7 @@ export class SupplyRequestsService {
     ]);
 
     return {
-      items,
+      items: items.map((request) => this.withAuthorObjectRole(request)),
       limit,
       page,
       total,
@@ -275,7 +277,7 @@ export class SupplyRequestsService {
       throw new NotFoundException("Supply request not found");
     }
 
-    return request;
+    return this.withAuthorObjectRole(request);
   }
 
   async findInvoiceFile(id: string, invoiceId: string, actorId: string) {
@@ -546,9 +548,9 @@ export class SupplyRequestsService {
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_CHIEF_ENGINEER,
+        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
         request.status,
-        SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
         dto.comment,
       );
     });
@@ -574,14 +576,28 @@ export class SupplyRequestsService {
       UserRole.CHIEF_ENGINEER,
     ]);
 
+    let nextStatus: SupplyRequestStatus =
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+    let action: ApprovalAction = ApprovalAction.SENT_TO_SUPPLY_MANAGER;
+
+    if (request.type === SupplyRequestType.MATERIAL) {
+      nextStatus = SupplyRequestStatus.PENDING_PTO;
+      action = ApprovalAction.SENT_TO_PTO;
+    }
+
+    if (request.type === SupplyRequestType.TRANSPORT) {
+      nextStatus = SupplyRequestStatus.PENDING_GARAGE_MANAGER;
+      action = ApprovalAction.SENT_TO_GARAGE_MANAGER;
+    }
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        action,
         request.status,
-        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -595,8 +611,17 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
-      SupplyRequestType.MATERIAL,
     );
+
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.TRANSPORT
+    ) {
+      throw new BadRequestException(
+        "Only material and transport requests can be rejected by chief engineer",
+      );
+    }
+
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.CHIEF_ENGINEER,
     ]);
@@ -673,9 +698,9 @@ export class SupplyRequestsService {
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        ApprovalAction.SENT_TO_PTO,
         request.status,
-        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+        SupplyRequestStatus.PENDING_PTO,
         dto.comment,
       );
     });
@@ -856,14 +881,23 @@ export class SupplyRequestsService {
     actorId: string,
   ) {
     if (!dto.comment?.trim()) {
-      throw new BadRequestException("Return comment is required");
+      throw new BadRequestException("Reject comment is required");
     }
 
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
-      SupplyRequestType.MATERIAL,
     );
+
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.TRANSPORT
+    ) {
+      throw new BadRequestException(
+        "Only material and transport requests can be rejected by chief engineer",
+      );
+    }
+
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.CHIEF_ENGINEER,
     ]);
@@ -873,9 +907,9 @@ export class SupplyRequestsService {
         tx,
         id,
         actorId,
-        ApprovalAction.RETURNED,
+        ApprovalAction.REJECTED,
         request.status,
-        SupplyRequestStatus.PENDING_PTO,
+        SupplyRequestStatus.REJECTED,
         dto.comment,
       ),
     );
@@ -1030,6 +1064,15 @@ export class SupplyRequestsService {
     ]);
     this.ensureMaterialRequestHasActiveItems(request);
 
+    const targetStatus =
+      request.type === SupplyRequestType.MATERIAL
+        ? SupplyRequestStatus.IN_PROGRESS
+        : SupplyRequestStatus.COMPLETED;
+    const action =
+      request.type === SupplyRequestType.MATERIAL
+        ? ApprovalAction.MARKED_IN_PROGRESS
+        : ApprovalAction.COMPLETED;
+
     return this.prisma.$transaction(async (tx) => {
       const statusUpdate = await tx.supplyRequest.updateMany({
         where: {
@@ -1037,7 +1080,7 @@ export class SupplyRequestsService {
           status: SupplyRequestStatus.PENDING_DIRECTOR,
         },
         data: {
-          status: SupplyRequestStatus.IN_PROGRESS,
+          status: targetStatus,
         },
       });
 
@@ -1053,9 +1096,9 @@ export class SupplyRequestsService {
         data: {
           requestId: id,
           actorId,
-          action: ApprovalAction.MARKED_IN_PROGRESS,
+          action,
           fromStatus: request.status,
-          toStatus: SupplyRequestStatus.IN_PROGRESS,
+          toStatus: targetStatus,
           comment: dto.comment,
         },
       });
@@ -1071,9 +1114,9 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
-    if (request.type === SupplyRequestType.TRANSPORT) {
+    if (request.type !== SupplyRequestType.MATERIAL) {
       throw new BadRequestException(
-        "Transport requests are not returned by director",
+        "Only material requests can be returned to supply by director",
       );
     }
 
@@ -1196,10 +1239,20 @@ export class SupplyRequestsService {
   }
 
   private readonly requestInclude = {
-    author: true,
+    author: {
+      include: {
+        objectAccesses: true,
+      },
+    },
     assignedSupplyUser: true,
     assignedBy: true,
-    object: true,
+    object: {
+      include: {
+        userAccesses: {
+          include: { user: true },
+        },
+      },
+    },
     invoices: {
       include: { uploadedBy: true },
       orderBy: { createdAt: "asc" as const },
@@ -1218,6 +1271,33 @@ export class SupplyRequestsService {
     },
   };
 
+  private withAuthorObjectRole<
+    T extends {
+      author?: {
+        objectAccesses?: Array<{ objectId: string; role: UserRole }>;
+      } | null;
+      authorId: string;
+      object?: {
+        userAccesses?: Array<{ userId: string; role: UserRole }>;
+      } | null;
+      objectId: string;
+    },
+  >(request: T) {
+    const authorObjectRole =
+      request.object?.userAccesses?.find(
+        (access) => access.userId === request.authorId,
+      )?.role ??
+      request.author?.objectAccesses?.find(
+        (access) => access.objectId === request.objectId,
+      )?.role ??
+      null;
+
+    return {
+      ...request,
+      authorObjectRole,
+    };
+  }
+
   private async createRequestNumber(
     tx: Prisma.TransactionClient,
     prefix: string,
@@ -1231,17 +1311,6 @@ export class SupplyRequestsService {
     const count = await tx.supplyRequest.count();
 
     return `${prefix}-${datePart}-${String(count + 1).padStart(6, "0")}`;
-  }
-
-  private async ensureUserExists(id: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-
-    if (!user) {
-      throw new NotFoundException("User not found");
-    }
   }
 
   private async ensureRequestStatus(
@@ -1358,6 +1427,18 @@ export class SupplyRequestsService {
     authorRole: UserRole,
     objectType: ObjectType,
   ) {
+    if (authorRole === UserRole.SECRETARY) {
+      if (requestType === SupplyRequestType.MATERIAL) {
+        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+      }
+
+      if (requestType === SupplyRequestType.TRANSPORT) {
+        return SupplyRequestStatus.PENDING_GARAGE_MANAGER;
+      }
+
+      return SupplyRequestStatus.PENDING_DIRECTOR;
+    }
+
     if (objectType === ObjectType.WORKSHOP) {
       if (authorRole === UserRole.DEPUTY_PRODUCTION_DIRECTOR) {
         return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
@@ -1378,6 +1459,42 @@ export class SupplyRequestsService {
       return SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR;
     }
 
+    if (requestType === SupplyRequestType.MATERIAL) {
+      if (authorRole === UserRole.CHIEF_ENGINEER) {
+        return SupplyRequestStatus.PENDING_PTO;
+      }
+
+      if (authorRole === UserRole.PTO) {
+        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+      }
+
+      if (authorRole === UserRole.SUPPLY_MANAGER) {
+        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+      }
+
+      if (authorRole === UserRole.SUPPLY) {
+        return SupplyRequestStatus.PENDING_DIRECTOR;
+      }
+
+      if (authorRole === UserRole.DIRECTOR) {
+        return SupplyRequestStatus.PENDING_DIRECTOR;
+      }
+
+      return SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
+    }
+
+    if (requestType === SupplyRequestType.TRANSPORT) {
+      if (
+        authorRole === UserRole.CHIEF_ENGINEER ||
+        authorRole === UserRole.DIRECTOR ||
+        authorRole === UserRole.GARAGE_MANAGER
+      ) {
+        return SupplyRequestStatus.PENDING_GARAGE_MANAGER;
+      }
+
+      return SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
+    }
+
     if (authorRole === UserRole.CHIEF_ENGINEER) {
       return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
     }
@@ -1394,14 +1511,6 @@ export class SupplyRequestsService {
       return SupplyRequestStatus.PENDING_DIRECTOR;
     }
 
-    if (requestType === SupplyRequestType.MATERIAL) {
-      if (authorRole === UserRole.PTO) {
-        return SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
-      }
-
-      return SupplyRequestStatus.PENDING_PTO;
-    }
-
     return SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
   }
 
@@ -1410,22 +1519,25 @@ export class SupplyRequestsService {
     status: SupplyRequestStatus,
   ) {
     const requestLabel: Record<SupplyRequestType, string> = {
-      MATERIAL: "Заявка на материалы",
-      TRANSPORT: "Заявка на спец технику",
-      MONEY: "Заявка на средства",
+      MATERIAL: "\u0417\u0430\u044f\u0432\u043a\u0430 \u043d\u0430 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b",
+      TRANSPORT: "\u0417\u0430\u044f\u0432\u043a\u0430 \u043d\u0430 \u0441\u043f\u0435\u0446 \u0442\u0435\u0445\u043d\u0438\u043a\u0443",
+      MONEY: "\u0417\u0430\u044f\u0432\u043a\u0430 \u043d\u0430 \u0441\u0440\u0435\u0434\u0441\u0442\u0432\u0430",
     };
 
     const statusLabel: Partial<Record<SupplyRequestStatus, string>> = {
-      PENDING_PTO: "в ПТО",
-      PENDING_CHIEF_ENGINEER: "главному инженеру",
-      PENDING_DEPUTY_PRODUCTION_DIRECTOR: "заместителю директора по производству",
-      PENDING_SUPPLY_MANAGER: "начальнику снабжения",
-      PENDING_SUPPLY: "снабженцу",
-      PENDING_DIRECTOR: "директору",
-      PENDING_GARAGE_MANAGER: "заведующему гаражом",
+      PENDING_PTO: "\u0432 \u041f\u0422\u041e",
+      PENDING_CHIEF_ENGINEER: "\u0433\u043b\u0430\u0432\u043d\u043e\u043c\u0443 \u0438\u043d\u0436\u0435\u043d\u0435\u0440\u0443",
+      PENDING_DEPUTY_PRODUCTION_DIRECTOR:
+        "\u0437\u0430\u043c\u0435\u0441\u0442\u0438\u0442\u0435\u043b\u044e \u0434\u0438\u0440\u0435\u043a\u0442\u043e\u0440\u0430 \u043f\u043e \u043f\u0440\u043e\u0438\u0437\u0432\u043e\u0434\u0441\u0442\u0432\u0443",
+      PENDING_SUPPLY_MANAGER: "\u043d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a\u0443 \u0441\u043d\u0430\u0431\u0436\u0435\u043d\u0438\u044f",
+      PENDING_SUPPLY: "\u0441\u043d\u0430\u0431\u0436\u0435\u043d\u0446\u0443",
+      PENDING_DIRECTOR: "\u0434\u0438\u0440\u0435\u043a\u0442\u043e\u0440\u0443",
+      PENDING_GARAGE_MANAGER: "\u0437\u0430\u0432\u0435\u0434\u0443\u044e\u0449\u0435\u043c\u0443 \u0433\u0430\u0440\u0430\u0436\u043e\u043c",
     };
 
-    return `${requestLabel[requestType]} создана и отправлена ${statusLabel[status] ?? "на следующий этап"}`;
+    return `${requestLabel[requestType]} \u0441\u043e\u0437\u0434\u0430\u043d\u0430 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 ${
+      statusLabel[status] ?? "\u043d\u0430 \u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0438\u0439 \u044d\u0442\u0430\u043f"
+    }`; 
   }
 
   private async ensureCanModifyRequestItems(

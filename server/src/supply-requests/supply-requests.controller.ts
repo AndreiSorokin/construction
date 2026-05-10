@@ -176,6 +176,19 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/chief-engineer/reject")
+  rejectByChiefEngineer(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.returnToPtoByChiefEngineer(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/deputy-production-director/approve")
   approveByDeputyProductionDirector(
     @Param("id") id: string,

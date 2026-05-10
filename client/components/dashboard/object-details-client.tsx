@@ -41,6 +41,7 @@ const inviteRoleLabels: Record<UserRole, string> = {
   PTO: "ПТО",
   CHIEF_ENGINEER: "Главный инженер",
   GARAGE_MANAGER: "Заведующий гаражом",
+  SECRETARY: "Секретарь",
   DIRECTOR: "Директор",
 };
 
@@ -117,7 +118,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
       if (result.mail?.sent === false) {
         showSuccess(
           result.inviteLink
-            ? `Приглашение создано, но письмо отправить не удалось. Ссылка: ${result.inviteLink}`
+            ? `@83;0H5=85 A>740=>, => ?8AL<> >B?@028BL =5 C40;>AL. !AK;:0: ${result.inviteLink}`
             : "Доступ выдан, но письмо-уведомление не отправлено. Пользователь может войти в свой аккаунт.",
         );
       } else {
@@ -183,7 +184,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
     try {
       await updateObjectUserRole(objectId, roleEditTarget.userId, nextRole);
-      showSuccess("Роль пользователя обновлена");
+      showSuccess(" >;L ?>;L7>20B5;O >1=>2;5=0");
       setRoleEditTarget(null);
       await loadPage();
     } catch (error) {
@@ -220,7 +221,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
             </span>
             <div className="min-w-0">
               <div className="truncate font-semibold text-slate-950">
-                СтройКонтроль
+                {"\u0421\u0442\u0440\u043e\u0439\u043a\u043e\u043d\u0442\u0440\u043e\u043b\u044c"}
               </div>
               <div className="text-sm text-slate-500">Объект</div>
             </div>
@@ -332,7 +333,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                         <Field name="name" label="Имя" />
                         <label className="grid gap-1.5">
                           <span className="text-sm font-medium text-slate-700">
-                            Роль в системе
+                            {"\u0420\u043e\u043b\u044c \u0432 \u0441\u0438\u0441\u0442\u0435\u043c\u0435"}
                           </span>
                           <select
                             className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
@@ -369,7 +370,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                   Пользователи объекта
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Список пользователей, у которых есть роль на этом объекте.
+                  {"\u0421\u043f\u0438\u0441\u043e\u043a \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439, \u0443 \u043a\u043e\u0442\u043e\u0440\u044b\u0445 \u0435\u0441\u0442\u044c \u0440\u043e\u043b\u044c \u043d\u0430 \u044d\u0442\u043e\u043c \u043e\u0431\u044a\u0435\u043a\u0442\u0435."}
                 </p>
                 <ObjectUsersList
                   currentUserId={user?.id}
@@ -447,7 +448,7 @@ function ObjectUsersList({
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Имя</th>
             <th className="py-2 pr-3 font-medium">Email</th>
-            <th className="py-2 pr-3 font-medium">Роль</th>
+            <th className="py-2 pr-3 font-medium">{"\u0420\u043e\u043b\u044c"}</th>
             <th className="py-2 pr-3 font-medium">Действия</th>
           </tr>
         </thead>
@@ -473,7 +474,7 @@ function ObjectUsersList({
                 onClick={() => onEditRole(access.userId, access.role)}
                 type="button"
               >
-                Редактировать роль
+                {"\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0440\u043e\u043b\u044c"}
               </button>
               <button
                 className="h-9 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -514,13 +515,13 @@ function RoleEditModal({
         className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl"
         onSubmit={onSubmit}
       >
-        <h2 className="font-semibold text-slate-950">Редактировать роль</h2>
+        <h2 className="font-semibold text-slate-950">{"\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0440\u043e\u043b\u044c"}</h2>
         <p className="mt-1 text-sm text-slate-600">
           Выберите новую роль пользователя на этом объекте.
         </p>
 
         <label className="mt-4 grid gap-1.5">
-          <span className="text-sm font-medium text-slate-700">Роль</span>
+          <span className="text-sm font-medium text-slate-700">{"\u0420\u043e\u043b\u044c"}</span>
           <select
             className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
             defaultValue={role}
@@ -547,7 +548,7 @@ function RoleEditModal({
             className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
             type="submit"
           >
-            Сохранить
+            {"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}
           </button>
         </div>
       </form>

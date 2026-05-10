@@ -3,6 +3,10 @@
 import { RefreshCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
+import {
+  ObjectApprovalGroup,
+  ObjectRequestGroup,
+} from "@/components/dashboard/supply-request-approval-cards";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getSupplyRequests } from "@/lib/supply-requests-api";
 import { SupplyRequest } from "@/lib/types";
@@ -15,6 +19,7 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
+  const requestGroups = groupRequestsByObject(requests);
 
   useEffect(() => {
     void loadRequests();
@@ -63,10 +68,14 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
       ) : null}
 
       <div className="mt-4 grid gap-3">
-        {requests.map((request) => (
-          <RequestSummaryCard key={request.id} request={request}>
-            <RequestDetails request={request} />
-          </RequestSummaryCard>
+        {requestGroups.map((group) => (
+          <ObjectApprovalGroup group={group} key={group.objectId}>
+            {group.requests.map((request) => (
+              <RequestSummaryCard key={request.id} request={request}>
+                <RequestDetails request={request} />
+              </RequestSummaryCard>
+            ))}
+          </ObjectApprovalGroup>
         ))}
 
         {!isLoading && !requests.length ? (
@@ -103,7 +112,10 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
         value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"}
       />
       {request.type === "MONEY" ? (
-        <Info label="Назначение платежа" value={request.paymentPurpose ?? "-"} />
+        <Info
+          label="Назначение платежа"
+          value={request.paymentPurpose ?? "-"}
+        />
       ) : null}
       {request.type === "TRANSPORT" ? (
         <Info label="Назначение техники" value={request.purpose ?? "-"} />
@@ -135,7 +147,7 @@ function getDetailLabel(request: SupplyRequest) {
 
 function getDetailValue(request: SupplyRequest) {
   if (request.type === "TRANSPORT") {
-    return request.transportType ?? "Спецтехника";
+    return request.transportType ?? "Транспорт";
   }
 
   if (request.type === "MONEY") {
@@ -149,6 +161,34 @@ function getDetailValue(request: SupplyRequest) {
   );
 
   return `${itemsCount} поз., ${totalQuantity.toLocaleString("ru-KZ")} ед.`;
+}
+
+function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] {
+  const groups = new Map<string, ObjectRequestGroup>();
+
+  requests.forEach((request) => {
+    const currentGroup = groups.get(request.objectId);
+    const positionsCount = getRequestPositionsCount(request);
+
+    if (currentGroup) {
+      currentGroup.positionsCount += positionsCount;
+      currentGroup.requests.push(request);
+      return;
+    }
+
+    groups.set(request.objectId, {
+      objectId: request.objectId,
+      objectName: request.object?.name ?? request.objectId,
+      positionsCount,
+      requests: [request],
+    });
+  });
+
+  return Array.from(groups.values());
+}
+
+function getRequestPositionsCount(request: SupplyRequest) {
+  return request.type === "MATERIAL" ? request.items.length : 1;
 }
 
 function toNumber(value: string | number | null | undefined) {

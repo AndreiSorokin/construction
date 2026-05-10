@@ -1,5 +1,9 @@
 import { Clock3 } from "lucide-react";
 import {
+  requestStatusLabels,
+  userRoleLabels,
+} from "@/lib/domain-labels";
+import {
   ApprovalAction,
   ApprovalHistoryEntry,
   SupplyRequestStatus,
@@ -21,8 +25,8 @@ type ItemChangeDetails = {
 };
 
 const actionLabels: Record<ApprovalAction, string> = {
-  CREATED: "Создана",
-  APPROVED: "Согласована",
+  CREATED: "!>740=0",
+  APPROVED: "!>3;0A>20=0",
   REJECTED: "Отклонена",
   RETURNED: "Возвращена",
   SENT_TO_PTO: "Отправлена в ПТО",
@@ -41,34 +45,6 @@ const actionLabels: Record<ApprovalAction, string> = {
   REQUEST_ITEM_DELETED: "Позиция удалена",
 };
 
-const statusLabels: Record<SupplyRequestStatus, string> = {
-  CREATED: "Создана",
-  PENDING_PTO: "В ПТО",
-  PENDING_CHIEF_ENGINEER: "У главного инженера",
-  PENDING_DEPUTY_PRODUCTION_DIRECTOR: "У зам. директора по производству",
-  PENDING_SUPPLY_MANAGER: "У начальника снабжения",
-  PENDING_SUPPLY: "У снабженца",
-  PENDING_DIRECTOR: "У директора",
-  PENDING_GARAGE_MANAGER: "У заведующего гаражом",
-  RETURNED_TO_SUPPLY: "Возвращена снабжению",
-  REJECTED: "Отклонена",
-  IN_PROGRESS: "В работе",
-  COMPLETED: "Исполнена",
-  ARCHIVED: "Архив",
-};
-
-const roleLabels: Record<UserRole, string> = {
-  FOREMAN: "Прораб",
-  SITE_MANAGER: "Начальник участка",
-  WORKSHOP_MANAGER: "Начальник цеха",
-  DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
-  SUPPLY_MANAGER: "Начальник снабжения",
-  SUPPLY: "Снабженец",
-  PTO: "ПТО",
-  CHIEF_ENGINEER: "Главный инженер",
-  GARAGE_MANAGER: "Заведующий гаражом",
-  DIRECTOR: "Директор",
-};
 
 export function ApprovalHistoryList({
   compact = false,
@@ -132,7 +108,7 @@ function formatActor(entry: ApprovalHistoryEntry) {
   const details = getItemChangeDetails(entry.changesJson);
   const actorName = entry.actor?.name ?? entry.actorId;
   const actorEmail = entry.actor?.email;
-  const actorRole = details?.actorRole ? roleLabels[details.actorRole] : null;
+  const actorRole = details?.actorRole ? userRoleLabels[details.actorRole] : null;
 
   return [actorName, actorEmail, actorRole].filter(Boolean).join(" · ");
 }
@@ -153,7 +129,7 @@ function formatItemChange(entry: ApprovalHistoryEntry) {
   if (entry.action === "REQUEST_ITEM_DELETED") {
     return `Материал: ${details.materialName}. Удаленное количество: ${formatQuantity(
       details.quantity,
-    )}. Сметная цена: ${formatMoney(details.estimatedPriceSnapshot)}.`;
+    )}. !<5B=0O F5=0: ${formatMoney(details.estimatedPriceSnapshot)}.`;
   }
 
   return null;
@@ -172,15 +148,15 @@ function formatStatusTransition(
   toStatus?: SupplyRequestStatus | null,
 ) {
   if (fromStatus && toStatus) {
-    return `${statusLabels[fromStatus]} -> ${statusLabels[toStatus]}`;
+    return `${requestStatusLabels[fromStatus]} -> ${requestStatusLabels[toStatus]}`;
   }
 
   if (toStatus) {
-    return statusLabels[toStatus];
+    return requestStatusLabels[toStatus];
   }
 
   if (fromStatus) {
-    return statusLabels[fromStatus];
+    return requestStatusLabels[fromStatus];
   }
 
   return "";

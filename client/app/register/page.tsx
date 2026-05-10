@@ -4,7 +4,7 @@ import { RegisterForm } from "@/components/auth/register-form";
 export default function RegisterPage() {
   return (
     <AuthShell
-      title="Регистрация"
+      title=" 538AB@0F8O"
       description="Зарегистрируйтесь, чтобы начать работу в системе."
       switchHref="/login"
       switchText="Уже есть аккаунт"

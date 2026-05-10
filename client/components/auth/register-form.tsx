@@ -82,7 +82,7 @@ export function RegisterForm() {
         disabled={isSubmitting}
         type="submit"
       >
-        {isSubmitting ? "Создаем..." : "Создать аккаунт"}
+        {isSubmitting ? "Создание..." : "Создать аккаунт"}
       </button>
     </form>
   );

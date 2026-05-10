@@ -12,6 +12,11 @@ import {
 import Link from "next/link";
 import { ReactNode, useState } from "react";
 import {
+  requestStatusLabels,
+  requestTypeLabels,
+  userRoleLabels,
+} from "@/lib/domain-labels";
+import {
   SupplyRequest,
   SupplyRequestStatus,
   SupplyRequestType,
@@ -22,28 +27,6 @@ type RequestSummaryCardProps = {
   defaultOpen?: boolean;
   request: SupplyRequest;
   variant?: "default" | "approval";
-};
-
-const typeLabels: Record<SupplyRequestType, string> = {
-  MATERIAL: "Материалы",
-  TRANSPORT: "Спецтехника",
-  MONEY: "Средства",
-};
-
-const statusLabels: Record<SupplyRequestStatus, string> = {
-  CREATED: "Создана",
-  PENDING_PTO: "В ПТО",
-  PENDING_CHIEF_ENGINEER: "У главного инженера",
-  PENDING_DEPUTY_PRODUCTION_DIRECTOR: "У зам. директора по производству",
-  PENDING_SUPPLY_MANAGER: "У начальника снабжения",
-  PENDING_SUPPLY: "У снабженца",
-  PENDING_DIRECTOR: "У директора",
-  PENDING_GARAGE_MANAGER: "У заведующего гаражом",
-  RETURNED_TO_SUPPLY: "Возвращена снабжению",
-  REJECTED: "Отклонена",
-  IN_PROGRESS: "В работе",
-  COMPLETED: "Исполнена",
-  ARCHIVED: "Архив",
 };
 
 const statusClasses: Record<SupplyRequestStatus, string> = {
@@ -94,7 +77,7 @@ export function RequestSummaryCard({
 
           <span className="min-w-0">
             <span className="block truncate font-medium text-slate-950">
-              {request.object?.name ?? request.objectId}
+              {request.requestNumber}
             </span>
           </span>
         </button>
@@ -103,7 +86,7 @@ export function RequestSummaryCard({
           <span
             className={`rounded-full px-3 py-1 text-xs font-medium ${statusClasses[request.status]}`}
           >
-            {statusLabels[request.status]}
+            {requestStatusLabels[request.status]}
           </span>
           <Link
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
@@ -114,7 +97,7 @@ export function RequestSummaryCard({
           </Link>
           {children ? (
             <button
-              aria-label={isOpen ? "Свернуть заявку" : "Раскрыть заявку"}
+              aria-label={isOpen ? "Свернуть" : "Развернуть"}
               className="grid size-8 place-items-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50"
               onClick={() => setIsOpen((current) => !current)}
               type="button"
@@ -139,22 +122,28 @@ export function RequestSummaryCard({
 }
 
 export function getRequestTypeLabel(type: SupplyRequestType) {
-  return typeLabels[type];
+  return requestTypeLabels[type];
 }
 
 export function getRequestStatusLabel(status: SupplyRequestStatus) {
-  return statusLabels[status];
+  return requestStatusLabels[status];
 }
 
 function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
+  const authorRole = getAuthorObjectRole(request);
+  const authorRoleLabel = authorRole ? userRoleLabels[authorRole] : "Роль не указана";
+
   return (
     <div className="mb-4 grid gap-2 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-3">
       <MetaItem label="Номер" value={request.requestNumber} />
-      <MetaItem label="Тип" value={typeLabels[request.type]} />
+      <MetaItem label="Тип" value={requestTypeLabels[request.type]} />
       <MetaItem
         label="Дата"
         value={new Date(request.createdAt).toLocaleDateString("ru-KZ")}
       />
+      <MetaItem label="Автор" value={request.author?.name ?? "Не указан"} />
+      <MetaItem label="Email автора" value={request.author?.email ?? "Не указан"} />
+      <MetaItem label="Должность автора" value={authorRoleLabel} />
     </div>
   );
 }
@@ -178,4 +167,22 @@ function getTypeIcon(type: SupplyRequestType) {
   }
 
   return Boxes;
+}
+
+function getAuthorObjectRole(request: SupplyRequest) {
+  if (request.authorObjectRole) {
+    return request.authorObjectRole;
+  }
+
+  const objectAccessRole = request.object?.userAccesses?.find(
+    (access) => access.userId === request.authorId,
+  )?.role;
+
+  if (objectAccessRole) {
+    return objectAccessRole;
+  }
+
+  return request.author?.objectAccesses?.find(
+    (access) => access.objectId === request.objectId,
+  )?.role;
 }

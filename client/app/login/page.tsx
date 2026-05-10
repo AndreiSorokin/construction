@@ -7,7 +7,7 @@ export default function LoginPage() {
       title="Вход"
       description="Войдите, чтобы продолжить работу с заявками и объектами."
       switchHref="/register"
-      switchText="Создать аккаунт"
+      switchText="Нет аккаунта? Зарегистрируйтесь"
     >
       <LoginForm />
     </AuthShell>

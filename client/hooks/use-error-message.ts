@@ -20,12 +20,19 @@ export function useErrorMessage() {
   }, [errorMessage]);
 
   const showError = useCallback((error: unknown) => {
+    if (typeof error === "string") {
+      setErrorMessage(error);
+      return;
+    }
+
     if (error instanceof Error) {
       setErrorMessage(error.message);
       return;
     }
 
-    setErrorMessage("Произошла ошибка");
+    setErrorMessage(
+      "\u041f\u0440\u043e\u0438\u0437\u043e\u0448\u043b\u0430 \u043e\u0448\u0438\u0431\u043a\u0430",
+    );
   }, []);
 
   const clearError = useCallback(() => setErrorMessage(""), []);

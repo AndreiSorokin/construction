@@ -29,9 +29,9 @@ import {
   deleteSupplyRequestItem,
   getSupplyRequests,
   rejectSupplyRequestByDirector,
+  rejectSupplyRequestByChiefEngineer,
   rejectSupplyRequestByDeputyProductionDirector,
   returnSupplyRequestToSupplyByDirector,
-  returnSupplyRequestToPtoByChiefEngineer,
   sendMoneyRequestToDirector,
   sendTransportToGarageManager,
   setPtoLimitPrices,
@@ -107,7 +107,7 @@ export function SupplyRequestsPanel({
         (item) => !item.ptoLimitPrice.trim() || Number(item.ptoLimitPrice) <= 0,
       )
     ) {
-      onError("ПТО должно указать сметную цену за единицу для каждой позиции");
+      onError("\u041f\u0422\u041e \u0434\u043e\u043b\u0436\u043d\u043e \u0443\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u043c\u0435\u0442\u043d\u0443\u044e \u0446\u0435\u043d\u0443 \u0437\u0430 \u0435\u0434\u0438\u043d\u0438\u0446\u0443 \u0434\u043b\u044f \u043a\u0430\u0436\u0434\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438");
       return;
     }
 
@@ -118,7 +118,7 @@ export function SupplyRequestsPanel({
       });
 
       onSuccess(
-        `Заявка ${request.requestNumber} отправлена главному инженеру`,
+        `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a\u0443 \u0441\u043d\u0430\u0431\u0436\u0435\u043d\u0438\u044f`,
       );
       await loadRequests();
     } catch (error) {
@@ -130,7 +130,7 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByChiefEngineer(request.id);
       onSuccess(
-        `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
+        `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u0432 \u041f\u0422\u041e`,
       );
       await loadRequests();
     } catch (error) {
@@ -139,20 +139,20 @@ export function SupplyRequestsPanel({
   }
 
   async function returnToPtoByChiefEngineer(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий для возврата в ПТО");
+    const comment = window.prompt("\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043a \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0438\u044e \u0437\u0430\u044f\u0432\u043a\u0438");
 
     if (comment === null) {
       return;
     }
 
     if (!comment.trim()) {
-      onError("Комментарий обязателен для возврата заявки в ПТО");
+      onError("\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u0435\u043d \u0434\u043b\u044f \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0438\u044f \u0437\u0430\u044f\u0432\u043a\u0438");
       return;
     }
 
     try {
-      await returnSupplyRequestToPtoByChiefEngineer(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} возвращена в ПТО`);
+      await rejectSupplyRequestByChiefEngineer(request.id, comment);
+      onSuccess(`\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0430`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -293,7 +293,7 @@ export function SupplyRequestsPanel({
 
     try {
       await deleteSupplyRequestInvoice(request.id, invoiceId);
-      onSuccess(`Счет удален из заявки ${request.requestNumber}`);
+      onSuccess(`!G5B C40;5= 87 70O2:8 ${request.requestNumber}`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -625,9 +625,7 @@ function getVisibleRequests(
 
     if (objectRole === "SUPPLY_MANAGER") {
       return (
-        (request.type === "MATERIAL" ||
-          request.type === "TRANSPORT" ||
-          request.type === "MONEY") &&
+        (request.type === "MATERIAL" || request.type === "MONEY") &&
         request.status === "PENDING_SUPPLY_MANAGER"
       );
     }

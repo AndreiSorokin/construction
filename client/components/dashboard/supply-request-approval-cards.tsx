@@ -3,6 +3,7 @@
 import { Check, Send, X } from "lucide-react";
 import { FormEvent, ReactNode, useState } from "react";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
+import { requestStatusLabels } from "@/lib/domain-labels";
 import { downloadSupplyRequestInvoice } from "@/lib/supply-requests-api";
 import { SupplyRequest, User } from "@/lib/types";
 
@@ -41,7 +42,7 @@ export function ObjectApprovalGroup({
             Позиций на согласование: {group.positionsCount}
           </span>
         </span>
-        <div style={{cursor: 'pointer'}}>{isOpen ? "Свернуть" : "Раскрыть"}</div>
+        <div style={{cursor: 'pointer'}}>{isOpen ? "Свернуть" : "Развернуть"}</div>
       </button>
 
       {isOpen ? (
@@ -206,7 +207,7 @@ export function PtoRequestCard({
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2 pr-3 font-medium">Материал</th>
               <th className="py-2 pr-3 font-medium">Количество</th>
-              <th className="py-2 pr-3 font-medium">Сметная цена ПТО за ед.</th>
+              <th className="py-2 pr-3 font-medium">{"\u0421\u043c\u0435\u0442\u043d\u0430\u044f \u0446\u0435\u043d\u0430 \u041f\u0422\u041e \u0437\u0430 \u0435\u0434."}</th>
               <th className="py-2 pr-3 font-medium">Удаление</th>
             </tr>
           </thead>
@@ -257,7 +258,7 @@ export function PtoRequestCard({
           type="submit"
         >
           <Send size={16} />
-          Отправить главному инженеру
+          Отправить начальнику снабжения
         </button>
       </div>
       </RequestSummaryCard>
@@ -290,13 +291,11 @@ export function ChiefEngineerRequestCard({
 
         {request.type === "MATERIAL" ? (
           <>
-            <PriceComparisonTable
-        request={request}
-        mode="pto"
-        onDeleteItem={onDeleteItem}
-        onUpdateItem={onUpdateItem}
-      />
-            <Totals request={request} mode="pto" />
+            <EditableMaterialItemsTable
+              request={request}
+              onDeleteItem={onDeleteItem}
+              onUpdateItem={onUpdateItem}
+            />
           </>
         ) : request.type === "TRANSPORT" ? (
           <TransportDetails request={request} />
@@ -304,14 +303,14 @@ export function ChiefEngineerRequestCard({
           <MoneyDetails request={request} />
         )}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {request.type === "MATERIAL" ? (
+        {request.type === "MATERIAL" || request.type === "TRANSPORT" ? (
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReturn(request)}
           type="button"
         >
           <X size={16} />
-          Вернуть заявку
+          Отклонить заявку
         </button>
         ) : null}
         <button
@@ -320,12 +319,24 @@ export function ChiefEngineerRequestCard({
           type="button"
         >
           <Check size={16} />
-          Согласовать и отправить начальнику снабжения
+          {getChiefEngineerApproveLabel(request.type)}
         </button>
       </div>
       </RequestSummaryCard>
     </div>
   );
+}
+
+function getChiefEngineerApproveLabel(type: SupplyRequest["type"]) {
+  if (type === "MATERIAL") {
+    return "Согласовать и отправить в ПТО";
+  }
+
+  if (type === "TRANSPORT") {
+    return "Согласовать и отправить заведующему гаражом";
+  }
+
+  return "Согласовать и отправить начальнику снабжения";
 }
 
 export function DeputyProductionDirectorRequestCard({
@@ -412,7 +423,7 @@ export function SupplyRequestCard({
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5">
           <span className="text-sm font-medium text-slate-700">
-            Счета на оплату
+            {"\u0421\u0447\u0435\u0442\u0430 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443"}
           </span>
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
@@ -498,7 +509,7 @@ export function SupplyTransportRequestCard({
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5">
           <span className="text-sm font-medium text-slate-700">
-            Счета на оплату
+            {"\u0421\u0447\u0435\u0442\u0430 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443"}
           </span>
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
@@ -602,14 +613,16 @@ export function DirectorRequestCard({
       )}
       <InvoiceList request={request} />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
-          onClick={() => onReturn(request)}
-          type="button"
-        >
-          <X size={16} />
-          Вернуть
-        </button>
+        {request.type === "MATERIAL" ? (
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
+            onClick={() => onReturn(request)}
+            type="button"
+          >
+            <X size={16} />
+            Вернуть
+          </button>
+        ) : null}
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReject(request)}
@@ -624,7 +637,9 @@ export function DirectorRequestCard({
           type="button"
         >
           <Check size={16} />
-          Согласовать
+          {request.type === "MATERIAL"
+            ? "\u0421\u043e\u0433\u043b\u0430\u0441\u043e\u0432\u0430\u0442\u044c"
+            : "\u041e\u0442\u043c\u0435\u0442\u0438\u0442\u044c \u0438\u0441\u043f\u043e\u043b\u043d\u0435\u043d\u043d\u043e\u0439"}
         </button>
       </div>
       </RequestSummaryCard>
@@ -710,6 +725,59 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
   );
 }
 
+function EditableMaterialItemsTable({
+  onDeleteItem,
+  onUpdateItem,
+  request,
+}: {
+  onDeleteItem: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+  ) => void;
+  onUpdateItem: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+  ) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[620px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 text-left text-slate-500">
+            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">Количество</th>
+            <th className="py-2 pr-3 font-medium">Удаление</th>
+          </tr>
+        </thead>
+        <tbody>
+          {request.items.map((item) => (
+            <tr className="border-b border-slate-100" key={item.id}>
+              <td className="py-3 pr-3 text-slate-950">
+                {item.materialNameSnapshot}
+              </td>
+              <td className="py-3 pr-3 text-slate-600">
+                <QuantityWithEdit
+                  item={item}
+                  request={request}
+                  onUpdate={onUpdateItem}
+                />
+              </td>
+              <td className="py-3 pr-3">
+                <RequestItemDeleteAction
+                  item={item}
+                  request={request}
+                  onDelete={onDeleteItem}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function PriceComparisonTable({
   mode,
   onDeleteItem,
@@ -737,7 +805,7 @@ function PriceComparisonTable({
             <th className="py-2 pr-3 font-medium">Материал</th>
             <th className="py-2 pr-3 font-medium">Количество</th>
             <th className="py-2 pr-3 font-medium">Цена ПТО за ед.</th>
-            <th className="py-2 pr-3 font-medium">Сумма ПТО</th>
+            <th className="py-2 pr-3 font-medium">{"\u0421\u0443\u043c\u043c\u0430 \u041f\u0422\u041e"}</th>
             {canEditItems ? (
               <th className="py-2 pr-3 font-medium">Удаление</th>
             ) : null}
@@ -810,12 +878,12 @@ function RequestHeader({ request }: { request: SupplyRequest }) {
         </div>
         {request.assignedSupplyUser ? (
           <div className="mt-1 text-sm text-slate-600">
-            Снабженец: {request.assignedSupplyUser.name}
+            !=0165=5F: {request.assignedSupplyUser.name}
           </div>
         ) : null}
       </div>
       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-        {getStatusLabel(request.status)}
+        {requestStatusLabels[request.status]}
       </span>
     </div>
   );
@@ -844,7 +912,7 @@ function MoneyDetails({ request }: { request: SupplyRequest }) {
   return (
     <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">
       <div>
-        <div className="text-slate-500">Сумма</div>
+        <div className="text-slate-500">{"\u0421\u0443\u043c\u043c\u0430"}</div>
         <div className="mt-1 font-medium text-slate-950">
           {formatMoney(toNumber(request.amount))}
         </div>
@@ -873,7 +941,7 @@ function InvoiceList({
   if (!request.invoices?.length) {
     return (
       <div className="mt-4 rounded-md border border-dashed border-slate-300 p-3 text-sm text-slate-500">
-        Счета на оплату пока не прикреплены.
+        {"\u0421\u0447\u0435\u0442\u0430 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443 \u043f\u043e\u043a\u0430 \u043d\u0435 \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u043b\u0435\u043d\u044b."}
       </div>
     );
   }
@@ -1010,24 +1078,3 @@ function formatFileSize(value: number) {
 
   return `${(value / 1024 / 1024).toFixed(1)} МБ`;
 }
-
-function getStatusLabel(status: SupplyRequest["status"]) {
-  const labels: Record<SupplyRequest["status"], string> = {
-    CREATED: "Создана",
-    PENDING_PTO: "В ПТО",
-    PENDING_CHIEF_ENGINEER: "У главного инженера",
-    PENDING_DEPUTY_PRODUCTION_DIRECTOR: "У зам. директора по производству",
-    PENDING_SUPPLY_MANAGER: "У начальника снабжения",
-    PENDING_SUPPLY: "У снабженца",
-    PENDING_DIRECTOR: "У директора",
-    PENDING_GARAGE_MANAGER: "У заведующего гаражом",
-    RETURNED_TO_SUPPLY: "Возвращена снабжению",
-    REJECTED: "Отклонена",
-    IN_PROGRESS: "В работе",
-    COMPLETED: "Исполнена",
-    ARCHIVED: "Архив",
-  };
-
-  return labels[status];
-}
-
