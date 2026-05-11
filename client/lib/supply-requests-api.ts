@@ -196,6 +196,19 @@ export function approveSupplyRequestByChiefEngineer(
   );
 }
 
+export function approveSupplyRequestByWarehouseManager(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/warehouse-manager/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function returnSupplyRequestToPtoByChiefEngineer(
   requestId: string,
   comment: string,
@@ -373,6 +386,19 @@ export function completeSupplyRequest(requestId: string, comment?: string) {
     method: "PATCH",
     body: { comment },
   });
+}
+
+export function completeSupplyRequestByStorekeeper(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/storekeeper/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
 }
 
 export function approveTransportBySupply(requestId: string, comment?: string) {

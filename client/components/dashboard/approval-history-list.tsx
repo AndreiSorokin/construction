@@ -34,6 +34,8 @@ const actionLabels: Record<ApprovalAction, string> = {
   SENT_TO_SUPPLY_MANAGER: "Отправлена начальнику снабжения",
   SENT_TO_SUPPLY: "Отправлена в снабжение",
   SENT_TO_GARAGE_MANAGER: "Отправлена заведующему гаражом",
+  SENT_TO_WAREHOUSE_MANAGER: "Отправлена начальнику складского хозяйства",
+  SENT_TO_STOREKEEPER: "Отправлена кладовщику",
   ASSIGNED_TO_SUPPLY: "Назначена снабженцу",
   SENT_TO_DIRECTOR: "Отправлена директору",
   MARKED_IN_PROGRESS: "Взята в работу",

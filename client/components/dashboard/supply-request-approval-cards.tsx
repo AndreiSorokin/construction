@@ -327,9 +327,49 @@ export function ChiefEngineerRequestCard({
   );
 }
 
+export function WarehouseManagerRequestCard({
+  onApprove,
+  onDeleteItem,
+  onUpdateItem,
+  request,
+}: {
+  onApprove: (request: SupplyRequest) => void;
+  onDeleteItem: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+  ) => void;
+  onUpdateItem: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+  ) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="rounded-md border border-slate-200 p-4">
+      <RequestSummaryCard request={request} variant="approval">
+        <EditableMaterialItemsTable
+          request={request}
+          onDeleteItem={onDeleteItem}
+          onUpdateItem={onUpdateItem}
+        />
+        <div className="mt-4 flex justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={() => onApprove(request)}
+            type="button"
+          >
+            <Send size={16} />
+            Передать в ПТО
+          </button>
+        </div>
+      </RequestSummaryCard>
+    </div>
+  );
+}
+
 function getChiefEngineerApproveLabel(type: SupplyRequest["type"]) {
   if (type === "MATERIAL") {
-    return "Согласовать и отправить в ПТО";
+    return "Согласовать и отправить начальнику складского хозяйства";
   }
 
   if (type === "TRANSPORT") {
@@ -562,10 +602,37 @@ export function SupplyInProgressCard({
           onClick={() => onComplete(request)}
           type="button"
         >
-          <Check size={16} />
-          Отметить исполненной
+          <Send size={16} />
+          Передать кладовщику
         </button>
       </div>
+      </RequestSummaryCard>
+    </div>
+  );
+}
+
+export function StorekeeperRequestCard({
+  onComplete,
+  request,
+}: {
+  onComplete: (request: SupplyRequest) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="rounded-md border border-stone-200 bg-stone-50/50 p-4">
+      <RequestSummaryCard request={request} variant="approval">
+        <MaterialItemsTable request={request} />
+        <InvoiceList request={request} />
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={() => onComplete(request)}
+            type="button"
+          >
+            <Check size={16} />
+            Подтвердить исполнение
+          </button>
+        </div>
       </RequestSummaryCard>
     </div>
   );

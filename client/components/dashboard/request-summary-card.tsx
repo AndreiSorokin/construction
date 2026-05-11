@@ -38,6 +38,8 @@ const statusClasses: Record<SupplyRequestStatus, string> = {
   PENDING_SUPPLY: "bg-cyan-50 text-cyan-700",
   PENDING_DIRECTOR: "bg-violet-50 text-violet-700",
   PENDING_GARAGE_MANAGER: "bg-lime-50 text-lime-700",
+  PENDING_WAREHOUSE_MANAGER: "bg-emerald-50 text-emerald-700",
+  PENDING_STOREKEEPER: "bg-stone-100 text-stone-700",
   RETURNED_TO_SUPPLY: "bg-orange-50 text-orange-700",
   REJECTED: "bg-red-50 text-red-700",
   IN_PROGRESS: "bg-teal-50 text-teal-700",

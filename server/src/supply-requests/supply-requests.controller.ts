@@ -150,6 +150,19 @@ export class SupplyRequestsController {
     return this.supplyRequestsService.approveByChiefEngineer(id, dto, user.id);
   }
 
+  @Patch(":id/warehouse-manager/approve")
+  approveByWarehouseManager(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByWarehouseManager(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/chief-engineer/review-items")
   reviewItemsByChiefEngineer(
     @Param("id") id: string,
@@ -331,6 +344,15 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.complete(id, dto, user.id);
+  }
+
+  @Patch(":id/storekeeper/complete")
+  completeByStorekeeper(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeByStorekeeper(id, dto, user.id);
   }
 
   @Patch(":id/archive")

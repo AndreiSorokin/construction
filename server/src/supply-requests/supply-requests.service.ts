@@ -362,6 +362,7 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_PTO,
       SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
@@ -432,6 +433,7 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_PTO,
       SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
       SupplyRequestStatus.PENDING_DIRECTOR,
     ]);
@@ -581,8 +583,8 @@ export class SupplyRequestsService {
     let action: ApprovalAction = ApprovalAction.SENT_TO_SUPPLY_MANAGER;
 
     if (request.type === SupplyRequestType.MATERIAL) {
-      nextStatus = SupplyRequestStatus.PENDING_PTO;
-      action = ApprovalAction.SENT_TO_PTO;
+      nextStatus = SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER;
+      action = ApprovalAction.SENT_TO_WAREHOUSE_MANAGER;
     }
 
     if (request.type === SupplyRequestType.TRANSPORT) {
@@ -598,6 +600,38 @@ export class SupplyRequestsService {
         action,
         request.status,
         nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async approveByWarehouseManager(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+    ]);
+
+    if (request.type !== SupplyRequestType.MATERIAL) {
+      throw new BadRequestException(
+        "Only material requests can be sent from warehouse manager to PTO",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.WAREHOUSE_MANAGER,
+    ]);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        ApprovalAction.SENT_TO_PTO,
+        request.status,
+        SupplyRequestStatus.PENDING_PTO,
         dto.comment,
       ),
     );
@@ -1203,6 +1237,52 @@ export class SupplyRequestsService {
       this.ensureAssignedSupplyUser(request, actorId);
     }
 
+    if (request.type === SupplyRequestType.MATERIAL) {
+      return this.prisma.$transaction((tx) =>
+        this.moveRequest(
+          tx,
+          id,
+          actorId,
+          ApprovalAction.SENT_TO_STOREKEEPER,
+          request.status,
+          SupplyRequestStatus.PENDING_STOREKEEPER,
+          dto.comment,
+        ),
+      );
+    }
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        ApprovalAction.COMPLETED,
+        request.status,
+        SupplyRequestStatus.COMPLETED,
+        dto.comment,
+      ),
+    );
+  }
+
+  async completeByStorekeeper(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_STOREKEEPER,
+    ]);
+
+    if (request.type !== SupplyRequestType.MATERIAL) {
+      throw new BadRequestException(
+        "Only material requests are completed by storekeeper",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.STOREKEEPER,
+    ]);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
@@ -1461,6 +1541,10 @@ export class SupplyRequestsService {
 
     if (requestType === SupplyRequestType.MATERIAL) {
       if (authorRole === UserRole.CHIEF_ENGINEER) {
+        return SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER;
+      }
+
+      if (authorRole === UserRole.WAREHOUSE_MANAGER) {
         return SupplyRequestStatus.PENDING_PTO;
       }
 
@@ -1533,6 +1617,9 @@ export class SupplyRequestsService {
       PENDING_SUPPLY: "\u0441\u043d\u0430\u0431\u0436\u0435\u043d\u0446\u0443",
       PENDING_DIRECTOR: "\u0434\u0438\u0440\u0435\u043a\u0442\u043e\u0440\u0443",
       PENDING_GARAGE_MANAGER: "\u0437\u0430\u0432\u0435\u0434\u0443\u044e\u0449\u0435\u043c\u0443 \u0433\u0430\u0440\u0430\u0436\u043e\u043c",
+      PENDING_WAREHOUSE_MANAGER:
+        "\u043d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a\u0443 \u0441\u043a\u043b\u0430\u0434\u0441\u043a\u043e\u0433\u043e \u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u0430",
+      PENDING_STOREKEEPER: "\u043a\u043b\u0430\u0434\u043e\u0432\u0449\u0438\u043a\u0443",
     };
 
     return `${requestLabel[requestType]} \u0441\u043e\u0437\u0434\u0430\u043d\u0430 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 ${
@@ -1575,6 +1662,7 @@ export class SupplyRequestsService {
     const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
       PENDING_PTO: UserRole.PTO,
       PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
+      PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
         UserRole.DEPUTY_PRODUCTION_DIRECTOR,
       PENDING_DIRECTOR: UserRole.DIRECTOR,

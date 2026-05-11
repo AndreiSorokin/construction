@@ -13,18 +13,22 @@ import {
   SupplyManagerRequestCard,
   SupplyManagerTransportRequestCard,
   SupplyMoneyRequestCard,
+  StorekeeperRequestCard,
   SupplyRequestCard,
   SupplyTransportRequestCard,
+  WarehouseManagerRequestCard,
   type ObjectRequestGroup,
 } from "@/components/dashboard/supply-request-approval-cards";
 import {
   approveSupplyRequestByChiefEngineer,
   approveSupplyRequestByDeputyProductionDirector,
   approveSupplyRequestByDirector,
+  approveSupplyRequestByWarehouseManager,
   assignSupplyRequest,
   attachInvoicesAndSendToDirector,
   completeTransportByGarageManager,
   completeSupplyRequest,
+  completeSupplyRequestByStorekeeper,
   deleteSupplyRequestInvoice,
   deleteSupplyRequestItem,
   getSupplyRequests,
@@ -59,10 +63,12 @@ export function SupplyRequestsPanel({
     [
       "PTO",
       "CHIEF_ENGINEER",
+      "WAREHOUSE_MANAGER",
       "DEPUTY_PRODUCTION_DIRECTOR",
       "SUPPLY_MANAGER",
       "SUPPLY",
       "GARAGE_MANAGER",
+      "STOREKEEPER",
       "DIRECTOR",
     ].includes(access.role),
   );
@@ -129,6 +135,18 @@ export function SupplyRequestsPanel({
   async function approveByChiefEngineer(request: SupplyRequest) {
     try {
       await approveSupplyRequestByChiefEngineer(request.id);
+      onSuccess(
+        `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a\u0443 \u0441\u043a\u043b\u0430\u0434\u0441\u043a\u043e\u0433\u043e \u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u0430`,
+      );
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function approveByWarehouseManager(request: SupplyRequest) {
+    try {
+      await approveSupplyRequestByWarehouseManager(request.id);
       onSuccess(
         `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u0432 \u041f\u0422\u041e`,
       );
@@ -332,7 +350,7 @@ export function SupplyRequestsPanel({
   }
 
   async function completeBySupply(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к исполнению заявки");
+    const comment = window.prompt("Комментарий для кладовщика");
 
     if (comment === null) {
       return;
@@ -340,6 +358,22 @@ export function SupplyRequestsPanel({
 
     try {
       await completeSupplyRequest(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отправлена кладовщику`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function completeByStorekeeper(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к подтверждению исполнения");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await completeSupplyRequestByStorekeeper(request.id, comment);
       onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
       await loadRequests();
     } catch (error) {
@@ -427,6 +461,8 @@ export function SupplyRequestsPanel({
     }
   }
 
+  
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -487,6 +523,18 @@ export function SupplyRequestsPanel({
                     onApprove={approveByChiefEngineer}
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReturn={returnToPtoByChiefEngineer}
+                    onUpdateItem={updateRequestItemQuantity}
+                  />
+                );
+              }
+
+              if (objectRole === "WAREHOUSE_MANAGER") {
+                return (
+                  <WarehouseManagerRequestCard
+                    key={request.id}
+                    request={request}
+                    onApprove={approveByWarehouseManager}
+                    onDeleteItem={deleteRequestItemFromRequest}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -573,6 +621,16 @@ export function SupplyRequestsPanel({
                 );
               }
 
+              if (objectRole === "STOREKEEPER") {
+                return (
+                  <StorekeeperRequestCard
+                    key={request.id}
+                    request={request}
+                    onComplete={completeByStorekeeper}
+                  />
+                );
+              }
+
               if (objectRole === "DIRECTOR") {
                 return (
                   <DirectorRequestCard
@@ -612,6 +670,13 @@ function getVisibleRequests(
       return request.status === "PENDING_CHIEF_ENGINEER";
     }
 
+    if (objectRole === "WAREHOUSE_MANAGER") {
+      return (
+        request.type === "MATERIAL" &&
+        request.status === "PENDING_WAREHOUSE_MANAGER"
+      );
+    }
+
     if (objectRole === "DEPUTY_PRODUCTION_DIRECTOR") {
       return request.status === "PENDING_DEPUTY_PRODUCTION_DIRECTOR";
     }
@@ -637,6 +702,13 @@ function getVisibleRequests(
         (request.status === "PENDING_SUPPLY" ||
           request.status === "RETURNED_TO_SUPPLY" ||
           request.status === "IN_PROGRESS")
+      );
+    }
+
+    if (objectRole === "STOREKEEPER") {
+      return (
+        request.type === "MATERIAL" &&
+        request.status === "PENDING_STOREKEEPER"
       );
     }
 
