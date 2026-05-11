@@ -1,25 +1,38 @@
 "use client";
 
 import { RefreshCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
-import {
-  ObjectApprovalGroup,
-  ObjectRequestGroup,
-} from "@/components/dashboard/supply-request-approval-cards";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getSupplyRequests } from "@/lib/supply-requests-api";
 import { SupplyRequest } from "@/lib/types";
 
-type RequestsBankPanelProps = {
+type ArchivedRequestsBankPanelProps = {
   onError?: (error: unknown) => void;
 };
 
-export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
+type ObjectRequestGroup = {
+  objectId: string;
+  objectName: string;
+  positionsCount: number;
+  requests: SupplyRequest[];
+};
+
+export function ArchivedRequestsBankPanel({
+  onError,
+}: ArchivedRequestsBankPanelProps) {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
-  const requestGroups = groupRequestsByObject(requests);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const completedRequests = useMemo(() => {
+    return requests.filter((request) => request.status === "COMPLETED");
+  }, [requests]);
+
+  const requestGroups = useMemo(() => {
+    return groupRequestsByObject(completedRequests);
+  }, [completedRequests]);
 
   useEffect(() => {
     void loadRequests();
@@ -30,7 +43,8 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
     clearError();
 
     try {
-      setRequests(await getSupplyRequests());
+      const data = await getSupplyRequests();
+      setRequests(data);
     } catch (error) {
       if (onError) {
         onError(error);
@@ -46,11 +60,9 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-semibold text-slate-950">Банк заявок</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Общий список заявок с текущими статусами, ответственными и деталями.
-          </p>
+          <h2 className="font-semibold text-slate-950">Выполненные заявки</h2>
         </div>
+
         <button
           className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
           onClick={() => void loadRequests()}
@@ -67,20 +79,37 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-4 grid gap-4">
         {requestGroups.map((group) => (
-          <ObjectApprovalGroup group={group} key={group.objectId}>
-            {group.requests.map((request) => (
-              <RequestSummaryCard key={request.id} request={request}>
-                <RequestDetails request={request} />
-              </RequestSummaryCard>
-            ))}
-          </ObjectApprovalGroup>
-        ))}
+  <div
+    key={group.objectId}
+    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+  >
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 className="font-medium text-slate-950">
+          {group.objectName}
+        </h3>
+        <p className="text-sm text-slate-500">
+          Заявок: {group.requests.length} · Позиций:{" "}
+          {group.positionsCount}
+        </p>
+      </div>
+    </div>
 
-        {!isLoading && !requests.length ? (
+    <div className="grid gap-3">
+      {group.requests.map((request) => (
+        <RequestSummaryCard key={request.id} request={request}>
+          <RequestDetails request={request} />
+        </RequestSummaryCard>
+      ))}
+    </div>
+  </div>
+))}
+
+        {!isLoading && !completedRequests.length ? (
           <div className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
-            Пока нет заявок.
+            Пока нет выполненных заявок.
           </div>
         ) : null}
 
@@ -164,12 +193,24 @@ function getDetailValue(request: SupplyRequest) {
   return `${itemsCount} поз., ${totalQuantity.toLocaleString("ru-KZ")} ед.`;
 }
 
+function toNumber(value: string | number | null | undefined) {
+  const numberValue = Number(value);
+
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function formatMoney(value: number) {
+  return `${value.toLocaleString("ru-KZ")} тг`;
+}
+
 function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] {
   const groups = new Map<string, ObjectRequestGroup>();
 
   requests.forEach((request) => {
-    const currentGroup = groups.get(request.objectId);
+    const objectId = request.objectId;
     const positionsCount = getRequestPositionsCount(request);
+
+    const currentGroup = groups.get(objectId);
 
     if (currentGroup) {
       currentGroup.positionsCount += positionsCount;
@@ -177,9 +218,9 @@ function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] 
       return;
     }
 
-    groups.set(request.objectId, {
-      objectId: request.objectId,
-      objectName: request.object?.name ?? request.objectId,
+    groups.set(objectId, {
+      objectId,
+      objectName: request.object?.name ?? objectId,
       positionsCount,
       requests: [request],
     });
@@ -190,14 +231,4 @@ function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] 
 
 function getRequestPositionsCount(request: SupplyRequest) {
   return request.type === "MATERIAL" ? request.items.length : 1;
-}
-
-function toNumber(value: string | number | null | undefined) {
-  const numberValue = Number(value);
-
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
-
-function formatMoney(value: number) {
-  return `${value.toLocaleString("ru-KZ")} тг`;
 }

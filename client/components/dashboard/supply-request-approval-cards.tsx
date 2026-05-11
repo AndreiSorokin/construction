@@ -932,30 +932,6 @@ function Totals({ request }: { mode: "pto" | "supplier"; request: SupplyRequest 
   );
 }
 
-function RequestHeader({ request }: { request: SupplyRequest }) {
-  return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <div className="font-medium text-slate-950">
-          {request.requestNumber}
-        </div>
-        <div className="mt-1 text-sm text-slate-600">
-          {request.object?.name ?? "Объект"} · автор{" "}
-          {request.author?.name ?? request.authorId}
-        </div>
-        {request.assignedSupplyUser ? (
-          <div className="mt-1 text-sm text-slate-600">
-            !=0165=5F: {request.assignedSupplyUser.name}
-          </div>
-        ) : null}
-      </div>
-      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-        {requestStatusLabels[request.status]}
-      </span>
-    </div>
-  );
-}
-
 function TransportDetails({ request }: { request: SupplyRequest }) {
   return (
     <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">

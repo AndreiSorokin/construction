@@ -25,8 +25,8 @@ type ItemChangeDetails = {
 };
 
 const actionLabels: Record<ApprovalAction, string> = {
-  CREATED: "!>740=0",
-  APPROVED: "!>3;0A>20=0",
+  CREATED: "Создана",
+  APPROVED: "УтвержденаT",
   REJECTED: "Отклонена",
   RETURNED: "Возвращена",
   SENT_TO_PTO: "Отправлена в ПТО",

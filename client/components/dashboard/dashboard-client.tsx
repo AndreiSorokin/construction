@@ -250,6 +250,16 @@ export function DashboardClient() {
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="font-semibold text-slate-950">Исполненные заявки</h2>
+              <Link
+                className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                href="/dashboard/archived-requests"
+              >
+                Открыть исполненные заявки
+              </Link>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="font-semibold text-slate-950">{"\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043e\u0431\u044a\u0435\u043a\u0442"}</h2>
               <p className="mt-1 text-sm text-slate-600">
                 При создании объекта пользователь получает роль директора на

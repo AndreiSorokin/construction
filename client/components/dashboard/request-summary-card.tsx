@@ -18,6 +18,7 @@ import {
 } from "@/lib/domain-labels";
 import {
   SupplyRequest,
+  SupplyRequestItem,
   SupplyRequestStatus,
   SupplyRequestType,
 } from "@/lib/types";
@@ -63,6 +64,23 @@ export function RequestSummaryCard({
   const TypeIcon = getTypeIcon(request.type);
   const isApproval = variant === "approval";
 
+ function getRequestItemsLabel(request: SupplyRequest) {
+  if (request.type === "MONEY") {
+    return "Средства";
+  }
+
+  if (request.type === "TRANSPORT") {
+    return "Транспорт";
+  }
+
+  return request.items
+    .map((item) => item.materialNameSnapshot)
+    .join(", ");
+}
+
+
+  
+
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="grid gap-3 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -79,7 +97,7 @@ export function RequestSummaryCard({
 
           <span className="min-w-0">
             <span className="block truncate font-medium text-slate-950">
-              {request.requestNumber}
+              {getRequestItemsLabel(request)}
             </span>
           </span>
         </button>
