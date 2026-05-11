@@ -111,6 +111,8 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
         label="Счета"
         value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"}
       />
+      {console.log("request:", request.items.map((item) => item.materialNameSnapshot))}
+      <Info label="Материал" value={request.items.map((item) => item.materialNameSnapshot).join(", ")} />
       {request.type === "MONEY" ? (
         <Info
           label="Назначение платежа"
