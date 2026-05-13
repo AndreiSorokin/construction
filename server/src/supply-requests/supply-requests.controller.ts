@@ -20,6 +20,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
+import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
@@ -288,6 +289,19 @@ export class SupplyRequestsController {
     return this.supplyRequestsService.completeByGarageManager(id, dto, user.id);
   }
 
+  @Patch(":id/transport/author/complete")
+  completeTransportByAuthor(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeTransportByAuthor(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/transport/supply/approve")
   approveTransportBySupply(
     @Param("id") id: string,
@@ -349,7 +363,7 @@ export class SupplyRequestsController {
   @Patch(":id/storekeeper/complete")
   completeByStorekeeper(
     @Param("id") id: string,
-    @Body() dto: RequestActionDto,
+    @Body() dto: CompleteStorekeeperRequestDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.completeByStorekeeper(id, dto, user.id);

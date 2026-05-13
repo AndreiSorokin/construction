@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { RefreshCcw } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
@@ -16,6 +16,7 @@ import {
   StorekeeperRequestCard,
   SupplyRequestCard,
   SupplyTransportRequestCard,
+  TransportAuthorCompletionCard,
   WarehouseManagerRequestCard,
   type ObjectRequestGroup,
 } from "@/components/dashboard/supply-request-approval-cards";
@@ -26,6 +27,7 @@ import {
   approveSupplyRequestByWarehouseManager,
   assignSupplyRequest,
   attachInvoicesAndSendToDirector,
+  completeTransportByAuthor,
   completeTransportByGarageManager,
   completeSupplyRequest,
   completeSupplyRequestByStorekeeper,
@@ -59,19 +61,7 @@ export function SupplyRequestsPanel({
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const canSeePanel = objectAccesses.some((access) =>
-    [
-      "PTO",
-      "CHIEF_ENGINEER",
-      "WAREHOUSE_MANAGER",
-      "DEPUTY_PRODUCTION_DIRECTOR",
-      "SUPPLY_MANAGER",
-      "SUPPLY",
-      "GARAGE_MANAGER",
-      "STOREKEEPER",
-      "DIRECTOR",
-    ].includes(access.role),
-  );
+  const canSeePanel = objectAccesses.length > 0;
   const visibleRequests = getVisibleRequests(objectAccesses, requests, user.id);
   const visibleRequestGroups = groupRequestsByObject(visibleRequests);
 
@@ -113,7 +103,7 @@ export function SupplyRequestsPanel({
         (item) => !item.ptoLimitPrice.trim() || Number(item.ptoLimitPrice) <= 0,
       )
     ) {
-      onError("\u041f\u0422\u041e \u0434\u043e\u043b\u0436\u043d\u043e \u0443\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u043c\u0435\u0442\u043d\u0443\u044e \u0446\u0435\u043d\u0443 \u0437\u0430 \u0435\u0434\u0438\u043d\u0438\u0446\u0443 \u0434\u043b\u044f \u043a\u0430\u0436\u0434\u043e\u0439 \u043f\u043e\u0437\u0438\u0446\u0438\u0438");
+      onError("ПТО должно указать сметную цену за единицу для каждой позиции");
       return;
     }
 
@@ -124,7 +114,7 @@ export function SupplyRequestsPanel({
       });
 
       onSuccess(
-        `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a\u0443 \u0441\u043d\u0430\u0431\u0436\u0435\u043d\u0438\u044f`,
+        `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
       );
       await loadRequests();
     } catch (error) {
@@ -136,7 +126,7 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByChiefEngineer(request.id);
       onSuccess(
-        `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u043d\u0430\u0447\u0430\u043b\u044c\u043d\u0438\u043a\u0443 \u0441\u043a\u043b\u0430\u0434\u0441\u043a\u043e\u0433\u043e \u0445\u043e\u0437\u044f\u0439\u0441\u0442\u0432\u0430`,
+        `Заявка ${request.requestNumber} отправлена начальнику складского хозяйства`,
       );
       await loadRequests();
     } catch (error) {
@@ -148,7 +138,7 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByWarehouseManager(request.id);
       onSuccess(
-        `\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u0432 \u041f\u0422\u041e`,
+        `Заявка ${request.requestNumber} отправлена в ПТО`,
       );
       await loadRequests();
     } catch (error) {
@@ -157,20 +147,20 @@ export function SupplyRequestsPanel({
   }
 
   async function returnToPtoByChiefEngineer(request: SupplyRequest) {
-    const comment = window.prompt("\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043a \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0438\u044e \u0437\u0430\u044f\u0432\u043a\u0438");
+    const comment = window.prompt("Комментарий к отклонению заявки");
 
     if (comment === null) {
       return;
     }
 
     if (!comment.trim()) {
-      onError("\u041a\u043e\u043c\u043c\u0435\u043d\u0442\u0430\u0440\u0438\u0439 \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u0435\u043d \u0434\u043b\u044f \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0438\u044f \u0437\u0430\u044f\u0432\u043a\u0438");
+      onError("Комментарий обязателен для отклонения заявки");
       return;
     }
 
     try {
       await rejectSupplyRequestByChiefEngineer(request.id, comment);
-      onSuccess(`\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u043e\u0442\u043a\u043b\u043e\u043d\u0435\u043d\u0430`);
+      onSuccess(`Заявка ${request.requestNumber} отклонена`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -365,15 +355,21 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function completeByStorekeeper(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к подтверждению исполнения");
-
-    if (comment === null) {
-      return;
-    }
+  async function completeByStorekeeper(
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const completedItemIds = form
+      .getAll("completedItemIds")
+      .map((itemId) => String(itemId));
 
     try {
-      await completeSupplyRequestByStorekeeper(request.id, comment);
+      await completeSupplyRequestByStorekeeper(request.id, {
+        comment: String(form.get("comment") ?? ""),
+        completedItemIds,
+      });
       onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
       await loadRequests();
     } catch (error) {
@@ -402,7 +398,7 @@ export function SupplyRequestsPanel({
   }
 
   async function completeByGarageManager(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к исполнению спецтехники");
+    const comment = window.prompt("Комментарий для автора заявки");
 
     if (comment === null) {
       return;
@@ -411,8 +407,24 @@ export function SupplyRequestsPanel({
     try {
       await completeTransportByGarageManager(request.id, comment);
       onSuccess(
-        `Заявка ${request.requestNumber} отмечена заведующим гаражом как исполненная`,
+        `Заявка ${request.requestNumber} отправлена автору на подтверждение`,
       );
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function completeTransportByRequestAuthor(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к подтверждению исполнения");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await completeTransportByAuthor(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -502,6 +514,20 @@ export function SupplyRequestsPanel({
           <ObjectApprovalGroup group={group} key={group.objectId}>
             {group.requests.map((request) => {
               const objectRole = getObjectRole(objectAccesses, request.objectId);
+
+              if (
+                request.type === "TRANSPORT" &&
+                request.status === "PENDING_TRANSPORT_AUTHOR" &&
+                request.authorId === user.id
+              ) {
+                return (
+                  <TransportAuthorCompletionCard
+                    key={request.id}
+                    request={request}
+                    onComplete={completeTransportByRequestAuthor}
+                  />
+                );
+              }
 
               if (objectRole === "PTO") {
                 return (
@@ -661,6 +687,14 @@ function getVisibleRequests(
 ) {
   return requests.filter((request) => {
     const objectRole = getObjectRole(objectAccesses, request.objectId);
+
+    if (
+      request.type === "TRANSPORT" &&
+      request.status === "PENDING_TRANSPORT_AUTHOR" &&
+      request.authorId === userId
+    ) {
+      return true;
+    }
 
     if (objectRole === "PTO") {
       return request.type === "MATERIAL" && request.status === "PENDING_PTO";

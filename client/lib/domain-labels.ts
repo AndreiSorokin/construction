@@ -21,6 +21,7 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
   PENDING_GARAGE_MANAGER: "У заведующего гаражом",
   PENDING_WAREHOUSE_MANAGER: "У начальника складского хозяйства",
   PENDING_STOREKEEPER: "У кладовщика",
+  PENDING_TRANSPORT_AUTHOR: "У автора заявки",
   RETURNED_TO_SUPPLY: "Возвращена снабжению",
   REJECTED: "Отклонена",
   IN_PROGRESS: "В работе",

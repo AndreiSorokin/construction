@@ -1,4 +1,4 @@
-import { Factory } from "lucide-react";
+﻿import { Factory } from "lucide-react";
 import Link from "next/link";
 import { ReactNode } from "react";
 
@@ -25,7 +25,7 @@ export function AuthShell({
             <Factory size={20} />
           </span>
           <div>
-            <div className="font-semibold text-slate-950">{"\u0421\u0442\u0440\u043e\u0439\u043a\u043e\u043d\u0442\u0440\u043e\u043b\u044c"}</div>
+            <div className="font-semibold text-slate-950">{"Стройконтроль"}</div>
             <div className="text-sm text-slate-500"></div>
           </div>
         </div>

@@ -165,8 +165,34 @@ export function GarageManagerTransportRequestCard({
             onClick={() => onComplete(request)}
             type="button"
           >
+            <Send size={16} />
+            Отправить автору на подтверждение
+          </button>
+        </div>
+      </RequestSummaryCard>
+    </div>
+  );
+}
+
+export function TransportAuthorCompletionCard({
+  onComplete,
+  request,
+}: {
+  onComplete: (request: SupplyRequest) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="rounded-md border border-lime-200 bg-lime-50/40 p-4">
+      <RequestSummaryCard request={request} variant="approval">
+        <TransportDetails request={request} />
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={() => onComplete(request)}
+            type="button"
+          >
             <Check size={16} />
-            Отметить исполненной
+            Подтвердить исполнение
           </button>
         </div>
       </RequestSummaryCard>
@@ -207,7 +233,7 @@ export function PtoRequestCard({
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2 pr-3 font-medium">Материал</th>
               <th className="py-2 pr-3 font-medium">Количество</th>
-              <th className="py-2 pr-3 font-medium">{"\u0421\u043c\u0435\u0442\u043d\u0430\u044f \u0446\u0435\u043d\u0430 \u041f\u0422\u041e \u0437\u0430 \u0435\u0434."}</th>
+              <th className="py-2 pr-3 font-medium">{"Сметная цена ПТО за ед."}</th>
               <th className="py-2 pr-3 font-medium">Удаление</th>
             </tr>
           </thead>
@@ -463,7 +489,7 @@ export function SupplyRequestCard({
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5">
           <span className="text-sm font-medium text-slate-700">
-            {"\u0421\u0447\u0435\u0442\u0430 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443"}
+            {"Счета на оплату"}
           </span>
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
@@ -549,7 +575,7 @@ export function SupplyTransportRequestCard({
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5">
           <span className="text-sm font-medium text-slate-700">
-            {"\u0421\u0447\u0435\u0442\u0430 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443"}
+            {"Счета на оплату"}
           </span>
           <input
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
@@ -615,26 +641,36 @@ export function StorekeeperRequestCard({
   onComplete,
   request,
 }: {
-  onComplete: (request: SupplyRequest) => void;
+  onComplete: (
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-stone-200 bg-stone-50/50 p-4">
+    <form
+      className="rounded-md border border-stone-200 bg-stone-50/50 p-4"
+      onSubmit={(event) => onComplete(request, event)}
+    >
       <RequestSummaryCard request={request} variant="approval">
-        <MaterialItemsTable request={request} />
+        <StorekeeperItemsChecklist request={request} />
         <InvoiceList request={request} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="mt-4 grid gap-3">
+          <input
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            name="comment"
+            placeholder="Комментарий кладовщика"
+          />
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-            onClick={() => onComplete(request)}
-            type="button"
+            type="submit"
           >
             <Check size={16} />
             Подтвердить исполнение
           </button>
         </div>
       </RequestSummaryCard>
-    </div>
+    </form>
   );
 }
 
@@ -705,8 +741,8 @@ export function DirectorRequestCard({
         >
           <Check size={16} />
           {request.type === "MATERIAL"
-            ? "\u0421\u043e\u0433\u043b\u0430\u0441\u043e\u0432\u0430\u0442\u044c"
-            : "\u041e\u0442\u043c\u0435\u0442\u0438\u0442\u044c \u0438\u0441\u043f\u043e\u043b\u043d\u0435\u043d\u043d\u043e\u0439"}
+            ? "Согласовать"
+            : "Отметить исполненной"}
         </button>
       </div>
       </RequestSummaryCard>
@@ -766,6 +802,10 @@ function RequestItemDeleteAction({
 }
 
 function MaterialItemsTable({ request }: { request: SupplyRequest }) {
+  const shouldShowFulfillmentStatus = request.items.some(
+    (item) => item.fulfillmentStatus !== "PENDING",
+  );
+
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[520px] border-collapse text-sm">
@@ -773,6 +813,9 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Материал</th>
             <th className="py-2 pr-3 font-medium">Количество</th>
+            {shouldShowFulfillmentStatus ? (
+              <th className="py-2 pr-3 font-medium">Статус</th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -784,10 +827,90 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
               <td className="py-3 pr-3 text-slate-600">
                 {formatQuantity(item.quantity)} {item.measurementUnitSnapshot}
               </td>
+              {shouldShowFulfillmentStatus ? (
+                <td className="py-3 pr-3">
+                  <span
+                    className={`rounded-full px-2 py-1 text-xs font-medium ${getFulfillmentStatusClass(
+                      item.fulfillmentStatus,
+                    )}`}
+                  >
+                    {getFulfillmentStatusLabel(item.fulfillmentStatus)}
+                  </span>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function getFulfillmentStatusLabel(
+  status: SupplyRequest["items"][number]["fulfillmentStatus"],
+) {
+  if (status === "COMPLETED") {
+    return "Исполнено";
+  }
+
+  if (status === "SKIPPED") {
+    return "Пропущено";
+  }
+
+  return "Ожидает";
+}
+
+function getFulfillmentStatusClass(
+  status: SupplyRequest["items"][number]["fulfillmentStatus"],
+) {
+  if (status === "COMPLETED") {
+    return "bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "SKIPPED") {
+    return "bg-amber-50 text-amber-700";
+  }
+
+  return "bg-slate-100 text-slate-600";
+}
+
+function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[560px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 text-left text-slate-500">
+            <th className="py-2 pr-3 font-medium">Исполнено</th>
+            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">Количество</th>
+          </tr>
+        </thead>
+        <tbody>
+          {request.items.map((item) => (
+            <tr className="border-b border-slate-100" key={item.id}>
+              <td className="py-3 pr-3">
+                <input
+                  className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
+                  defaultChecked
+                  name="completedItemIds"
+                  type="checkbox"
+                  value={item.id}
+                />
+              </td>
+              <td className="py-3 pr-3 text-slate-950">
+                {item.materialNameSnapshot}
+              </td>
+              <td className="py-3 pr-3 text-slate-600">
+                {formatQuantity(item.quantity)} {item.measurementUnitSnapshot}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-xs text-slate-500">
+        Отмеченные позиции будут исполнены. Неотмеченные автоматически получат
+        статус «Пропущено».
+      </p>
     </div>
   );
 }
@@ -872,7 +995,7 @@ function PriceComparisonTable({
             <th className="py-2 pr-3 font-medium">Материал</th>
             <th className="py-2 pr-3 font-medium">Количество</th>
             <th className="py-2 pr-3 font-medium">Цена ПТО за ед.</th>
-            <th className="py-2 pr-3 font-medium">{"\u0421\u0443\u043c\u043c\u0430 \u041f\u0422\u041e"}</th>
+            <th className="py-2 pr-3 font-medium">{"Сумма ПТО"}</th>
             {canEditItems ? (
               <th className="py-2 pr-3 font-medium">Удаление</th>
             ) : null}
@@ -955,7 +1078,7 @@ function MoneyDetails({ request }: { request: SupplyRequest }) {
   return (
     <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">
       <div>
-        <div className="text-slate-500">{"\u0421\u0443\u043c\u043c\u0430"}</div>
+        <div className="text-slate-500">{"Сумма"}</div>
         <div className="mt-1 font-medium text-slate-950">
           {formatMoney(toNumber(request.amount))}
         </div>
@@ -984,7 +1107,7 @@ function InvoiceList({
   if (!request.invoices?.length) {
     return (
       <div className="mt-4 rounded-md border border-dashed border-slate-300 p-3 text-sm text-slate-500">
-        {"\u0421\u0447\u0435\u0442\u0430 \u043d\u0430 \u043e\u043f\u043b\u0430\u0442\u0443 \u043f\u043e\u043a\u0430 \u043d\u0435 \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u043b\u0435\u043d\u044b."}
+        {"Счета на оплату пока не прикреплены."}
       </div>
     );
   }

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
@@ -57,7 +57,7 @@ export function AcceptInvitationForm() {
     <form className="grid gap-4" onSubmit={onSubmit}>
       {!token ? (
         <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {"\u0421\u0441\u044b\u043b\u043a\u0430 \u043f\u0440\u0438\u0433\u043b\u0430\u0448\u0435\u043d\u0438\u044f \u043d\u0435\u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u0430: \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442 token."}
+          {"Ссылка приглашения некорректна: отсутствует token."}
         </div>
       ) : null}
 

@@ -2,6 +2,7 @@
 
 import { RefreshCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { MaterialItemsStatusList } from "@/components/dashboard/material-items-status-list";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getSupplyRequests } from "@/lib/supply-requests-api";
@@ -125,31 +126,33 @@ export function ArchivedRequestsBankPanel({
 
 function RequestDetails({ request }: { request: SupplyRequest }) {
   return (
-    <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-      <Info label="Автор" value={request.author?.name ?? request.authorId} />
-      <Info
-        label="Снабженец"
-        value={
-          request.assignedSupplyUser?.name ??
-          request.assignedSupplyUser?.email ??
-          "-"
-        }
-      />
-      <Info label={getDetailLabel(request)} value={getDetailValue(request)} />
-      <Info
-        label="Счета"
-        value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"}
-      />
-      <Info label="Материал" value={request.items.map((item) => item.materialNameSnapshot).join(", ")} />
-      {request.type === "MONEY" ? (
+    <div className="grid gap-3 text-sm">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Info label="Автор" value={request.author?.name ?? request.authorId} />
         <Info
-          label="Назначение платежа"
-          value={request.paymentPurpose ?? "-"}
+          label="Снабженец"
+          value={
+            request.assignedSupplyUser?.name ??
+            request.assignedSupplyUser?.email ??
+            "-"
+          }
         />
-      ) : null}
-      {request.type === "TRANSPORT" ? (
-        <Info label="Назначение техники" value={request.purpose ?? "-"} />
-      ) : null}
+        <Info label={getDetailLabel(request)} value={getDetailValue(request)} />
+        <Info
+          label="Счета"
+          value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"}
+        />
+        {request.type === "MONEY" ? (
+          <Info
+            label="Назначение платежа"
+            value={request.paymentPurpose ?? "-"}
+          />
+        ) : null}
+        {request.type === "TRANSPORT" ? (
+          <Info label="Назначение техники" value={request.purpose ?? "-"} />
+        ) : null}
+      </div>
+      <MaterialItemsStatusList request={request} />
     </div>
   );
 }

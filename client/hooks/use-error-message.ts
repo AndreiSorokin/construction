@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -31,7 +31,7 @@ export function useErrorMessage() {
     }
 
     setErrorMessage(
-      "\u041f\u0440\u043e\u0438\u0437\u043e\u0448\u043b\u0430 \u043e\u0448\u0438\u0431\u043a\u0430",
+      "Произошла ошибка",
     );
   }, []);
 

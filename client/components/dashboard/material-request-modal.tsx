@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Send, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
@@ -120,7 +120,7 @@ export function MaterialRequestModal({
       );
 
     if (!items.length) {
-      onError("\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u043d\u0443 \u043f\u043e\u0437\u0438\u0446\u0438\u044e \u0441 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435\u043c, \u0435\u0434\u0438\u043d\u0438\u0446\u0435\u0439 \u0438\u0437\u043c\u0435\u0440\u0435\u043d\u0438\u044f \u0438 \u043a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e\u043c");
+      onError("Добавьте хотя бы одну позицию с названием, единицей измерения и количеством");
       return;
     }
 
@@ -131,7 +131,7 @@ export function MaterialRequestModal({
       });
 
       setRequestItems([createEmptyItem()]);
-      onSuccess(`\u0417\u0430\u044f\u0432\u043a\u0430 ${request.requestNumber} \u0441\u043e\u0437\u0434\u0430\u043d\u0430 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0430 \u0433\u043b\u0430\u0432\u043d\u043e\u043c\u0443 \u0438\u043d\u0436\u0435\u043d\u0435\u0440\u0443`);
+      onSuccess(`Заявка ${request.requestNumber} создана и отправлена`);
       onClose();
     } catch (error) {
       onError(error);
@@ -148,17 +148,17 @@ export function MaterialRequestModal({
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">
-              {"\u0417\u0430\u044f\u0432\u043a\u0430 \u043d\u0430 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u044b"}
+              {"Заявка на материалы"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {`${object.name}: \u0434\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0432\u0440\u0443\u0447\u043d\u0443\u044e. \u0421\u043f\u0440\u0430\u0432\u043e\u0447\u043d\u0438\u043a \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u043e\u0432 \u043d\u0435 \u0442\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f.`}
+              {`${object.name}: добавьте позиции вручную. Справочник материалов не требуется.`}
             </p>
           </div>
           <button
-            aria-label="\u0417\u0430\u043a\u0440\u044b\u0442\u044c"
+            aria-label="Закрыть"
             className="grid size-9 shrink-0 place-items-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
             onClick={onClose}
-            title={"\u0417\u0430\u043a\u0440\u044b\u0442\u044c"}
+            title={"Закрыть"}
             type="button"
           >
             <X size={16} />

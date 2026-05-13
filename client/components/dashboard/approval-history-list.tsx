@@ -36,6 +36,7 @@ const actionLabels: Record<ApprovalAction, string> = {
   SENT_TO_GARAGE_MANAGER: "Отправлена заведующему гаражом",
   SENT_TO_WAREHOUSE_MANAGER: "Отправлена начальнику складского хозяйства",
   SENT_TO_STOREKEEPER: "Отправлена кладовщику",
+  SENT_TO_AUTHOR: "Отправлена автору заявки",
   ASSIGNED_TO_SUPPLY: "Назначена снабженцу",
   SENT_TO_DIRECTOR: "Отправлена директору",
   MARKED_IN_PROGRESS: "Взята в работу",
@@ -190,11 +191,11 @@ function formatMoney(value?: string) {
 function translateSystemComment(comment: string) {
   const systemComments: Record<string, string> = {
     "Material supply request created and sent to PTO":
-      "Заявка на материалы создана и отправлена в ПТО",
+      "Заявка на материалы создана и отправлена",
     "Transport request created and sent to supply":
-      "Заявка на транспорт создана и отправлена начальнику снабжения",
+      "Заявка на транспорт создана и отправлена",
     "Money request created and sent to director":
-      "Заявка на деньги создана и отправлена директору",
+      "Заявка на деньги создана и отправлена",
   };
 
   return systemComments[comment] ?? comment;

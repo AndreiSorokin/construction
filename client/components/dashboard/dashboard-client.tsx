@@ -142,7 +142,7 @@ export function DashboardClient() {
               <Factory size={20} />
             </span>
             <div>
-              <div className="font-semibold text-slate-950">{"\u0421\u0442\u0440\u043e\u0439\u043a\u043e\u043d\u0442\u0440\u043e\u043b\u044c"}</div>
+              <div className="font-semibold text-slate-950">{"Стройконтроль"}</div>
               <div className="text-sm text-slate-500">Панель управления</div>
             </div>
           </div>
@@ -231,7 +231,7 @@ export function DashboardClient() {
 
               {!objects.length && !isLoading ? (
                 <div className="rounded-md border border-dashed border-slate-300 p-5 text-sm text-slate-600">
-                  {"\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b\u0445 \u043e\u0431\u044a\u0435\u043a\u0442\u043e\u0432. \u0421\u043e\u0437\u0434\u0430\u0439\u0442\u0435 \u043f\u0435\u0440\u0432\u044b\u0439 \u043e\u0431\u044a\u0435\u043a\u0442 \u0438\u043b\u0438 \u043f\u043e\u043f\u0440\u043e\u0441\u0438\u0442\u0435 \u0434\u0438\u0440\u0435\u043a\u0442\u043e\u0440\u0430 \u043f\u0440\u0438\u0433\u043b\u0430\u0441\u0438\u0442\u044c \u0432\u0430\u0441."}
+                  {"Пока нет доступных объектов. Создайте первый объект или попросите директора пригласить вас."}
 
                 </div>
               ) : null}
@@ -260,7 +260,7 @@ export function DashboardClient() {
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-950">{"\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u043e\u0431\u044a\u0435\u043a\u0442"}</h2>
+              <h2 className="font-semibold text-slate-950">{"Создать объект"}</h2>
               <p className="mt-1 text-sm text-slate-600">
                 При создании объекта пользователь получает роль директора на
                 этом объекте.
@@ -284,7 +284,7 @@ export function DashboardClient() {
                     required
                   >
                     <option value="CONSTRUCTION_OBJECT">
-                      {"\u0421\u0442\u0440\u043e\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u043e\u0431\u044a\u0435\u043a\u0442"}
+                      {"Строительный объект"}
                     </option>
                     <option value="INTERNAL_DEPARTMENT">
                       Внутренний отдел
@@ -296,7 +296,7 @@ export function DashboardClient() {
                   className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
                   type="submit"
                 >
-                  {"\u0421\u043e\u0437\u0434\u0430\u0442\u044c"}
+                  {"Создать"}
                 </button>
               </form>
             </section>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Send, X } from "lucide-react";
 import { FormEvent, useEffect } from "react";
@@ -62,7 +62,7 @@ export function MoneyRequestModal({
 
       formElement.reset();
       onSuccess(
-        `Заявка ${request.requestNumber} создана и отправлена на следующий этап`,
+        `Заявка ${request.requestNumber} создана и отправлена`,
       );
       onClose();
     } catch (error) {
@@ -102,7 +102,7 @@ export function MoneyRequestModal({
           onSubmit={submitMoneyRequest}
         >
           <label className="grid gap-1.5">
-              <span className="text-sm font-medium text-slate-700">{"\u0421\u0443\u043c\u043c\u0430"}</span>
+              <span className="text-sm font-medium text-slate-700">{"Сумма"}</span>
             <input
               className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
               min="0.01"

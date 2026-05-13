@@ -53,7 +53,7 @@ export function TransportRequestModal({
       });
 
       formElement.reset();
-      onSuccess(`Заявка ${request.requestNumber} создана и отправлена в снабжение`);
+      onSuccess(`Заявка ${request.requestNumber} создана и отправлена`);
       onClose();
     } catch (error) {
       onError(error);

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeft, Factory } from "lucide-react";
 import Link from "next/link";
@@ -41,7 +41,7 @@ export function ArchivedRequestsBankPageClient() {
             </span>
             <div className="min-w-0">
               <div className="truncate font-semibold text-slate-950">
-                {"\u0421\u0442\u0440\u043e\u0439\u043a\u043e\u043d\u0442\u0440\u043e\u043b\u044c"}
+                {"Стройконтроль"}
               </div>
               <div className="text-sm text-slate-500">Банк заявок</div>
             </div>

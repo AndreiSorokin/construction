@@ -342,6 +342,19 @@ export function completeTransportByGarageManager(
   );
 }
 
+export function completeTransportByAuthor(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/transport/author/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function approveSupplyRequestByDirector(
   requestId: string,
   comment?: string,
@@ -390,13 +403,16 @@ export function completeSupplyRequest(requestId: string, comment?: string) {
 
 export function completeSupplyRequestByStorekeeper(
   requestId: string,
-  comment?: string,
+  payload: {
+    comment?: string;
+    completedItemIds: string[];
+  },
 ) {
   return apiClient<SupplyRequest>(
     `/supply-requests/${requestId}/storekeeper/complete`,
     {
       method: "PATCH",
-      body: { comment },
+      body: payload,
     },
   );
 }

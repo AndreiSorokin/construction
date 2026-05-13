@@ -70,6 +70,7 @@ export type SupplyRequestStatus =
   | "PENDING_GARAGE_MANAGER"
   | "PENDING_WAREHOUSE_MANAGER"
   | "PENDING_STOREKEEPER"
+  | "PENDING_TRANSPORT_AUTHOR"
   | "RETURNED_TO_SUPPLY"
   | "REJECTED"
   | "IN_PROGRESS"
@@ -77,6 +78,11 @@ export type SupplyRequestStatus =
   | "ARCHIVED";
 
 export type SupplyRequestType = "MATERIAL" | "TRANSPORT" | "MONEY";
+
+export type SupplyRequestItemFulfillmentStatus =
+  | "PENDING"
+  | "COMPLETED"
+  | "SKIPPED";
 
 export type ApprovalAction =
   | "CREATED"
@@ -90,6 +96,7 @@ export type ApprovalAction =
   | "SENT_TO_GARAGE_MANAGER"
   | "SENT_TO_WAREHOUSE_MANAGER"
   | "SENT_TO_STOREKEEPER"
+  | "SENT_TO_AUTHOR"
   | "ASSIGNED_TO_SUPPLY"
   | "SENT_TO_DIRECTOR"
   | "MARKED_IN_PROGRESS"
@@ -122,6 +129,7 @@ export type SupplyRequestItem = {
   quantity: string;
   ptoLimitPrice?: string | null;
   supplierPurchasePrice?: string | null;
+  fulfillmentStatus: SupplyRequestItemFulfillmentStatus;
 };
 
 export type SupplyRequestInvoice = {
