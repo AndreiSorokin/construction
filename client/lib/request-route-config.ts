@@ -11,6 +11,7 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "PTO",
     "WORKSHOP_MANAGER",
     "DEPUTY_PRODUCTION_DIRECTOR",
+    "DEPUTY_TRANSPORT_DIRECTOR",
   ],
   TRANSPORT: [
     "FOREMAN",
@@ -18,6 +19,7 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "SITE_MANAGER",
     "WORKSHOP_MANAGER",
     "SUPPLY",
+    "DEPUTY_TRANSPORT_DIRECTOR",
   ],
   MONEY: [
     "FOREMAN",
@@ -26,6 +28,12 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "SECRETARY",
     "CHIEF_ENGINEER",
     "DEPUTY_PRODUCTION_DIRECTOR",
+    "DEPUTY_TRANSPORT_DIRECTOR",
+    "SUPPLY",
+    "GARAGE_MANAGER",
+    "WAREHOUSE_MANAGER",
+    "SUPPLY_MANAGER",
+    "PTO",
   ],
 };
 

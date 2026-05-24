@@ -77,7 +77,7 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
       ...MATERIAL_COMMON_ROUTE,
     ],
     GARAGE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
       ...MATERIAL_COMMON_ROUTE,
     ],
     SECRETARY: MATERIAL_COMMON_ROUTE,
@@ -88,34 +88,50 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
       ...MATERIAL_COMMON_ROUTE,
     ],
+    DEPUTY_TRANSPORT_DIRECTOR: MATERIAL_COMMON_ROUTE,
     DEPUTY_PRODUCTION_DIRECTOR: SUPPLY_COMMON_ROUTE,
   },
   MONEY: {
-    FOREMAN: [
+    CHIEF_ENGINEER: MONEY_COMMON_ROUTE,
+    DEPUTY_PRODUCTION_DIRECTOR: MONEY_COMMON_ROUTE,
+    DEPUTY_TRANSPORT_DIRECTOR: MONEY_COMMON_ROUTE,
+    SUPPLY: MONEY_COMMON_ROUTE,
+    SECRETARY: MONEY_COMMON_ROUTE,
+    GARAGE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...MONEY_COMMON_ROUTE
+    ],
+    WAREHOUSE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...MONEY_COMMON_ROUTE,
+    ],
+    SUPPLY_MANAGER: [
       SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...SUPPLY_COMMON_ROUTE,
+      ...MONEY_COMMON_ROUTE,
+    ],
+    PTO: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...MONEY_COMMON_ROUTE,
     ],
     SITE_MANAGER: [
       SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...SUPPLY_COMMON_ROUTE,
+      ...MONEY_COMMON_ROUTE,
+    ],
+    FOREMAN: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...MONEY_COMMON_ROUTE,
     ],
     WORKSHOP_MANAGER: [
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      ...SUPPLY_COMMON_ROUTE,
-    ],
-    SECRETARY: [
-      SupplyRequestStatus.PENDING_DIRECTOR,
-      SupplyRequestStatus.COMPLETED,
-    ],
-    CHIEF_ENGINEER: MONEY_COMMON_ROUTE,
-    DEPUTY_PRODUCTION_DIRECTOR: SUPPLY_COMMON_ROUTE,
+      ...MONEY_COMMON_ROUTE,
+    ]
   },
   TRANSPORT: {
     FOREMAN: TRANSPORT_COMMON_ROUTE,
     CHIEF_ENGINEER: TRANSPORT_COMMON_ROUTE,
     SITE_MANAGER: TRANSPORT_COMMON_ROUTE,
     WORKSHOP_MANAGER: TRANSPORT_COMMON_ROUTE,
-    SUPPLY: TRANSPORT_COMMON_ROUTE
+    SUPPLY: TRANSPORT_COMMON_ROUTE,
   },
 };
 
@@ -859,6 +875,58 @@ export class SupplyRequestsService {
     ]);
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+    ]);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        ApprovalAction.REJECTED,
+        request.status,
+        SupplyRequestStatus.REJECTED,
+        dto.comment,
+      ),
+    );
+  }
+
+  async approveByDeputyTransportDirector(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DEPUTY_TRANSPORT_DIRECTOR,
+    ]);
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async rejectByDeputyTransportDirector(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DEPUTY_TRANSPORT_DIRECTOR,
     ]);
 
     return this.prisma.$transaction((tx) =>
@@ -1705,7 +1773,9 @@ export class SupplyRequestsService {
       PENDING_PTO: "в ПТО",
       PENDING_CHIEF_ENGINEER: "главному инженеру",
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-      "заместителю директора по производству",
+        "заместителю директора по производству",
+      PENDING_DEPUTY_TRANSPORT_DIRECTOR:
+        "заместителю директора по транспорту",
       PENDING_SUPPLY_MANAGER: "начальнику снабжения",
       PENDING_SUPPLY: "снабженцу",
       PENDING_DIRECTOR: "директору",
@@ -1755,7 +1825,8 @@ export class SupplyRequestsService {
       PENDING_PTO: ApprovalAction.SENT_TO_PTO,
       PENDING_CHIEF_ENGINEER: ApprovalAction.SENT_TO_CHIEF_ENGINEER,
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-      ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+      PENDING_DEPUTY_TRANSPORT_DIRECTOR: ApprovalAction.APPROVED,
       PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
       PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
       PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
@@ -1823,6 +1894,7 @@ export class SupplyRequestsService {
       PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
         UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+      PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
     };
 

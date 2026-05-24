@@ -229,6 +229,32 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/deputy-transport-director/approve")
+  approveByDeputyTransportDirector(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByDeputyTransportDirector(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/deputy-transport-director/reject")
+  rejectByDeputyTransportDirector(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.rejectByDeputyTransportDirector(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/invoices/send-to-director")
   @UseInterceptors(FilesInterceptor("files", 10))
   attachInvoicesAndSendToDirector(

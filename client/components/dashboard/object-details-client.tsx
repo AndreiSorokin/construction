@@ -37,6 +37,7 @@ const inviteRoleLabels: Record<UserRole, string> = {
   SITE_MANAGER: "Начальник участка",
   WORKSHOP_MANAGER: "Начальник цеха",
   DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
+  DEPUTY_TRANSPORT_DIRECTOR: "Зам. директора по транспорту",
   SUPPLY_MANAGER: "Начальник снабжения",
   SUPPLY: "Снабженец",
   PTO: "ПТО",

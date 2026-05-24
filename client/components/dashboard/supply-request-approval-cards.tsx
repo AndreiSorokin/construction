@@ -538,14 +538,14 @@ export function SupplyMoneyRequestCard({
           <input
             className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
             name="comment"
-            placeholder="Комментарий снабжения"
+            placeholder="Комментарий к исполнению"
           />
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
             type="submit"
           >
-            <Send size={16} />
-            Отправить директору
+            <Check size={16} />
+            Отметить исполненной
           </button>
         </div>
       </RequestSummaryCard>

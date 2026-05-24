@@ -23,6 +23,7 @@ import {
 import {
   approveSupplyRequestByChiefEngineer,
   approveSupplyRequestByDeputyProductionDirector,
+  approveSupplyRequestByDeputyTransportDirector,
   approveSupplyRequestByDirector,
   approveSupplyRequestByWarehouseManager,
   assignSupplyRequest,
@@ -37,6 +38,7 @@ import {
   rejectSupplyRequestByDirector,
   rejectSupplyRequestByChiefEngineer,
   rejectSupplyRequestByDeputyProductionDirector,
+  rejectSupplyRequestByDeputyTransportDirector,
   returnSupplyRequestToSupplyByDirector,
   sendMoneyRequestToDirector,
   sendTransportToGarageManager,
@@ -188,6 +190,32 @@ export function SupplyRequestsPanel({
 
     try {
       await rejectSupplyRequestByDeputyProductionDirector(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отклонена`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function approveByDeputyTransportDirector(request: SupplyRequest) {
+    try {
+      await approveSupplyRequestByDeputyTransportDirector(request.id);
+      onSuccess(`Заявка ${request.requestNumber} подтверждена`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function rejectByDeputyTransportDirector(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к отклонению заявки") ?? null;
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await rejectSupplyRequestByDeputyTransportDirector(request.id, comment);
       onSuccess(`Заявка ${request.requestNumber} отклонена`);
       await loadRequests();
     } catch (error) {
@@ -390,7 +418,7 @@ export function SupplyRequestsPanel({
         String(form.get("comment") ?? ""),
       );
 
-      onSuccess(`Заявка ${request.requestNumber} отправлена директору`);
+      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -579,6 +607,19 @@ export function SupplyRequestsPanel({
                 );
               }
 
+              if (objectRole === "DEPUTY_TRANSPORT_DIRECTOR") {
+                return (
+                  <DeputyProductionDirectorRequestCard
+                    key={request.id}
+                    request={request}
+                    onApprove={approveByDeputyTransportDirector}
+                    onDeleteItem={deleteRequestItemFromRequest}
+                    onReject={rejectByDeputyTransportDirector}
+                    onUpdateItem={updateRequestItemQuantity}
+                  />
+                );
+              }
+
               if (objectRole === "SUPPLY_MANAGER") {
                 if (request.type === "TRANSPORT") {
                   return (
@@ -713,6 +754,10 @@ function getVisibleRequests(
 
     if (objectRole === "DEPUTY_PRODUCTION_DIRECTOR") {
       return request.status === "PENDING_DEPUTY_PRODUCTION_DIRECTOR";
+    }
+
+    if (objectRole === "DEPUTY_TRANSPORT_DIRECTOR") {
+      return request.status === "PENDING_DEPUTY_TRANSPORT_DIRECTOR";
     }
 
     if (objectRole === "GARAGE_MANAGER") {

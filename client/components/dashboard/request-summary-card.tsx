@@ -35,6 +35,7 @@ const statusClasses: Record<SupplyRequestStatus, string> = {
   PENDING_PTO: "bg-amber-50 text-amber-700",
   PENDING_CHIEF_ENGINEER: "bg-indigo-50 text-indigo-700",
   PENDING_DEPUTY_PRODUCTION_DIRECTOR: "bg-fuchsia-50 text-fuchsia-700",
+  PENDING_DEPUTY_TRANSPORT_DIRECTOR: "bg-orange-50 text-orange-700",
   PENDING_SUPPLY_MANAGER: "bg-sky-50 text-sky-700",
   PENDING_SUPPLY: "bg-cyan-50 text-cyan-700",
   PENDING_DIRECTOR: "bg-violet-50 text-violet-700",

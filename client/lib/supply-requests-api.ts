@@ -261,6 +261,32 @@ export function rejectSupplyRequestByDeputyProductionDirector(
   );
 }
 
+export function approveSupplyRequestByDeputyTransportDirector(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/deputy-transport-director/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function rejectSupplyRequestByDeputyTransportDirector(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/deputy-transport-director/reject`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function attachInvoicesAndSendToDirector(
   requestId: string,
   payload: {
