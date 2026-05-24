@@ -23,6 +23,7 @@ import {
   inviteObjectUser,
   updateObjectUserRole,
 } from "@/lib/objects-api";
+import { canCreateRequestType } from "@/lib/request-route-config";
 import { ObjectEntity, User, UserRole } from "@/lib/types";
 
 const objectTypeLabels = {
@@ -70,7 +71,15 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const currentObjectRole = object?.userAccesses?.find(
     (access) => access.userId === user?.id,
   )?.role;
-  const canCreateRequests = Boolean(currentObjectRole);
+  const canCreateMaterialRequest = canCreateRequestType(
+    currentObjectRole,
+    "MATERIAL",
+  );
+  const canCreateTransportRequest = canCreateRequestType(
+    currentObjectRole,
+    "TRANSPORT",
+  );
+  const canCreateMoneyRequest = canCreateRequestType(currentObjectRole, "MONEY");
   const canInviteUsers = currentObjectRole === "DIRECTOR";
   const canDeleteObject = currentObjectRole === "DIRECTOR";
 
@@ -273,7 +282,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                 </div>
 
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  {canCreateRequests ? (
+                  {canCreateMaterialRequest ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
                       onClick={() => setIsMaterialRequestOpen(true)}
@@ -284,7 +293,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </button>
                   ) : null}
 
-                  {canCreateRequests ? (
+                  {canCreateTransportRequest ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50"
                       onClick={() => setIsTransportRequestOpen(true)}
@@ -295,7 +304,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </button>
                   ) : null}
 
-                  {canCreateRequests ? (
+                  {canCreateMoneyRequest ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
                       onClick={() => setIsMoneyRequestOpen(true)}

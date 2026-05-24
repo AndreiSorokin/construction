@@ -10,7 +10,6 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 import {
   ApprovalAction,
-  ObjectLimitType,
   ObjectType,
   PriceField,
   Prisma,
@@ -31,6 +30,94 @@ import { RequestActionDto } from "./dto/request-action.dto";
 import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
+
+type RequestRouteMap = Partial<
+  Record<SupplyRequestType, Partial<Record<UserRole, SupplyRequestStatus[]>>>
+>;
+
+const SUPPLY_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+  SupplyRequestStatus.PENDING_SUPPLY,
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.COMPLETED,
+];
+
+const MATERIAL_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+  SupplyRequestStatus.PENDING_PTO,
+  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+  SupplyRequestStatus.PENDING_SUPPLY,
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.IN_PROGRESS, //Back to supply
+  SupplyRequestStatus.PENDING_STOREKEEPER,
+  SupplyRequestStatus.COMPLETED,
+];
+
+const MONEY_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+  SupplyRequestStatus.PENDING_SUPPLY,
+  SupplyRequestStatus.COMPLETED,
+]
+
+const TRANSPORT_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+  SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
+  SupplyRequestStatus.COMPLETED,
+]
+
+const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
+  MATERIAL: {
+    FOREMAN: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...MATERIAL_COMMON_ROUTE,
+    ],
+    SITE_MANAGER: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...MATERIAL_COMMON_ROUTE,
+    ],
+    GARAGE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      ...MATERIAL_COMMON_ROUTE,
+    ],
+    SECRETARY: MATERIAL_COMMON_ROUTE,
+    CHIEF_ENGINEER: MATERIAL_COMMON_ROUTE,
+    WAREHOUSE_MANAGER: MATERIAL_COMMON_ROUTE.slice(1),
+    PTO: MATERIAL_COMMON_ROUTE.slice(2),
+    WORKSHOP_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      ...MATERIAL_COMMON_ROUTE,
+    ],
+    DEPUTY_PRODUCTION_DIRECTOR: SUPPLY_COMMON_ROUTE,
+  },
+  MONEY: {
+    FOREMAN: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...SUPPLY_COMMON_ROUTE,
+    ],
+    SITE_MANAGER: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...SUPPLY_COMMON_ROUTE,
+    ],
+    WORKSHOP_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      ...SUPPLY_COMMON_ROUTE,
+    ],
+    SECRETARY: [
+      SupplyRequestStatus.PENDING_DIRECTOR,
+      SupplyRequestStatus.COMPLETED,
+    ],
+    CHIEF_ENGINEER: MONEY_COMMON_ROUTE,
+    DEPUTY_PRODUCTION_DIRECTOR: SUPPLY_COMMON_ROUTE,
+  },
+  TRANSPORT: {
+    FOREMAN: TRANSPORT_COMMON_ROUTE,
+    CHIEF_ENGINEER: TRANSPORT_COMMON_ROUTE,
+    SITE_MANAGER: TRANSPORT_COMMON_ROUTE,
+    WORKSHOP_MANAGER: TRANSPORT_COMMON_ROUTE,
+    SUPPLY: TRANSPORT_COMMON_ROUTE
+  },
+};
 
 @Injectable()
 export class SupplyRequestsService {
@@ -552,9 +639,9 @@ export class SupplyRequestsService {
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        this.getRouteActionForStatus(this.getNextRouteStatus(request)),
         request.status,
-        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+        this.getNextRouteStatus(request),
         dto.comment,
       );
     });
@@ -580,19 +667,8 @@ export class SupplyRequestsService {
       UserRole.CHIEF_ENGINEER,
     ]);
 
-    let nextStatus: SupplyRequestStatus =
-      SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-    let action: ApprovalAction = ApprovalAction.SENT_TO_SUPPLY_MANAGER;
-
-    if (request.type === SupplyRequestType.MATERIAL) {
-      nextStatus = SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER;
-      action = ApprovalAction.SENT_TO_WAREHOUSE_MANAGER;
-    }
-
-    if (request.type === SupplyRequestType.TRANSPORT) {
-      nextStatus = SupplyRequestStatus.PENDING_GARAGE_MANAGER;
-      action = ApprovalAction.SENT_TO_GARAGE_MANAGER;
-    }
+    const nextStatus = this.getNextRouteStatus(request);
+    const action = this.getRouteActionForStatus(nextStatus);
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -626,14 +702,16 @@ export class SupplyRequestsService {
       UserRole.WAREHOUSE_MANAGER,
     ]);
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_PTO,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_PTO,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -730,13 +808,15 @@ export class SupplyRequestsService {
         });
       }
 
+      const nextStatus = this.getNextRouteStatus(request);
+
       return this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_PTO,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_PTO,
+        nextStatus,
         dto.comment,
       );
     });
@@ -754,14 +834,16 @@ export class SupplyRequestsService {
       UserRole.DEPUTY_PRODUCTION_DIRECTOR,
     ]);
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -824,6 +906,7 @@ export class SupplyRequestsService {
     }
 
     this.ensureMaterialRequestHasActiveItems(request);
+    const nextStatus = this.getNextRouteStatus(request);
 
     return this.prisma.$transaction(async (tx) => {
       await tx.supplyRequest.update({
@@ -832,7 +915,7 @@ export class SupplyRequestsService {
           assignedSupplyUserId: dto.supplyUserId,
           assignedById: actorId,
           assignedAt: new Date(),
-          status: SupplyRequestStatus.PENDING_SUPPLY,
+          status: nextStatus,
         },
       });
 
@@ -842,7 +925,7 @@ export class SupplyRequestsService {
           actorId,
           action: ApprovalAction.ASSIGNED_TO_SUPPLY,
           fromStatus: request.status,
-          toStatus: SupplyRequestStatus.PENDING_SUPPLY,
+          toStatus: nextStatus,
           comment: dto.comment,
           changesJson: {
             assignedSupplyUserId: dto.supplyUserId,
@@ -871,14 +954,16 @@ export class SupplyRequestsService {
       UserRole.SUPPLY_MANAGER,
     ]);
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_GARAGE_MANAGER,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -898,14 +983,16 @@ export class SupplyRequestsService {
       UserRole.GARAGE_MANAGER,
     ]);
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_AUTHOR,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -928,14 +1015,16 @@ export class SupplyRequestsService {
       );
     }
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.COMPLETED,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.COMPLETED,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -1034,13 +1123,15 @@ export class SupplyRequestsService {
         });
       }
 
+      const nextStatus = this.getNextRouteStatus(request);
+
       return this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_DIRECTOR,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_DIRECTOR,
+        nextStatus,
         dto.comment,
       );
     });
@@ -1064,14 +1155,16 @@ export class SupplyRequestsService {
     ]);
     this.ensureAssignedSupplyUser(request, actorId);
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_DIRECTOR,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_DIRECTOR,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -1102,14 +1195,16 @@ export class SupplyRequestsService {
     ]);
     this.ensureAssignedSupplyUser(request, actorId);
 
+    const nextStatus = this.getNextRouteStatus(request);
+
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
         tx,
         id,
         actorId,
-        ApprovalAction.SENT_TO_DIRECTOR,
+        this.getRouteActionForStatus(nextStatus),
         request.status,
-        SupplyRequestStatus.PENDING_DIRECTOR,
+        nextStatus,
         dto.comment,
       ),
     );
@@ -1130,14 +1225,8 @@ export class SupplyRequestsService {
     ]);
     this.ensureMaterialRequestHasActiveItems(request);
 
-    const targetStatus =
-      request.type === SupplyRequestType.MATERIAL
-        ? SupplyRequestStatus.IN_PROGRESS
-        : SupplyRequestStatus.COMPLETED;
-    const action =
-      request.type === SupplyRequestType.MATERIAL
-        ? ApprovalAction.MARKED_IN_PROGRESS
-        : ApprovalAction.COMPLETED;
+    const targetStatus = this.getNextRouteStatus(request);
+    const action = this.getRouteActionForStatus(targetStatus);
 
     return this.prisma.$transaction(async (tx) => {
       const statusUpdate = await tx.supplyRequest.updateMany({
@@ -1155,8 +1244,6 @@ export class SupplyRequestsService {
           "Request is no longer pending director approval",
         );
       }
-
-      await this.spendObjectLimitIfNeeded(tx, request);
 
       await tx.approvalHistory.create({
         data: {
@@ -1270,14 +1357,16 @@ export class SupplyRequestsService {
     }
 
     if (request.type === SupplyRequestType.MATERIAL) {
+      const nextStatus = this.getNextRouteStatus(request);
+
       return this.prisma.$transaction((tx) =>
         this.moveRequest(
           tx,
           id,
           actorId,
-          ApprovalAction.SENT_TO_STOREKEEPER,
+          this.getRouteActionForStatus(nextStatus),
           request.status,
-          SupplyRequestStatus.PENDING_STOREKEEPER,
+          nextStatus,
           dto.comment,
         ),
       );
@@ -1334,6 +1423,7 @@ export class SupplyRequestsService {
     const skippedItemIds = request.items
       .filter((item) => !completedItemIds.has(item.id))
       .map((item) => item.id);
+    const nextStatus = this.getNextRouteStatus(request);
 
     return this.prisma.$transaction(async (tx) => {
       if (dto.completedItemIds.length) {
@@ -1361,12 +1451,12 @@ export class SupplyRequestsService {
       return this.moveRequest(
         tx,
         id,
-        actorId,
-        ApprovalAction.COMPLETED,
-        request.status,
-        SupplyRequestStatus.COMPLETED,
-        dto.comment,
-        {
+          actorId,
+          this.getRouteActionForStatus(nextStatus),
+          request.status,
+          nextStatus,
+          dto.comment,
+          {
           completedItemIds: dto.completedItemIds,
           skippedItemIds,
         },
@@ -1481,10 +1571,14 @@ export class SupplyRequestsService {
       include: {
         items: true,
         assignedSupplyUser: true,
+        author: {
+          include: {
+            objectAccesses: true,
+          },
+        },
         object: {
-          select: {
-            id: true,
-            type: true,
+          include: {
+            userAccesses: true,
           },
         },
       },
@@ -1568,11 +1662,19 @@ export class SupplyRequestsService {
       throw new ForbiddenException("User has no access to this object");
     }
 
-    const status = this.getInitialRequestStatus(
+    const route = this.getRequestRoute(
       requestType,
       objectAccess.role,
       objectAccess.object.type,
     );
+
+    if (!route?.length) {
+      throw new ForbiddenException(
+        "User role is not allowed to create this request type",
+      );
+    }
+
+    const status = route[0];
 
     return {
       status,
@@ -1580,92 +1682,13 @@ export class SupplyRequestsService {
     };
   }
 
-  private getInitialRequestStatus(
+  private getRequestRoute(
     requestType: SupplyRequestType,
     authorRole: UserRole,
     objectType: ObjectType,
   ) {
-    if (authorRole === UserRole.SECRETARY) {
-      if (requestType === SupplyRequestType.MATERIAL) {
-        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-      }
-
-      if (requestType === SupplyRequestType.TRANSPORT) {
-        return SupplyRequestStatus.PENDING_GARAGE_MANAGER;
-      }
-
-      return SupplyRequestStatus.PENDING_DIRECTOR;
-    }
-
-    if (objectType === ObjectType.WORKSHOP) {
-      if (authorRole === UserRole.DEPUTY_PRODUCTION_DIRECTOR) {
-        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-      }
-
-      if (authorRole === UserRole.SUPPLY_MANAGER) {
-        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-      }
-
-      if (authorRole === UserRole.SUPPLY) {
-        return SupplyRequestStatus.PENDING_DIRECTOR;
-      }
-
-      if (authorRole === UserRole.DIRECTOR) {
-        return SupplyRequestStatus.PENDING_DIRECTOR;
-      }
-
-      return SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR;
-    }
-
-    if (requestType === SupplyRequestType.MATERIAL) {
-      if (authorRole === UserRole.CHIEF_ENGINEER) {
-        return SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER;
-      }
-
-      if (authorRole === UserRole.WAREHOUSE_MANAGER) {
-        return SupplyRequestStatus.PENDING_PTO;
-      }
-
-      if (authorRole === UserRole.PTO) {
-        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-      }
-
-      if (authorRole === UserRole.SUPPLY_MANAGER) {
-        return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-      }
-
-      if (authorRole === UserRole.SUPPLY) {
-        return SupplyRequestStatus.PENDING_DIRECTOR;
-      }
-
-      if (authorRole === UserRole.DIRECTOR) {
-        return SupplyRequestStatus.PENDING_DIRECTOR;
-      }
-
-      return SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
-    }
-
-    if (requestType === SupplyRequestType.TRANSPORT) {
-      return SupplyRequestStatus.PENDING_GARAGE_MANAGER;
-    }
-
-    if (authorRole === UserRole.CHIEF_ENGINEER) {
-      return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-    }
-
-    if (authorRole === UserRole.SUPPLY_MANAGER) {
-      return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
-    }
-
-    if (authorRole === UserRole.SUPPLY) {
-      return SupplyRequestStatus.PENDING_DIRECTOR;
-    }
-
-    if (authorRole === UserRole.DIRECTOR) {
-      return SupplyRequestStatus.PENDING_DIRECTOR;
-    }
-
-    return SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
+    void objectType;
+    return REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
   }
 
   private getCreatedRequestComment(
@@ -1682,20 +1705,84 @@ export class SupplyRequestsService {
       PENDING_PTO: "в ПТО",
       PENDING_CHIEF_ENGINEER: "главному инженеру",
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-        "заместителю директора по производству",
+      "заместителю директора по производству",
       PENDING_SUPPLY_MANAGER: "начальнику снабжения",
       PENDING_SUPPLY: "снабженцу",
       PENDING_DIRECTOR: "директору",
       PENDING_GARAGE_MANAGER: "заведующему гаражом",
-      PENDING_WAREHOUSE_MANAGER:
-        "начальнику складского хозяйства",
+      PENDING_WAREHOUSE_MANAGER: "начальнику складского хозяйства",
       PENDING_STOREKEEPER: "кладовщику",
       PENDING_TRANSPORT_AUTHOR: "автору заявки",
     };
 
-    return `${requestLabel[requestType]} создана и отправлена${
+    return `${requestLabel[requestType]} создана и отправлена ${
       statusLabel[status] ?? "на следующий этап"
-    }`; 
+    }`;
+  }
+
+  private getNextRouteStatus(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+  ) {
+    const authorRole = this.getRequestAuthorRole(request);
+
+    if (!authorRole) {
+      throw new BadRequestException("Request author role is not defined");
+    }
+
+    const route = this.getRequestRoute(
+      request.type,
+      authorRole,
+      request.object.type,
+    );
+
+    if (!route?.length) {
+      throw new BadRequestException("Approval route is not configured");
+    }
+
+    const currentStepIndex = route.indexOf(request.status);
+
+    if (currentStepIndex < 0 || currentStepIndex >= route.length - 1) {
+      throw new BadRequestException(
+        "Request cannot be moved to the next route step",
+      );
+    }
+
+    return route[currentStepIndex + 1];
+  }
+
+  private getRouteActionForStatus(status: SupplyRequestStatus) {
+    const actionByStatus: Partial<Record<SupplyRequestStatus, ApprovalAction>> = {
+      PENDING_PTO: ApprovalAction.SENT_TO_PTO,
+      PENDING_CHIEF_ENGINEER: ApprovalAction.SENT_TO_CHIEF_ENGINEER,
+      PENDING_DEPUTY_PRODUCTION_DIRECTOR:
+      ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+      PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+      PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
+      PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
+      PENDING_GARAGE_MANAGER: ApprovalAction.SENT_TO_GARAGE_MANAGER,
+      PENDING_WAREHOUSE_MANAGER: ApprovalAction.SENT_TO_WAREHOUSE_MANAGER,
+      PENDING_STOREKEEPER: ApprovalAction.SENT_TO_STOREKEEPER,
+      PENDING_TRANSPORT_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
+      IN_PROGRESS: ApprovalAction.MARKED_IN_PROGRESS,
+      COMPLETED: ApprovalAction.COMPLETED,
+      ARCHIVED: ApprovalAction.ARCHIVED,
+    };
+
+    return actionByStatus[status] ?? ApprovalAction.APPROVED;
+  }
+
+  private getRequestAuthorRole(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+  ) {
+    return (
+      request.object.userAccesses.find(
+        (access) => access.userId === request.authorId,
+      )?.role ??
+      request.author.objectAccesses.find(
+        (access) => access.objectId === request.objectId,
+      )?.role ??
+      null
+    );
   }
 
   private async ensureCanModifyRequestItems(
@@ -1764,84 +1851,6 @@ export class SupplyRequestsService {
         "Material request has no active approved items",
       );
     }
-  }
-
-  private async spendObjectLimitIfNeeded(
-    tx: Prisma.TransactionClient,
-    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
-  ) {
-    void tx;
-    void request;
-    return;
-
-    if (request.object.type === ObjectType.INTERNAL_DEPARTMENT) {
-      return;
-    }
-
-    const limitType = this.getObjectLimitType(request.type);
-    const amount = this.calculateRequestDebitAmount(request);
-
-    if (amount.lessThanOrEqualTo(0)) {
-      return;
-    }
-
-    const updatedLimits = await tx.$queryRaw<Array<{ id: string }>>`
-      UPDATE "ObjectLimit"
-      SET
-        "spentAmount" = "spentAmount" + ${amount},
-        "updatedAt" = CURRENT_TIMESTAMP
-      WHERE
-        "objectId" = ${request.objectId}
-        AND "type" = ${limitType}::"ObjectLimitType"
-        AND ("spentAmount" + ${amount}) <= "limitAmount"
-      RETURNING "id"
-    `;
-
-    if (updatedLimits.length !== 1) {
-      throw new BadRequestException(
-        "Request amount exceeds the remaining object limit",
-      );
-    }
-  }
-
-  private getObjectLimitType(requestType: SupplyRequestType) {
-    if (requestType === SupplyRequestType.MATERIAL) {
-      return ObjectLimitType.MATERIAL;
-    }
-
-    if (requestType === SupplyRequestType.TRANSPORT) {
-      return ObjectLimitType.TRANSPORT;
-    }
-
-    return ObjectLimitType.MONEY;
-  }
-
-  private calculateRequestDebitAmount(
-    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
-  ) {
-    if (request.type === SupplyRequestType.MATERIAL) {
-      return request.items.reduce((total, item) => {
-        const debitPrice = item.supplierPurchasePrice ?? item.ptoLimitPrice;
-
-        if (!debitPrice) {
-          throw new BadRequestException(
-            "PTO price is required before director approval",
-          );
-        }
-
-        return total.add(debitPrice.mul(item.quantity));
-      }, new Prisma.Decimal(0));
-    }
-
-    if (request.type === SupplyRequestType.MONEY) {
-      if (!request.amount) {
-        throw new BadRequestException("Money request amount is required");
-      }
-
-      return request.amount;
-    }
-
-    return request.amount ?? new Prisma.Decimal(0);
   }
 
   private async moveRequest(
