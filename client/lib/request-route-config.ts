@@ -7,11 +7,7 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "GARAGE_MANAGER",
     "SECRETARY",
     "CHIEF_ENGINEER",
-    "WAREHOUSE_MANAGER",
-    "PTO",
     "WORKSHOP_MANAGER",
-    "DEPUTY_PRODUCTION_DIRECTOR",
-    "DEPUTY_TRANSPORT_DIRECTOR",
   ],
   TRANSPORT: [
     "FOREMAN",
