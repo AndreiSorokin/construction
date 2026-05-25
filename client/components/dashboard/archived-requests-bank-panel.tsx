@@ -4,6 +4,7 @@ import { RefreshCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MaterialItemsStatusList } from "@/components/dashboard/material-items-status-list";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
+import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getSupplyRequests } from "@/lib/supply-requests-api";
 import { SupplyRequest } from "@/lib/types";
@@ -59,6 +60,10 @@ export function ArchivedRequestsBankPanel({
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <NotificationToasts
+        errorMessage={errorMessage}
+        onClearError={clearError}
+      />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-slate-950">Выполненные заявки</h2>
@@ -73,12 +78,6 @@ export function ArchivedRequestsBankPanel({
           Обновить
         </button>
       </div>
-
-      {errorMessage ? (
-        <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {errorMessage}
-        </div>
-      ) : null}
 
       <div className="mt-4 grid gap-4">
         {requestGroups.map((group) => (

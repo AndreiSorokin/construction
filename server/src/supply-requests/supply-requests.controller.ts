@@ -28,6 +28,7 @@ import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
+import { SendToStorekeeperDto } from "./dto/send-to-storekeeper.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SupplyRequestsService } from "./supply-requests.service";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
@@ -131,6 +132,15 @@ export class SupplyRequestsController {
       dto,
       user.id,
     );
+  }
+
+  @Patch(":id/reject-to-previous")
+  rejectToPreviousStep(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.rejectToPreviousStep(id, dto, user.id);
   }
 
   @Patch(":id/pto-limit-prices")
@@ -380,7 +390,7 @@ export class SupplyRequestsController {
   @Patch(":id/complete")
   complete(
     @Param("id") id: string,
-    @Body() dto: RequestActionDto,
+    @Body() dto: SendToStorekeeperDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.complete(id, dto, user.id);

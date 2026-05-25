@@ -6,6 +6,7 @@ import { login } from "@/lib/auth-api";
 import { saveAuthSession } from "@/lib/auth-storage";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
+import { NotificationToasts } from "@/components/ui/notification-toasts";
 
 export function LoginForm() {
   const router = useRouter();
@@ -39,6 +40,12 @@ export function LoginForm() {
 
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
+      <NotificationToasts
+        errorMessage={errorMessage}
+        successMessage={successMessage}
+        onClearError={clearError}
+        onClearSuccess={clearSuccess}
+      />
       <label className="grid gap-1.5">
         <span className="text-sm font-medium text-slate-700">Email</span>
         <input
@@ -62,9 +69,6 @@ export function LoginForm() {
         />
       </label>
 
-      <Message text={errorMessage} tone="error" />
-      <Message text={successMessage} tone="success" />
-
       <button
         className="h-10 rounded-md bg-teal-700 px-4 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isSubmitting}
@@ -73,21 +77,5 @@ export function LoginForm() {
         {isSubmitting ? "Входим..." : "Войти"}
       </button>
     </form>
-  );
-}
-
-function Message({ text, tone }: { text: string; tone: "error" | "success" }) {
-  if (!text) return null;
-
-  return (
-    <div
-      className={
-        tone === "error"
-          ? "rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-          : "rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-      }
-    >
-      {text}
-    </div>
   );
 }

@@ -13,6 +13,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
 import { MoneyRequestModal } from "@/components/dashboard/money-request-modal";
 import { TransportRequestModal } from "@/components/dashboard/transport-request-modal";
+import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
 import { getCurrentUser } from "@/lib/auth-api";
@@ -225,6 +226,12 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
   return (
     <main className="min-h-screen bg-slate-100">
+      <NotificationToasts
+        errorMessage={errorMessage}
+        successMessage={successMessage}
+        onClearError={clearError}
+        onClearSuccess={clearSuccess}
+      />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -249,17 +256,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
       </header>
 
       <section className="mx-auto grid max-w-6xl gap-4 px-4 py-6">
-        {errorMessage ? (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        ) : null}
-        {successMessage ? (
-          <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            {successMessage}
-          </div>
-        ) : null}
-
         {!object ? (
           <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
             Загружаем объект...

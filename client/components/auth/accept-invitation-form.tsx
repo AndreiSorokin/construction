@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
+import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { acceptInvitation } from "@/lib/auth-api";
 import { saveAuthSession } from "@/lib/auth-storage";
 
@@ -55,6 +56,12 @@ export function AcceptInvitationForm() {
 
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
+      <NotificationToasts
+        errorMessage={errorMessage}
+        successMessage={successMessage}
+        onClearError={clearError}
+        onClearSuccess={clearSuccess}
+      />
       {!token ? (
         <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {"Ссылка приглашения некорректна: отсутствует token."}
@@ -87,9 +94,6 @@ export function AcceptInvitationForm() {
         />
       </label>
 
-      <Message text={errorMessage} tone="error" />
-      <Message text={successMessage} tone="success" />
-
       <button
         className="h-10 rounded-md bg-teal-700 px-4 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isSubmitting || !token}
@@ -98,21 +102,5 @@ export function AcceptInvitationForm() {
         {isSubmitting ? "Принимаем..." : "Принять приглашение"}
       </button>
     </form>
-  );
-}
-
-function Message({ text, tone }: { text: string; tone: "error" | "success" }) {
-  if (!text) return null;
-
-  return (
-    <div
-      className={
-        tone === "error"
-          ? "rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-          : "rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-      }
-    >
-      {text}
-    </div>
   );
 }

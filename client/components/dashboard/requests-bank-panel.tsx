@@ -8,6 +8,7 @@ import {
   ObjectApprovalGroup,
   ObjectRequestGroup,
 } from "@/components/dashboard/supply-request-approval-cards";
+import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getSupplyRequests } from "@/lib/supply-requests-api";
 import { SupplyRequest } from "@/lib/types";
@@ -45,6 +46,10 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <NotificationToasts
+        errorMessage={errorMessage}
+        onClearError={clearError}
+      />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-slate-950">Банк заявок</h2>
@@ -61,12 +66,6 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
           Обновить
         </button>
       </div>
-
-      {errorMessage ? (
-        <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {errorMessage}
-        </div>
-      ) : null}
 
       <div className="mt-4 grid gap-3">
         {requestGroups.map((group) => (

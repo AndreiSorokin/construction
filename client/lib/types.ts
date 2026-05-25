@@ -155,6 +155,7 @@ export type SupplyRequest = {
   authorId: string;
   createdAt: string;
   assignedSupplyUserId?: string | null;
+  assignedStorekeeperId?: string | null;
   assignedById?: string | null;
   assignedAt?: string | null;
   transportType?: string | null;
@@ -165,6 +166,7 @@ export type SupplyRequest = {
   object?: ObjectEntity;
   author?: User;
   assignedSupplyUser?: User | null;
+  assignedStorekeeper?: User | null;
   assignedBy?: User | null;
   invoices?: SupplyRequestInvoice[];
   items: SupplyRequestItem[];

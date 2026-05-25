@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Check, Send, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { FormEvent, ReactNode, useState } from "react";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
 import { requestStatusLabels } from "@/lib/domain-labels";
@@ -55,10 +55,12 @@ export function ObjectApprovalGroup({
 }
 
 export function SupplyManagerRequestCard({
+  onReject,
   onSubmit,
   request,
   supplyUsers,
 }: {
+  onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
@@ -103,14 +105,24 @@ export function SupplyManagerRequestCard({
           name="comment"
           placeholder="Комментарий начальника снабжения"
         />
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-          disabled={!supplyUsers.length}
-          type="submit"
-        >
-          <Send size={16} />
-          Назначить снабженца
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!supplyUsers.length}
+            type="submit"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
         {!supplyUsers.length ? (
           <div className="text-sm text-amber-700">
             На этом объекте пока нет пользователя с ролью снабженца.
@@ -123,9 +135,11 @@ export function SupplyManagerRequestCard({
 }
 
 export function SupplyManagerTransportRequestCard({
+  onReject,
   onSendToGarage,
   request,
 }: {
+  onReject: (request: SupplyRequest) => void;
   onSendToGarage: (request: SupplyRequest) => void;
   request: SupplyRequest;
 }) {
@@ -135,12 +149,20 @@ export function SupplyManagerTransportRequestCard({
         <TransportDetails request={request} />
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
             onClick={() => onSendToGarage(request)}
             type="button"
           >
-            <Send size={16} />
-            Отправить заведующему гаражом
+            <Check size={16} />
+            Согласовать
           </button>
         </div>
       </RequestSummaryCard>
@@ -150,9 +172,11 @@ export function SupplyManagerTransportRequestCard({
 
 export function GarageManagerTransportRequestCard({
   onComplete,
+  onReject,
   request,
 }: {
   onComplete: (request: SupplyRequest) => void;
+  onReject: (request: SupplyRequest) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -161,12 +185,20 @@ export function GarageManagerTransportRequestCard({
         <TransportDetails request={request} />
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
             onClick={() => onComplete(request)}
             type="button"
           >
-            <Send size={16} />
-            Отправить автору на подтверждение
+            <Check size={16} />
+            Согласовать
           </button>
         </div>
       </RequestSummaryCard>
@@ -176,9 +208,11 @@ export function GarageManagerTransportRequestCard({
 
 export function TransportAuthorCompletionCard({
   onComplete,
+  onReject,
   request,
 }: {
   onComplete: (request: SupplyRequest) => void;
+  onReject: (request: SupplyRequest) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -187,12 +221,20 @@ export function TransportAuthorCompletionCard({
         <TransportDetails request={request} />
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
             onClick={() => onComplete(request)}
             type="button"
           >
             <Check size={16} />
-            Подтвердить исполнение
+            Согласовать
           </button>
         </div>
       </RequestSummaryCard>
@@ -202,6 +244,7 @@ export function TransportAuthorCompletionCard({
 
 export function PtoRequestCard({
   onDeleteItem,
+  onReject,
   onSubmit,
   onUpdateItem,
   request,
@@ -210,6 +253,7 @@ export function PtoRequestCard({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
   ) => void;
+  onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
@@ -233,7 +277,7 @@ export function PtoRequestCard({
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2 pr-3 font-medium">Материал</th>
               <th className="py-2 pr-3 font-medium">Количество</th>
-              <th className="py-2 pr-3 font-medium">{"Сметная цена ПТО за ед."}</th>
+              <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
               <th className="py-2 pr-3 font-medium">Удаление</th>
             </tr>
           </thead>
@@ -279,13 +323,23 @@ export function PtoRequestCard({
           name="comment"
           placeholder="Комментарий ПТО"
         />
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-          type="submit"
-        >
-          <Send size={16} />
-          Отправить начальнику снабжения
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            type="submit"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
       </div>
       </RequestSummaryCard>
     </form>
@@ -336,7 +390,7 @@ export function ChiefEngineerRequestCard({
           type="button"
         >
           <X size={16} />
-          Отклонить заявку
+          Отклонить
         </button>
         ) : null}
         <button
@@ -356,6 +410,7 @@ export function ChiefEngineerRequestCard({
 export function WarehouseManagerRequestCard({
   onApprove,
   onDeleteItem,
+  onReject,
   onUpdateItem,
   request,
 }: {
@@ -364,6 +419,7 @@ export function WarehouseManagerRequestCard({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
   ) => void;
+  onReject: (request: SupplyRequest) => void;
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -378,14 +434,22 @@ export function WarehouseManagerRequestCard({
           onDeleteItem={onDeleteItem}
           onUpdateItem={onUpdateItem}
         />
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
             onClick={() => onApprove(request)}
             type="button"
           >
-            <Send size={16} />
-            Передать в ПТО
+            <Check size={16} />
+            Согласовать
           </button>
         </div>
       </RequestSummaryCard>
@@ -394,15 +458,8 @@ export function WarehouseManagerRequestCard({
 }
 
 function getChiefEngineerApproveLabel(type: SupplyRequest["type"]) {
-  if (type === "MATERIAL") {
-    return "Согласовать и отправить начальнику складского хозяйства";
-  }
-
-  if (type === "TRANSPORT") {
-    return "Согласовать и отправить заведующему гаражом";
-  }
-
-  return "Согласовать и отправить начальнику снабжения";
+  void type;
+  return "Согласовать";
 }
 
 export function DeputyProductionDirectorRequestCard({
@@ -457,7 +514,7 @@ export function DeputyProductionDirectorRequestCard({
             type="button"
           >
             <Check size={16} />
-            Подтвердить
+            Согласовать
           </button>
         </div>
       </RequestSummaryCard>
@@ -467,10 +524,12 @@ export function DeputyProductionDirectorRequestCard({
 
 export function SupplyRequestCard({
   onDeleteInvoice,
+  onReject,
   onSubmit,
   request,
 }: {
   onDeleteInvoice?: (request: SupplyRequest, invoiceId: string) => void;
+  onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
@@ -495,22 +554,34 @@ export function SupplyRequestCard({
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
             multiple
             name="files"
-            required
             type="file"
           />
+          <span className="text-xs text-slate-500">
+            Если итог по заявке больше 100 000, нужно прикрепить минимум три разных счета.
+          </span>
         </label>
         <input
           className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
           name="comment"
           placeholder="Комментарий снабжения"
         />
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-          type="submit"
-        >
-          <Send size={16} />
-          Отправить директору со счетами
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            type="submit"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
       </div>
       </RequestSummaryCard>
     </form>
@@ -518,9 +589,11 @@ export function SupplyRequestCard({
 }
 
 export function SupplyMoneyRequestCard({
+  onReject,
   onSubmit,
   request,
 }: {
+  onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
@@ -540,13 +613,23 @@ export function SupplyMoneyRequestCard({
             name="comment"
             placeholder="Комментарий к исполнению"
           />
-          <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-            type="submit"
-          >
-            <Check size={16} />
-            Отметить исполненной
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              onClick={() => onReject(request)}
+              type="button"
+            >
+              <X size={16} />
+              Отклонить
+            </button>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+              type="submit"
+            >
+              <Check size={16} />
+              Согласовать
+            </button>
+          </div>
         </div>
       </RequestSummaryCard>
     </form>
@@ -554,9 +637,11 @@ export function SupplyMoneyRequestCard({
 }
 
 export function SupplyTransportRequestCard({
+  onReject,
   onSubmit,
   request,
 }: {
+  onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
@@ -590,13 +675,23 @@ export function SupplyTransportRequestCard({
           name="comment"
           placeholder="Комментарий снабжения"
         />
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-          type="submit"
-        >
-          <Send size={16} />
-          Отправить директору со счетами
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            type="submit"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
       </div>
       </RequestSummaryCard>
     </form>
@@ -605,13 +700,23 @@ export function SupplyTransportRequestCard({
 
 export function SupplyInProgressCard({
   onComplete,
+  onReject,
   request,
+  storekeepers,
 }: {
-  onComplete: (request: SupplyRequest) => void;
+  onComplete: (
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) => void;
+  onReject: (request: SupplyRequest) => void;
   request: SupplyRequest;
+  storekeepers: User[];
 }) {
   return (
-    <div className="rounded-md border border-emerald-200 bg-emerald-50/40 p-4">
+    <form
+      className="rounded-md border border-emerald-200 bg-emerald-50/40 p-4"
+      onSubmit={(event) => onComplete(request, event)}
+    >
       <RequestSummaryCard request={request} variant="approval">
 
       {request.type === "TRANSPORT" ? (
@@ -622,29 +727,68 @@ export function SupplyInProgressCard({
         <MaterialItemsTable request={request} />
       )}
       <InvoiceList request={request} />
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-          onClick={() => onComplete(request)}
-          type="button"
-        >
-          <Send size={16} />
-          Передать кладовщику
-        </button>
+      <div className="mt-4 grid gap-3 rounded-md bg-white/70 p-3">
+        <label className="grid gap-1.5">
+          <span className="text-sm font-medium text-slate-700">
+            Назначенный кладовщик
+          </span>
+          <select
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            name="storekeeperUserId"
+            required
+          >
+            <option value="">Выберите кладовщика</option>
+            {storekeepers.map((storekeeper) => (
+              <option key={storekeeper.id} value={storekeeper.id}>
+                {storekeeper.name} ({storekeeper.email})
+              </option>
+            ))}
+          </select>
+        </label>
+        <input
+          className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+          name="comment"
+          placeholder="Комментарий снабженца"
+        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!storekeepers.length}
+            type="submit"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
+        {!storekeepers.length ? (
+          <div className="text-sm text-amber-700">
+            На этом объекте пока нет пользователя с ролью кладовщика.
+          </div>
+        ) : null}
       </div>
       </RequestSummaryCard>
-    </div>
+    </form>
   );
 }
 
 export function StorekeeperRequestCard({
   onComplete,
+  onReject,
   request,
 }: {
   onComplete: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
   ) => void;
+  onReject: (request: SupplyRequest) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -661,13 +805,23 @@ export function StorekeeperRequestCard({
             name="comment"
             placeholder="Комментарий кладовщика"
           />
-          <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
-            type="submit"
-          >
-            <Check size={16} />
-            Подтвердить исполнение
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              onClick={() => onReject(request)}
+              type="button"
+            >
+              <X size={16} />
+              Отклонить
+            </button>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+              type="submit"
+            >
+              <Check size={16} />
+              Согласовать
+            </button>
+          </div>
         </div>
       </RequestSummaryCard>
     </form>
@@ -678,7 +832,6 @@ export function DirectorRequestCard({
   onApprove,
   onDeleteItem,
   onReject,
-  onReturn,
   onUpdateItem,
   request,
 }: {
@@ -688,7 +841,6 @@ export function DirectorRequestCard({
     item: SupplyRequest["items"][number],
   ) => void;
   onReject: (request: SupplyRequest) => void;
-  onReturn: (request: SupplyRequest) => void;
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -716,16 +868,6 @@ export function DirectorRequestCard({
       )}
       <InvoiceList request={request} />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {request.type === "MATERIAL" ? (
-          <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-200 bg-white px-3 text-sm font-medium text-amber-700 hover:bg-amber-50"
-            onClick={() => onReturn(request)}
-            type="button"
-          >
-            <X size={16} />
-            Вернуть
-          </button>
-        ) : null}
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReject(request)}
@@ -740,9 +882,7 @@ export function DirectorRequestCard({
           type="button"
         >
           <Check size={16} />
-          {request.type === "MATERIAL"
-            ? "Согласовать"
-            : "Отметить исполненной"}
+          Согласовать
         </button>
       </div>
       </RequestSummaryCard>
@@ -994,8 +1134,8 @@ function PriceComparisonTable({
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Материал</th>
             <th className="py-2 pr-3 font-medium">Количество</th>
-            <th className="py-2 pr-3 font-medium">Цена ПТО за ед.</th>
-            <th className="py-2 pr-3 font-medium">{"Сумма ПТО"}</th>
+            <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
+            <th className="py-2 pr-3 font-medium">Итого ПТО</th>
             {canEditItems ? (
               <th className="py-2 pr-3 font-medium">Удаление</th>
             ) : null}
@@ -1198,7 +1338,7 @@ function getEstimatedTotal(item: SupplyRequest["items"][number]) {
 }
 
 function getPtoTotal(item: SupplyRequest["items"][number]) {
-  return toNumber(item.ptoLimitPrice) * toNumber(item.quantity);
+  return toNumber(item.ptoLimitPrice);
 }
 
 function getSupplierTotal(item: SupplyRequest["items"][number]) {

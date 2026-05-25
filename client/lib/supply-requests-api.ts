@@ -183,6 +183,19 @@ export function deleteSupplyRequestItem(
   );
 }
 
+export function rejectSupplyRequestToPreviousStep(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/reject-to-previous`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function approveSupplyRequestByChiefEngineer(
   requestId: string,
   comment?: string,
@@ -420,10 +433,16 @@ export function returnSupplyRequestToSupplyByDirector(
   );
 }
 
-export function completeSupplyRequest(requestId: string, comment?: string) {
+export function completeSupplyRequest(
+  requestId: string,
+  payload: {
+    comment?: string;
+    storekeeperUserId: string;
+  },
+) {
   return apiClient<SupplyRequest>(`/supply-requests/${requestId}/complete`, {
     method: "PATCH",
-    body: { comment },
+    body: payload,
   });
 }
 

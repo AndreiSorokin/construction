@@ -4,7 +4,7 @@
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { createReadStream } from "fs";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
@@ -28,6 +28,7 @@ import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
+import { SendToStorekeeperDto } from "./dto/send-to-storekeeper.dto";
 import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
@@ -586,6 +587,50 @@ export class SupplyRequestsService {
     });
   }
 
+  async rejectToPreviousStep(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    if (!dto.comment?.trim()) {
+      throw new BadRequestException("Reject comment is required");
+    }
+
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_PTO,
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+      SupplyRequestStatus.PENDING_SUPPLY,
+      SupplyRequestStatus.PENDING_DIRECTOR,
+      SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+      SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+      SupplyRequestStatus.PENDING_STOREKEEPER,
+      SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
+      SupplyRequestStatus.RETURNED_TO_SUPPLY,
+      SupplyRequestStatus.IN_PROGRESS,
+    ]);
+
+    await this.ensureCanProcessRequestAtCurrentStatus(request, actorId);
+
+    const previousStatus = await this.getPreviousRouteStatusOrRejected(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        previousStatus === SupplyRequestStatus.REJECTED
+          ? ApprovalAction.REJECTED
+          : ApprovalAction.RETURNED,
+        request.status,
+        previousStatus,
+        dto.comment,
+      ),
+    );
+  }
+
   async setPtoLimitPrices(
     id: string,
     dto: SetPtoLimitPricesDto,
@@ -603,6 +648,12 @@ export class SupplyRequestsService {
         "PTO price must be provided for every request item",
       );
     }
+
+    const ptoTotalAmount = dto.items.reduce((total, item) => {
+      const price = new Prisma.Decimal(item.ptoLimitPrice);
+
+      return total.add(price);
+    }, new Prisma.Decimal(0));
 
     return this.prisma.$transaction(async (tx) => {
       for (const item of dto.items) {
@@ -648,6 +699,9 @@ export class SupplyRequestsService {
         request.status,
         this.getNextRouteStatus(request),
         dto.comment,
+        {
+          ptoTotalAmount: ptoTotalAmount.toString(),
+        },
       );
     });
   }
@@ -1154,14 +1208,32 @@ export class SupplyRequestsService {
     ]);
     this.ensureAssignedSupplyUser(request, actorId);
 
-    if (!files?.length) {
-      throw new BadRequestException("At least one invoice file is required");
+    const ptoTotalAmount = this.getMaterialPtoTotalAmount(request);
+
+    if (ptoTotalAmount.gt(100000)) {
+      if (!files || files.length < 3) {
+        throw new BadRequestException(
+          "Supply user must attach at least three different invoices when material request total is greater than 100000",
+        );
+      }
+
+      const fileHashes = files.map((file) =>
+        createHash("sha256").update(file.buffer).digest("hex"),
+      );
+
+      if (new Set(fileHashes).size !== fileHashes.length) {
+        throw new BadRequestException(
+          "Supply user attached duplicate invoices. Each invoice file must be different",
+        );
+      }
     }
 
-    await mkdir(this.invoiceUploadsDir, { recursive: true });
+    if (files?.length) {
+      await mkdir(this.invoiceUploadsDir, { recursive: true });
+    }
 
     return this.prisma.$transaction(async (tx) => {
-      for (const file of files) {
+      for (const file of files ?? []) {
         const storedName = `${randomUUID()}${extname(file.originalname)}`;
         const filePath = join(this.invoiceUploadsDir, storedName);
 
@@ -1402,7 +1474,7 @@ export class SupplyRequestsService {
     );
   }
 
-  async complete(id: string, dto: RequestActionDto, actorId: string) {
+  async complete(id: string, dto: SendToStorekeeperDto, actorId: string) {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.IN_PROGRESS,
     ]);
@@ -1414,10 +1486,21 @@ export class SupplyRequestsService {
     }
 
     if (request.type === SupplyRequestType.MATERIAL) {
+      await this.ensureUserObjectRole(dto.storekeeperUserId, request.objectId, [
+        UserRole.STOREKEEPER,
+      ]);
+
       const nextStatus = this.getNextRouteStatus(request);
 
-      return this.prisma.$transaction((tx) =>
-        this.moveRequest(
+      return this.prisma.$transaction(async (tx) => {
+        await tx.supplyRequest.update({
+          where: { id },
+          data: {
+            assignedStorekeeperId: dto.storekeeperUserId,
+          },
+        });
+
+        return this.moveRequest(
           tx,
           id,
           actorId,
@@ -1425,8 +1508,11 @@ export class SupplyRequestsService {
           request.status,
           nextStatus,
           dto.comment,
-        ),
-      );
+          {
+            assignedStorekeeperId: dto.storekeeperUserId,
+          },
+        );
+      });
     }
 
     return this.prisma.$transaction((tx) =>
@@ -1460,6 +1546,12 @@ export class SupplyRequestsService {
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.STOREKEEPER,
     ]);
+
+    if (request.assignedStorekeeperId !== actorId) {
+      throw new ForbiddenException(
+        "Only the assigned storekeeper can complete this request",
+      );
+    }
 
     const completedItemIds = new Set(dto.completedItemIds);
 
@@ -1550,6 +1642,7 @@ export class SupplyRequestsService {
       },
     },
     assignedSupplyUser: true,
+    assignedStorekeeper: true,
     assignedBy: true,
     object: {
       include: {
@@ -1628,6 +1721,7 @@ export class SupplyRequestsService {
       include: {
         items: true,
         assignedSupplyUser: true,
+        assignedStorekeeper: true,
         author: {
           include: {
             objectAccesses: true,
@@ -1782,6 +1876,10 @@ export class SupplyRequestsService {
   private getNextRouteStatus(
     request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
   ) {
+F    if (request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY) {
+      return SupplyRequestStatus.PENDING_DIRECTOR;
+    }
+
     const authorRole = this.getRequestAuthorRole(request);
 
     if (!authorRole) {
@@ -1807,6 +1905,68 @@ export class SupplyRequestsService {
     }
 
     return route[currentStepIndex + 1];
+  }
+
+  private async getPreviousRouteStatusOrRejected(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+  ) {
+    if (request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY) {
+      return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+    }
+
+    const authorRole = this.getRequestAuthorRole(request);
+
+    if (!authorRole) {
+      throw new BadRequestException("Request author role is not defined");
+    }
+
+    const route = this.getRequestRoute(
+      request.type,
+      authorRole,
+      request.object.type,
+    );
+
+    if (!route?.length) {
+      throw new BadRequestException("Approval route is not configured");
+    }
+
+    const currentStepIndex = route.indexOf(request.status);
+
+    if (currentStepIndex < 0) {
+      return this.getPreviousStatusFromApprovalHistory(request.id, request.status);
+    }
+
+    return currentStepIndex === 0
+      ? SupplyRequestStatus.REJECTED
+      : route[currentStepIndex - 1];
+  }
+
+  private async getPreviousStatusFromApprovalHistory(
+    requestId: string,
+    currentStatus: SupplyRequestStatus,
+  ) {
+    const lastTransitionToCurrentStatus =
+      await this.prisma.approvalHistory.findFirst({
+        where: {
+          requestId,
+          toStatus: currentStatus,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+    if (!lastTransitionToCurrentStatus?.fromStatus) {
+      return SupplyRequestStatus.REJECTED;
+    }
+
+    if (lastTransitionToCurrentStatus.fromStatus === currentStatus) {
+      throw new BadRequestException(
+        "Request cannot be moved to the previous route step",
+      );
+    }
+
+    return lastTransitionToCurrentStatus.fromStatus;
   }
 
   private getRouteActionForStatus(status: SupplyRequestStatus) {
@@ -1876,6 +2036,65 @@ export class SupplyRequestsService {
     return objectAccess.role;
   }
 
+  private async ensureCanProcessRequestAtCurrentStatus(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+    actorId: string,
+  ) {
+    if (request.status === SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR) {
+      if (request.authorId !== actorId) {
+        throw new ForbiddenException(
+          "Only the transport request author can process this request",
+        );
+      }
+
+      return;
+    }
+
+    if (
+      request.status === SupplyRequestStatus.PENDING_SUPPLY ||
+      request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY ||
+      request.status === SupplyRequestStatus.IN_PROGRESS
+    ) {
+      await this.ensureUserObjectRole(actorId, request.objectId, [
+        UserRole.SUPPLY,
+      ]);
+      this.ensureAssignedSupplyUser(request, actorId);
+      return;
+    }
+
+    const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
+      PENDING_PTO: UserRole.PTO,
+      PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
+      PENDING_DEPUTY_PRODUCTION_DIRECTOR:
+        UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+      PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
+      PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
+      PENDING_DIRECTOR: UserRole.DIRECTOR,
+      PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,
+      PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
+      PENDING_STOREKEEPER: UserRole.STOREKEEPER,
+    };
+
+    const role = roleByStatus[request.status];
+
+    if (!role) {
+      throw new ForbiddenException(
+        "Request cannot be processed at this stage",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [role]);
+
+    if (
+      request.status === SupplyRequestStatus.PENDING_STOREKEEPER &&
+      request.assignedStorekeeperId !== actorId
+    ) {
+      throw new ForbiddenException(
+        "Only the assigned storekeeper can process this request",
+      );
+    }
+  }
+
   private getRequestItemEditorRole(status: SupplyRequestStatus) {
     const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
       PENDING_PTO: UserRole.PTO,
@@ -1912,6 +2131,20 @@ export class SupplyRequestsService {
         "Material request has no active approved items",
       );
     }
+  }
+
+  private getMaterialPtoTotalAmount(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+  ) {
+    return request.items.reduce((total, item) => {
+      if (!item.ptoLimitPrice) {
+        throw new BadRequestException(
+          "PTO price must be provided before sending material request to director",
+        );
+      }
+
+      return total.add(item.ptoLimitPrice);
+    }, new Prisma.Decimal(0));
   }
 
   private async moveRequest(

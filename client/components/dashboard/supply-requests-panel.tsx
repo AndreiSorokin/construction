@@ -35,11 +35,7 @@ import {
   deleteSupplyRequestInvoice,
   deleteSupplyRequestItem,
   getSupplyRequests,
-  rejectSupplyRequestByDirector,
-  rejectSupplyRequestByChiefEngineer,
-  rejectSupplyRequestByDeputyProductionDirector,
-  rejectSupplyRequestByDeputyTransportDirector,
-  returnSupplyRequestToSupplyByDirector,
+  rejectSupplyRequestToPreviousStep,
   sendMoneyRequestToDirector,
   sendTransportToGarageManager,
   setPtoLimitPrices,
@@ -105,7 +101,7 @@ export function SupplyRequestsPanel({
         (item) => !item.ptoLimitPrice.trim() || Number(item.ptoLimitPrice) <= 0,
       )
     ) {
-      onError("ПТО должно указать сметную цену за единицу для каждой позиции");
+      onError("ПТО должно указать сумму для каждой позиции");
       return;
     }
 
@@ -148,7 +144,7 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function returnToPtoByChiefEngineer(request: SupplyRequest) {
+  async function rejectToPreviousStep(request: SupplyRequest) {
     const comment = window.prompt("Комментарий к отклонению заявки");
 
     if (comment === null) {
@@ -161,8 +157,8 @@ export function SupplyRequestsPanel({
     }
 
     try {
-      await rejectSupplyRequestByChiefEngineer(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} отклонена`);
+      await rejectSupplyRequestToPreviousStep(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отправлена на предыдущий этап`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -181,42 +177,10 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function rejectByDeputyProductionDirector(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к отклонению заявки") ?? null;
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      await rejectSupplyRequestByDeputyProductionDirector(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} отклонена`);
-      await loadRequests();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
   async function approveByDeputyTransportDirector(request: SupplyRequest) {
     try {
       await approveSupplyRequestByDeputyTransportDirector(request.id);
       onSuccess(`Заявка ${request.requestNumber} подтверждена`);
-      await loadRequests();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
-  async function rejectByDeputyTransportDirector(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к отклонению заявки") ?? null;
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      await rejectSupplyRequestByDeputyTransportDirector(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} отклонена`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -348,9 +312,15 @@ export function SupplyRequestsPanel({
             .files ?? [])
         : [],
     );
+    const totalAmount = request.items.reduce(
+      (total, item) => total + Number(item.ptoLimitPrice ?? 0),
+      0,
+    );
 
-    if (!files.length) {
-      onError("Прикрепите хотя бы один счет на оплату");
+    if (totalAmount > 100000 && files.length < 3) {
+      onError(
+        "Если сумма заявки больше 100 000, снабженец должен прикрепить минимум три разных счета",
+      );
       return;
     }
 
@@ -367,15 +337,24 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function completeBySupply(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий для кладовщика");
+  async function completeBySupply(
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const storekeeperUserId = String(form.get("storekeeperUserId") ?? "");
 
-    if (comment === null) {
+    if (!storekeeperUserId) {
+      onError("Выберите кладовщика");
       return;
     }
 
     try {
-      await completeSupplyRequest(request.id, comment);
+      await completeSupplyRequest(request.id, {
+        comment: String(form.get("comment") ?? ""),
+        storekeeperUserId,
+      });
       onSuccess(`Заявка ${request.requestNumber} отправлена кладовщику`);
       await loadRequests();
     } catch (error) {
@@ -469,40 +448,6 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function rejectByDirector(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к отклонению заявки");
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      await rejectSupplyRequestByDirector(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} отклонена`);
-      await loadRequests();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
-  async function returnByDirector(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к возврату заявки снабженцу");
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      await returnSupplyRequestToSupplyByDirector(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} возвращена снабженцу`);
-      await loadRequests();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
-  
-
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -553,6 +498,7 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onComplete={completeTransportByRequestAuthor}
+                    onReject={rejectToPreviousStep}
                   />
                 );
               }
@@ -563,6 +509,7 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onDeleteItem={deleteRequestItemFromRequest}
+                    onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                     onSubmit={submitPtoPrices}
                   />
@@ -576,7 +523,7 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByChiefEngineer}
                     onDeleteItem={deleteRequestItemFromRequest}
-                    onReturn={returnToPtoByChiefEngineer}
+                    onReturn={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -589,6 +536,7 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByWarehouseManager}
                     onDeleteItem={deleteRequestItemFromRequest}
+                    onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -601,7 +549,7 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByDeputyProductionDirector}
                     onDeleteItem={deleteRequestItemFromRequest}
-                    onReject={rejectByDeputyProductionDirector}
+                    onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -614,7 +562,7 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByDeputyTransportDirector}
                     onDeleteItem={deleteRequestItemFromRequest}
-                    onReject={rejectByDeputyTransportDirector}
+                    onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -627,6 +575,7 @@ export function SupplyRequestsPanel({
                       key={request.id}
                       request={request}
                       onSendToGarage={sendToGarageBySupplyManager}
+                      onReject={rejectToPreviousStep}
                     />
                   );
                 }
@@ -636,6 +585,7 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     supplyUsers={getSupplyUsersForRequest(objectAccesses, request)}
+                    onReject={rejectToPreviousStep}
                     onSubmit={assignBySupplyManager}
                   />
                 );
@@ -647,6 +597,7 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onComplete={completeByGarageManager}
+                    onReject={rejectToPreviousStep}
                   />
                 );
               }
@@ -658,6 +609,11 @@ export function SupplyRequestsPanel({
                       key={request.id}
                       request={request}
                       onComplete={completeBySupply}
+                      onReject={rejectToPreviousStep}
+                      storekeepers={getStorekeepersForRequest(
+                        objectAccesses,
+                        request,
+                      )}
                     />
                   );
                 }
@@ -667,6 +623,7 @@ export function SupplyRequestsPanel({
                     <SupplyTransportRequestCard
                       key={request.id}
                       request={request}
+                      onReject={rejectToPreviousStep}
                       onSubmit={submitInvoicesBySupply}
                     />
                   );
@@ -676,6 +633,7 @@ export function SupplyRequestsPanel({
                   <SupplyMoneyRequestCard
                     key={request.id}
                     request={request}
+                    onReject={rejectToPreviousStep}
                     onSubmit={sendMoneyBySupply}
                   />
                 ) : (
@@ -683,6 +641,7 @@ export function SupplyRequestsPanel({
                   key={request.id}
                   request={request}
                   onDeleteInvoice={deleteInvoiceFromRequest}
+                  onReject={rejectToPreviousStep}
                   onSubmit={submitInvoicesBySupply}
                 />
                 );
@@ -694,6 +653,7 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onComplete={completeByStorekeeper}
+                    onReject={rejectToPreviousStep}
                   />
                 );
               }
@@ -705,8 +665,7 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByDirector}
                     onDeleteItem={deleteRequestItemFromRequest}
-                    onReject={rejectByDirector}
-                    onReturn={returnByDirector}
+                    onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -787,7 +746,8 @@ function getVisibleRequests(
     if (objectRole === "STOREKEEPER") {
       return (
         request.type === "MATERIAL" &&
-        request.status === "PENDING_STOREKEEPER"
+        request.status === "PENDING_STOREKEEPER" &&
+        request.assignedStorekeeperId === userId
       );
     }
 
@@ -850,6 +810,21 @@ function getSupplyUsersForRequest(
   return (
     objectAccess?.object.userAccesses
       ?.filter((access) => access.role === "SUPPLY" && access.user)
+      .map((access) => access.user as User) ?? []
+  );
+}
+
+function getStorekeepersForRequest(
+  objectAccesses: UserObjectAccess[],
+  request: SupplyRequest,
+) {
+  const objectAccess = objectAccesses.find(
+    (access) => access.objectId === request.objectId,
+  );
+
+  return (
+    objectAccess?.object.userAccesses
+      ?.filter((access) => access.role === "STOREKEEPER" && access.user)
       .map((access) => access.user as User) ?? []
   );
 }
