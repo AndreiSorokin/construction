@@ -239,6 +239,8 @@ model SupplyRequestItem {
   measurementUnitSnapshot String
   estimatedPriceSnapshot  Decimal                            @db.Decimal(18, 2)
   quantity                Decimal                            @db.Decimal(18, 3)
+  orderQuantity           Decimal                            @default(0) @db.Decimal(18, 3)
+  stockQuantity           Decimal                            @default(0) @db.Decimal(18, 3)
   ptoLimitPrice           Decimal?                           @db.Decimal(18, 2)
   supplierPurchasePrice   Decimal?                           @db.Decimal(18, 2)
   fulfillmentStatus       SupplyRequestItemFulfillmentStatus @default(PENDING)

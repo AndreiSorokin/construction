@@ -156,7 +156,9 @@ export function updateSupplyRequestItem(
   requestId: string,
   itemId: string,
   payload: {
-    quantity: string;
+    quantity?: string;
+    orderQuantity?: string;
+    stockQuantity?: string;
     comment?: string;
   },
 ) {

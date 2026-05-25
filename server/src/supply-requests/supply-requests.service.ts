@@ -176,6 +176,8 @@ export class SupplyRequestsService {
               measurementUnitSnapshot: item.measurementUnit.trim(),
               estimatedPriceSnapshot: new Prisma.Decimal(0),
               quantity: new Prisma.Decimal(item.quantity),
+              orderQuantity: new Prisma.Decimal(item.quantity),
+              stockQuantity: new Prisma.Decimal(0),
             })),
           },
           approvalHistory: {
@@ -480,10 +482,50 @@ export class SupplyRequestsService {
       throw new NotFoundException("Supply request item not found");
     }
 
-    const newQuantity = new Prisma.Decimal(dto.quantity);
+    if (
+      dto.quantity === undefined &&
+      dto.orderQuantity === undefined &&
+      dto.stockQuantity === undefined
+    ) {
+      throw new BadRequestException("At least one quantity field is required");
+    }
 
-    if (newQuantity.lessThanOrEqualTo(0)) {
+    const newQuantity =
+      dto.quantity === undefined
+        ? undefined
+        : new Prisma.Decimal(dto.quantity);
+    const newOrderQuantity =
+      dto.orderQuantity === undefined
+        ? undefined
+        : new Prisma.Decimal(dto.orderQuantity);
+    const newStockQuantity =
+      dto.stockQuantity === undefined
+        ? undefined
+        : new Prisma.Decimal(dto.stockQuantity);
+
+    if (newQuantity?.lessThanOrEqualTo(0)) {
       throw new BadRequestException("Quantity must be greater than zero");
+    }
+
+    if (newOrderQuantity?.lessThan(0)) {
+      throw new BadRequestException(
+        "Order quantity must be greater than or equal to zero",
+      );
+    }
+
+    if (newStockQuantity?.lessThan(0)) {
+      throw new BadRequestException(
+        "Stock quantity must be greater than or equal to zero",
+      );
+    }
+
+    if (
+      (newOrderQuantity || newStockQuantity) &&
+      request.status !== SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER
+    ) {
+      throw new BadRequestException(
+        "Only warehouse manager can update warehouse quantities",
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -491,6 +533,8 @@ export class SupplyRequestsService {
         where: { id: itemId },
         data: {
           quantity: newQuantity,
+          orderQuantity: newOrderQuantity,
+          stockQuantity: newStockQuantity,
         },
       });
 
@@ -507,7 +551,11 @@ export class SupplyRequestsService {
             itemId,
             materialName: requestItem.materialNameSnapshot,
             oldQuantity: requestItem.quantity.toString(),
-            newQuantity: newQuantity.toString(),
+            newQuantity: newQuantity?.toString(),
+            oldOrderQuantity: requestItem.orderQuantity.toString(),
+            newOrderQuantity: newOrderQuantity?.toString(),
+            oldStockQuantity: requestItem.stockQuantity.toString(),
+            newStockQuantity: newStockQuantity?.toString(),
           },
         },
       });

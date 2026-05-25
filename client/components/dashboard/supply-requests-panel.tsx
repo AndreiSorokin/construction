@@ -229,26 +229,56 @@ export function SupplyRequestsPanel({
   async function updateRequestItemQuantity(
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field: "orderQuantity" | "quantity" | "stockQuantity" = "quantity",
   ) {
+    const fieldLabel =
+      field === "stockQuantity"
+        ? "количество на складе"
+        : field === "orderQuantity"
+          ? "количество на заказ"
+          : "количество";
+    const currentValue =
+      field === "stockQuantity"
+        ? String(item.stockQuantity ?? "0")
+        : field === "orderQuantity"
+          ? String(item.orderQuantity ?? item.quantity)
+          : String(item.quantity);
     const quantity = window.prompt(
-      `Новое количество для "${item.materialNameSnapshot}"`,
-      String(item.quantity),
+      `Новое ${fieldLabel} для "${item.materialNameSnapshot}"`,
+      currentValue,
     );
 
     if (quantity === null) {
       return;
     }
 
-    if (!quantity.trim() || Number(quantity) <= 0) {
-      onError("Количество должно быть больше нуля");
+    const minValue = field === "quantity" ? 0 : -1;
+
+    if (!quantity.trim() || Number(quantity) <= minValue) {
+      onError(
+        field === "quantity"
+          ? "Количество должно быть больше нуля"
+          : "Количество должно быть больше или равно нулю",
+      );
       return;
     }
 
-    const comment = window.prompt("Комментарий к изменению позиции") ?? "";
+    if (
+      field !== "quantity" &&
+      request.status !== "PENDING_WAREHOUSE_MANAGER"
+    ) {
+      onError("Складские количества может менять только заведующий складом");
+      return;
+    }
+
+    const comment =
+      field === "quantity"
+        ? (window.prompt("Комментарий к изменению позиции") ?? "")
+        : "";
 
     try {
       await updateSupplyRequestItem(request.id, item.id, {
-        quantity,
+        [field]: quantity,
         comment,
       });
       onSuccess(`Позиция в заявке ${request.requestNumber} изменена`);

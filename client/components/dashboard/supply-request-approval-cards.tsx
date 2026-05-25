@@ -261,6 +261,7 @@ export function PtoRequestCard({
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -272,11 +273,11 @@ export function PtoRequestCard({
       <RequestSummaryCard request={request} variant="approval">
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+        <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2 pr-3 font-medium">Материал</th>
-              <th className="py-2 pr-3 font-medium">Количество</th>
+              <MaterialQuantityHeaders />
               <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
               <th className="py-2 pr-3 font-medium">Удаление</th>
             </tr>
@@ -287,13 +288,11 @@ export function PtoRequestCard({
                 <td className="py-3 pr-3 text-slate-950">
                   {item.materialNameSnapshot}
                 </td>
-                <td className="py-3 pr-3 text-slate-600">
-                  <QuantityWithEdit
-                    item={item}
-                    request={request}
-                    onUpdate={onUpdateItem}
-                  />
-                </td>
+                <EditableMaterialQuantityCells
+                  item={item}
+                  request={request}
+                  onUpdate={onUpdateItem}
+                />
                 <td className="py-3 pr-3">
                   <input
                     className="h-10 w-36 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
@@ -362,6 +361,7 @@ export function ChiefEngineerRequestCard({
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -423,6 +423,7 @@ export function WarehouseManagerRequestCard({
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -478,6 +479,7 @@ export function DeputyProductionDirectorRequestCard({
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -844,6 +846,7 @@ export function DirectorRequestCard({
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -891,6 +894,81 @@ export function DirectorRequestCard({
 }
 
 function QuantityWithEdit({
+  field = "quantity",
+  item,
+  onUpdate,
+  request,
+}: {
+  field?: "orderQuantity" | "quantity" | "stockQuantity";
+  item: SupplyRequest["items"][number];
+  onUpdate: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <QuantityValue item={item} field={field} />
+      <button
+        className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        onClick={() => onUpdate(request, item, field)}
+        type="button"
+      >
+        Изменить
+      </button>
+    </div>
+  );
+}
+
+function QuantityValue({
+  field,
+  item,
+}: {
+  field: "orderQuantity" | "quantity" | "stockQuantity";
+  item: SupplyRequest["items"][number];
+}) {
+  const valueByField = {
+    orderQuantity: item.orderQuantity ?? item.quantity,
+    quantity: item.quantity,
+    stockQuantity: item.stockQuantity ?? "0",
+  };
+
+  return (
+    <span className="font-medium text-slate-700">
+      {formatQuantity(valueByField[field])} {item.measurementUnitSnapshot}
+    </span>
+  );
+}
+
+function MaterialQuantityHeaders() {
+  return (
+    <>
+      <th className="py-2 pr-3 font-medium">Количество</th>
+      <th className="py-2 pr-3 font-medium">Количество на складе</th>
+      <th className="py-2 pr-3 font-medium">Количество на заказ</th>
+    </>
+  );
+}
+
+function MaterialQuantityCells({ item }: { item: SupplyRequest["items"][number] }) {
+  return (
+    <>
+      <td className="py-3 pr-3 text-slate-600">
+        <QuantityValue item={item} field="quantity" />
+      </td>
+      <td className="py-3 pr-3 text-slate-600">
+        <QuantityValue item={item} field="stockQuantity" />
+      </td>
+      <td className="py-3 pr-3 text-slate-600">
+        <QuantityValue item={item} field="orderQuantity" />
+      </td>
+    </>
+  );
+}
+
+function EditableMaterialQuantityCells({
   item,
   onUpdate,
   request,
@@ -899,22 +977,48 @@ function QuantityWithEdit({
   onUpdate: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
+  const unit = item.measurementUnitSnapshot;
+  const canEditWarehouseQuantities =
+    request.status === "PENDING_WAREHOUSE_MANAGER";
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span>
-        {formatQuantity(item.quantity)} {item.measurementUnitSnapshot}
-      </span>
-      <button
-        className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-        onClick={() => onUpdate(request, item)}
-        type="button"
-      >
-        Изменить
-      </button>
-    </div>
+    <>
+      <td className="py-3 pr-3 text-slate-600">
+        <QuantityWithEdit item={item} request={request} onUpdate={onUpdate} />
+      </td>
+      <td className="py-3 pr-3 text-slate-600">
+        {canEditWarehouseQuantities ? (
+          <QuantityWithEdit
+            field="stockQuantity"
+            item={item}
+            request={request}
+            onUpdate={onUpdate}
+          />
+        ) : (
+          <>
+            {formatQuantity(item.stockQuantity ?? "0")} {unit}
+          </>
+        )}
+      </td>
+      <td className="py-3 pr-3 text-slate-600">
+        {canEditWarehouseQuantities ? (
+          <QuantityWithEdit
+            field="orderQuantity"
+            item={item}
+            request={request}
+            onUpdate={onUpdate}
+          />
+        ) : (
+          <>
+            {formatQuantity(item.orderQuantity ?? item.quantity)} {unit}
+          </>
+        )}
+      </td>
+    </>
   );
 }
 
@@ -948,11 +1052,11 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
 
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[520px] border-collapse text-sm">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Материал</th>
-            <th className="py-2 pr-3 font-medium">Количество</th>
+            <MaterialQuantityHeaders />
             {shouldShowFulfillmentStatus ? (
               <th className="py-2 pr-3 font-medium">Статус</th>
             ) : null}
@@ -964,9 +1068,7 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
               <td className="py-3 pr-3 text-slate-950">
                 {item.materialNameSnapshot}
               </td>
-              <td className="py-3 pr-3 text-slate-600">
-                {formatQuantity(item.quantity)} {item.measurementUnitSnapshot}
-              </td>
+              <MaterialQuantityCells item={item} />
               {shouldShowFulfillmentStatus ? (
                 <td className="py-3 pr-3">
                   <span
@@ -1017,12 +1119,12 @@ function getFulfillmentStatusClass(
 function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[560px] border-collapse text-sm">
+      <table className="w-full min-w-[800px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Исполнено</th>
             <th className="py-2 pr-3 font-medium">Материал</th>
-            <th className="py-2 pr-3 font-medium">Количество</th>
+            <MaterialQuantityHeaders />
           </tr>
         </thead>
         <tbody>
@@ -1040,9 +1142,7 @@ function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
               <td className="py-3 pr-3 text-slate-950">
                 {item.materialNameSnapshot}
               </td>
-              <td className="py-3 pr-3 text-slate-600">
-                {formatQuantity(item.quantity)} {item.measurementUnitSnapshot}
-              </td>
+              <MaterialQuantityCells item={item} />
             </tr>
           ))}
         </tbody>
@@ -1067,16 +1167,17 @@ function EditableMaterialItemsTable({
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[620px] border-collapse text-sm">
+      <table className="w-full min-w-[860px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Материал</th>
-            <th className="py-2 pr-3 font-medium">Количество</th>
+            <MaterialQuantityHeaders />
             <th className="py-2 pr-3 font-medium">Удаление</th>
           </tr>
         </thead>
@@ -1086,13 +1187,11 @@ function EditableMaterialItemsTable({
               <td className="py-3 pr-3 text-slate-950">
                 {item.materialNameSnapshot}
               </td>
-              <td className="py-3 pr-3 text-slate-600">
-                <QuantityWithEdit
-                  item={item}
-                  request={request}
-                  onUpdate={onUpdateItem}
-                />
-              </td>
+              <EditableMaterialQuantityCells
+                item={item}
+                request={request}
+                onUpdate={onUpdateItem}
+              />
               <td className="py-3 pr-3">
                 <RequestItemDeleteAction
                   item={item}
@@ -1122,6 +1221,7 @@ function PriceComparisonTable({
   onUpdateItem?: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -1129,11 +1229,11 @@ function PriceComparisonTable({
 
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[720px] border-collapse text-sm">
+      <table className="w-full min-w-[980px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Материал</th>
-            <th className="py-2 pr-3 font-medium">Количество</th>
+            <MaterialQuantityHeaders />
             <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
             <th className="py-2 pr-3 font-medium">Итого ПТО</th>
             {canEditItems ? (
@@ -1150,17 +1250,15 @@ function PriceComparisonTable({
                 <td className="py-3 pr-3 text-slate-950">
                   {item.materialNameSnapshot}
                 </td>
-                <td className="py-3 pr-3 text-slate-600">
-                  {canEditItems && onUpdateItem ? (
-                    <QuantityWithEdit
-                      item={item}
-                      request={request}
-                      onUpdate={onUpdateItem}
-                    />
-                  ) : (
-                    `${formatQuantity(item.quantity)} ${item.measurementUnitSnapshot}`
-                  )}
-                </td>
+                {canEditItems && onUpdateItem ? (
+                  <EditableMaterialQuantityCells
+                    item={item}
+                    request={request}
+                    onUpdate={onUpdateItem}
+                  />
+                ) : (
+                  <MaterialQuantityCells item={item} />
+                )}
                 <td className="py-3 pr-3 font-medium text-slate-950">
                   {formatMoney(toNumber(item.ptoLimitPrice))}
                 </td>

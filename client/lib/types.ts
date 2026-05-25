@@ -129,6 +129,8 @@ export type SupplyRequestItem = {
   measurementUnitSnapshot: string;
   estimatedPriceSnapshot: string;
   quantity: string;
+  orderQuantity: string;
+  stockQuantity: string;
   ptoLimitPrice?: string | null;
   supplierPurchasePrice?: string | null;
   fulfillmentStatus: SupplyRequestItemFulfillmentStatus;
