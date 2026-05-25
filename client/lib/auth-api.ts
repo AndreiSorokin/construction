@@ -40,6 +40,13 @@ export function getCurrentUser() {
   return apiClient<User>("/auth/me");
 }
 
+export function updateCurrentUserName(name: string) {
+  return apiClient<User>("/auth/me", {
+    method: "PATCH",
+    body: { name },
+  });
+}
+
 export function logout() {
   return apiClient<{ success: boolean }>("/auth/logout", {
     method: "POST",

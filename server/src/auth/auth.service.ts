@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -12,6 +13,7 @@ import { AcceptInvitationDto } from "./dto/accept-invitation.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { AuthenticatedUser } from "./types/authenticated-user";
 import { JwtPayload } from "./types/jwt-payload";
 
@@ -160,6 +162,24 @@ export class AuthService {
     });
 
     return { success: true };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const name = dto.name.trim();
+
+    if (!name) {
+      throw new BadRequestException("Name is required");
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { name },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
   }
 
   private async createAuthResponse(user: AuthenticatedUser) {

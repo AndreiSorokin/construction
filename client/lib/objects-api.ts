@@ -14,6 +14,13 @@ export function getObject(id: string) {
   return apiClient<ObjectEntity>(`/objects/${id}`);
 }
 
+export function updateObjectName(id: string, name: string) {
+  return apiClient<ObjectEntity>(`/objects/${id}`, {
+    method: "PATCH",
+    body: { name },
+  });
+}
+
 export type CreateObjectMaterialPayload = {
   name: string;
   type: string;

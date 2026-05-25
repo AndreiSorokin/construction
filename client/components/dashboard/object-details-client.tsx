@@ -3,9 +3,12 @@
 import {
   ArrowLeft,
   Building2,
+  Check,
   Factory,
+  Pencil,
   Send,
   Trash2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -22,6 +25,7 @@ import {
   deleteObjectUserAccess,
   getObject,
   inviteObjectUser,
+  updateObjectName,
   updateObjectUserRole,
 } from "@/lib/objects-api";
 import { canCreateRequestType } from "@/lib/request-route-config";
@@ -65,6 +69,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
   const [isMoneyRequestOpen, setIsMoneyRequestOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
+  const [isEditingObjectName, setIsEditingObjectName] = useState(false);
   const [roleEditTarget, setRoleEditTarget] =
     useState<RoleEditTarget | null>(null);
   const { errorMessage, showError, clearError } = useErrorMessage();
@@ -170,6 +175,34 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     }
   }
 
+  async function submitObjectNameEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!object) {
+      return;
+    }
+
+    clearError();
+    clearSuccess();
+
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+
+    if (!name) {
+      showError("Укажите название объекта");
+      return;
+    }
+
+    try {
+      const updatedObject = await updateObjectName(object.id, name);
+      setObject(updatedObject);
+      setIsEditingObjectName(false);
+      showSuccess("Название объекта обновлено");
+    } catch (error) {
+      showError(error);
+    }
+  }
+
   function openRoleEditModal(
     userId: string,
     currentRole: UserRole,
@@ -269,9 +302,51 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     <Building2 size={22} />
                   </span>
                   <div className="min-w-0">
-                    <h1 className="break-words text-2xl font-semibold text-slate-950">
-                      {object.name}
-                    </h1>
+                    {isEditingObjectName ? (
+                      <form
+                        className="flex min-w-0 flex-wrap items-center gap-2"
+                        onSubmit={submitObjectNameEdit}
+                      >
+                        <input
+                          autoFocus
+                          className="h-10 min-w-0 rounded-md border border-slate-300 px-3 text-lg font-semibold text-slate-950 outline-none focus:border-teal-700"
+                          defaultValue={object.name}
+                          name="name"
+                          required
+                        />
+                        <button
+                          className="grid size-10 place-items-center rounded-md bg-teal-700 text-white hover:bg-teal-800"
+                          title="Сохранить"
+                          type="submit"
+                        >
+                          <Check size={16} />
+                        </button>
+                        <button
+                          className="grid size-10 place-items-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                          onClick={() => setIsEditingObjectName(false)}
+                          title="Отменить"
+                          type="button"
+                        >
+                          <X size={16} />
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <h1 className="break-words text-2xl font-semibold text-slate-950">
+                          {object.name}
+                        </h1>
+                        {canInviteUsers ? (
+                          <button
+                            className="grid size-9 place-items-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                            onClick={() => setIsEditingObjectName(true)}
+                            title="Редактировать название"
+                            type="button"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
                     <p className="mt-1 text-sm text-slate-600">
                       {objectTypeLabels[object.type]}
                     </p>

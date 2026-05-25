@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Building2, Factory, LogOut } from "lucide-react";
+import { Building2, Check, Factory, LogOut, Pencil, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -9,7 +9,7 @@ import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
 import { apiClient } from "@/lib/api";
-import { getCurrentUser, logout } from "@/lib/auth-api";
+import { getCurrentUser, logout, updateCurrentUserName } from "@/lib/auth-api";
 import {
   clearAuthSession,
   getStoredUser,
@@ -46,6 +46,7 @@ export function DashboardClient() {
   const [user, setUser] = useState<User | null>(null);
   const [objects, setObjects] = useState<UserObjectAccess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
 
@@ -127,6 +128,46 @@ export function DashboardClient() {
     }
   }
 
+  async function updateProfileName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!user) {
+      return;
+    }
+
+    clearError();
+    clearSuccess();
+
+    const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") ?? "").trim();
+
+    if (!name) {
+      showError("Укажите имя");
+      return;
+    }
+
+    try {
+      const updatedUser = await updateCurrentUserName(name);
+      setUser(updatedUser);
+
+      const accessToken = localStorage.getItem("construction_access_token");
+      const refreshToken = localStorage.getItem("construction_refresh_token");
+
+      if (accessToken && refreshToken) {
+        saveAuthSession({
+          accessToken,
+          refreshToken,
+          user: updatedUser,
+        } satisfies AuthResponse);
+      }
+
+      setIsEditingName(false);
+      showSuccess("Имя обновлено");
+    } catch (error) {
+      showError(error);
+    }
+  }
+
   if (!user) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100">
@@ -168,10 +209,50 @@ export function DashboardClient() {
       <section className="mx-auto grid max-w-6xl gap-4 px-4 py-6">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-950">
-                {user.name}
-              </h1>
+            <div className="min-w-0">
+              {isEditingName ? (
+                <form
+                  className="flex min-w-0 flex-wrap items-center gap-2"
+                  onSubmit={updateProfileName}
+                >
+                  <input
+                    autoFocus
+                    className="h-10 min-w-0 rounded-md border border-slate-300 px-3 text-xl font-semibold text-slate-950 outline-none focus:border-teal-700"
+                    defaultValue={user.name}
+                    name="name"
+                    required
+                  />
+                  <button
+                    className="grid size-10 place-items-center rounded-md bg-teal-700 text-white hover:bg-teal-800"
+                    title="Сохранить"
+                    type="submit"
+                  >
+                    <Check size={16} />
+                  </button>
+                  <button
+                    className="grid size-10 place-items-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    onClick={() => setIsEditingName(false)}
+                    title="Отменить"
+                    type="button"
+                  >
+                    <X size={16} />
+                  </button>
+                </form>
+              ) : (
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <h1 className="break-words text-2xl font-semibold text-slate-950">
+                    {user.name}
+                  </h1>
+                  <button
+                    className="grid size-9 place-items-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    onClick={() => setIsEditingName(true)}
+                    title="Редактировать имя"
+                    type="button"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                </div>
+              )}
               <p className="mt-1 text-sm text-slate-600">{user.email}</p>
             </div>
           </div>

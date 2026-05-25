@@ -17,6 +17,7 @@ import { CreateObjectMaterialDto } from "./dto/create-object-material.dto";
 import { CreateObjectDto } from "./dto/create-object.dto";
 import { InviteUserDto } from "./dto/invite-user.dto";
 import { UpdateObjectAccessDto } from "./dto/update-object-access.dto";
+import { UpdateObjectDto } from "./dto/update-object.dto";
 import { UpdateObjectMaterialDto } from "./dto/update-object-material.dto";
 import { ObjectsService } from "./objects.service";
 
@@ -43,6 +44,15 @@ export class ObjectsController {
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.objectsService.findOne(id);
+  }
+
+  @Patch(":id")
+  update(
+    @Param("id") id: string,
+    @Body() dto: UpdateObjectDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.objectsService.update(id, dto, user.id);
   }
 
   @Post(":id/access")

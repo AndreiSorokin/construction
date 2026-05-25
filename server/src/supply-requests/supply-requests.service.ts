@@ -1876,7 +1876,7 @@ export class SupplyRequestsService {
   private getNextRouteStatus(
     request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
   ) {
-F    if (request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY) {
+    if (request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY) {
       return SupplyRequestStatus.PENDING_DIRECTOR;
     }
 

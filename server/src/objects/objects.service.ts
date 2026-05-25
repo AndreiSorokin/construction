@@ -12,6 +12,7 @@ import { AddObjectAccessDto } from "./dto/add-object-access.dto";
 import { CreateObjectMaterialDto } from "./dto/create-object-material.dto";
 import { CreateObjectDto } from "./dto/create-object.dto";
 import { InviteUserDto } from "./dto/invite-user.dto";
+import { UpdateObjectDto } from "./dto/update-object.dto";
 import { UpdateObjectMaterialDto } from "./dto/update-object-material.dto";
 
 @Injectable()
@@ -132,6 +133,30 @@ export class ObjectsService {
     }
 
     return object;
+  }
+
+  async update(id: string, dto: UpdateObjectDto, actorId: string) {
+    const name = dto.name.trim();
+
+    if (!name) {
+      throw new BadRequestException("Object name is required");
+    }
+
+    await this.ensureObjectExists(id);
+    await this.ensureUserObjectRole(actorId, id, [UserRole.DIRECTOR]);
+
+    return this.prisma.objectEntity.update({
+      where: { id },
+      data: { name },
+      include: {
+        owner: true,
+        limits: true,
+        materials: true,
+        userAccesses: {
+          include: { user: true },
+        },
+      },
+    });
   }
 
   async addAccess(objectId: string, dto: AddObjectAccessDto, actorId: string) {
