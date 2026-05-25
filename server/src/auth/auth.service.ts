@@ -26,8 +26,14 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    const email = dto.email.trim().toLowerCase();
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
+      },
       select: { id: true },
     });
 
@@ -38,7 +44,7 @@ export class AuthService {
     const passwordHash = await hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email,
         passwordHash,
         name: dto.name,
       },
@@ -53,8 +59,14 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
+      },
     });
 
     if (!user) {
@@ -88,8 +100,13 @@ export class AuthService {
       throw new UnauthorizedException("Invitation expired");
     }
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: invitation.email },
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: invitation.email,
+          mode: "insensitive",
+        },
+      },
       select: { id: true },
     });
 

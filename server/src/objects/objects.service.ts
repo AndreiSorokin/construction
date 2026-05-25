@@ -303,8 +303,13 @@ export class ObjectsService {
       throw new BadRequestException("You cannot invite yourself");
     }
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: inviteEmail },
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        email: {
+          equals: inviteEmail,
+          mode: "insensitive",
+        },
+      },
       select: { id: true, email: true, name: true },
     });
 
