@@ -42,6 +42,7 @@ const MATERIAL_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
   SupplyRequestStatus.PENDING_SUPPLY,
   SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_ACCOUNTANT,
   SupplyRequestStatus.IN_PROGRESS, //Back to supply
   SupplyRequestStatus.PENDING_STOREKEEPER,
   SupplyRequestStatus.COMPLETED,
@@ -49,6 +50,7 @@ const MATERIAL_COMMON_ROUTE = [
 
 const MONEY_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_ACCOUNTANT,
   SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
   SupplyRequestStatus.PENDING_SUPPLY,
   SupplyRequestStatus.COMPLETED,
@@ -503,6 +505,15 @@ export class SupplyRequestsService {
         ? undefined
         : new Prisma.Decimal(dto.stockQuantity);
 
+    if (
+      request.status === SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER &&
+      (dto.quantity !== undefined || dto.orderQuantity !== undefined)
+    ) {
+      throw new BadRequestException(
+        "Warehouse manager can update only stock quantity",
+      );
+    }
+
     if (newQuantity?.lessThanOrEqualTo(0)) {
       throw new BadRequestException("Quantity must be greater than zero");
     }
@@ -587,6 +598,12 @@ export class SupplyRequestsService {
       request.status,
     );
 
+    if (request.status === SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER) {
+      throw new BadRequestException(
+        "Warehouse manager cannot delete request items",
+      );
+    }
+
     if (request.type !== SupplyRequestType.MATERIAL) {
       throw new BadRequestException(
         "Only material request items can be deleted",
@@ -652,6 +669,7 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
       SupplyRequestStatus.PENDING_SUPPLY,
       SupplyRequestStatus.PENDING_DIRECTOR,
+      SupplyRequestStatus.PENDING_ACCOUNTANT,
       SupplyRequestStatus.PENDING_GARAGE_MANAGER,
       SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
       SupplyRequestStatus.PENDING_STOREKEEPER,
@@ -991,6 +1009,43 @@ export class SupplyRequestsService {
     ]);
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.DEPUTY_TRANSPORT_DIRECTOR,
+    ]);
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async approveByAccountant(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_ACCOUNTANT,
+    ]);
+
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.MONEY
+    ) {
+      throw new BadRequestException(
+        "Only material and money requests can be approved by accountant",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.ACCOUNTANT,
     ]);
 
     const nextStatus = this.getNextRouteStatus(request);
@@ -1910,6 +1965,7 @@ export class SupplyRequestsService {
       PENDING_SUPPLY_MANAGER: "начальнику снабжения",
       PENDING_SUPPLY: "снабженцу",
       PENDING_DIRECTOR: "директору",
+      PENDING_ACCOUNTANT: "бухгалтеру",
       PENDING_GARAGE_MANAGER: "заведующему гаражом",
       PENDING_WAREHOUSE_MANAGER: "начальнику складского хозяйства",
       PENDING_STOREKEEPER: "кладовщику",
@@ -2027,6 +2083,7 @@ export class SupplyRequestsService {
       PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
       PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
       PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
+      PENDING_ACCOUNTANT: ApprovalAction.SENT_TO_ACCOUNTANT,
       PENDING_GARAGE_MANAGER: ApprovalAction.SENT_TO_GARAGE_MANAGER,
       PENDING_WAREHOUSE_MANAGER: ApprovalAction.SENT_TO_WAREHOUSE_MANAGER,
       PENDING_STOREKEEPER: ApprovalAction.SENT_TO_STOREKEEPER,
@@ -2118,6 +2175,7 @@ export class SupplyRequestsService {
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
+      PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
       PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,
       PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
       PENDING_STOREKEEPER: UserRole.STOREKEEPER,
@@ -2152,6 +2210,7 @@ export class SupplyRequestsService {
         UserRole.DEPUTY_PRODUCTION_DIRECTOR,
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
+      PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
     };
 
     return roleByStatus[status] ?? null;

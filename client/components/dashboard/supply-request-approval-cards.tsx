@@ -409,16 +409,11 @@ export function ChiefEngineerRequestCard({
 
 export function WarehouseManagerRequestCard({
   onApprove,
-  onDeleteItem,
   onReject,
   onUpdateItem,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
-  onDeleteItem: (
-    request: SupplyRequest,
-    item: SupplyRequest["items"][number],
-  ) => void;
   onReject: (request: SupplyRequest) => void;
   onUpdateItem: (
     request: SupplyRequest,
@@ -430,11 +425,7 @@ export function WarehouseManagerRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
-        <EditableMaterialItemsTable
-          request={request}
-          onDeleteItem={onDeleteItem}
-          onUpdateItem={onUpdateItem}
-        />
+        <WarehouseStockItemsTable request={request} onUpdateItem={onUpdateItem} />
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
@@ -501,6 +492,50 @@ export function DeputyProductionDirectorRequestCard({
         ) : (
           <MoneyDetails request={request} />
         )}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={() => onApprove(request)}
+            type="button"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
+      </RequestSummaryCard>
+    </div>
+  );
+}
+
+export function AccountantRequestCard({
+  onApprove,
+  onReject,
+  request,
+}: {
+  onApprove: (request: SupplyRequest) => void;
+  onReject: (request: SupplyRequest) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="rounded-md border border-slate-200 p-4">
+      <RequestSummaryCard request={request} variant="approval">
+        {request.type === "MATERIAL" ? (
+          <>
+            <PriceComparisonTable request={request} mode="pto" />
+            <Totals request={request} mode="pto" />
+          </>
+        ) : (
+          <MoneyDetails request={request} />
+        )}
+        <InvoiceList request={request} />
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
@@ -947,7 +982,6 @@ function MaterialQuantityHeaders() {
     <>
       <th className="py-2 pr-3 font-medium">Количество</th>
       <th className="py-2 pr-3 font-medium">Количество на складе</th>
-      <th className="py-2 pr-3 font-medium">Количество на заказ</th>
     </>
   );
 }
@@ -960,9 +994,6 @@ function MaterialQuantityCells({ item }: { item: SupplyRequest["items"][number] 
       </td>
       <td className="py-3 pr-3 text-slate-600">
         <QuantityValue item={item} field="stockQuantity" />
-      </td>
-      <td className="py-3 pr-3 text-slate-600">
-        <QuantityValue item={item} field="orderQuantity" />
       </td>
     </>
   );
@@ -1001,20 +1032,6 @@ function EditableMaterialQuantityCells({
         ) : (
           <>
             {formatQuantity(item.stockQuantity ?? "0")} {unit}
-          </>
-        )}
-      </td>
-      <td className="py-3 pr-3 text-slate-600">
-        {canEditWarehouseQuantities ? (
-          <QuantityWithEdit
-            field="orderQuantity"
-            item={item}
-            request={request}
-            onUpdate={onUpdate}
-          />
-        ) : (
-          <>
-            {formatQuantity(item.orderQuantity ?? item.quantity)} {unit}
           </>
         )}
       </td>
@@ -1197,6 +1214,52 @@ function EditableMaterialItemsTable({
                   item={item}
                   request={request}
                   onDelete={onDeleteItem}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function WarehouseStockItemsTable({
+  onUpdateItem,
+  request,
+}: {
+  onUpdateItem: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[700px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 text-left text-slate-500">
+            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">Количество</th>
+            <th className="py-2 pr-3 font-medium">Количество на складе</th>
+          </tr>
+        </thead>
+        <tbody>
+          {request.items.map((item) => (
+            <tr className="border-b border-slate-100" key={item.id}>
+              <td className="py-3 pr-3 text-slate-950">
+                {item.materialNameSnapshot}
+              </td>
+              <td className="py-3 pr-3 text-slate-600">
+                <QuantityValue item={item} field="quantity" />
+              </td>
+              <td className="py-3 pr-3 text-slate-600">
+                <QuantityWithEdit
+                  field="stockQuantity"
+                  item={item}
+                  request={request}
+                  onUpdate={onUpdateItem}
                 />
               </td>
             </tr>

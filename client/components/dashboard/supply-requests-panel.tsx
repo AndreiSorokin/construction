@@ -3,6 +3,7 @@
 import { RefreshCcw } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import {
+  AccountantRequestCard,
   ChiefEngineerRequestCard,
   DeputyProductionDirectorRequestCard,
   DirectorRequestCard,
@@ -26,6 +27,7 @@ import {
   approveSupplyRequestByDeputyTransportDirector,
   approveSupplyRequestByDirector,
   approveSupplyRequestByWarehouseManager,
+  approveSupplyRequestByAccountant,
   assignSupplyRequest,
   attachInvoicesAndSendToDirector,
   completeTransportByAuthor,
@@ -187,6 +189,16 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function approveByAccountant(request: SupplyRequest) {
+    try {
+      await approveSupplyRequestByAccountant(request.id);
+      onSuccess(`Заявка ${request.requestNumber} согласована`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function assignBySupplyManager(
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
@@ -234,9 +246,7 @@ export function SupplyRequestsPanel({
     const fieldLabel =
       field === "stockQuantity"
         ? "количество на складе"
-        : field === "orderQuantity"
-          ? "количество на заказ"
-          : "количество";
+        : "количество";
     const currentValue =
       field === "stockQuantity"
         ? String(item.stockQuantity ?? "0")
@@ -565,7 +575,6 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onApprove={approveByWarehouseManager}
-                    onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
                   />
@@ -617,6 +626,17 @@ export function SupplyRequestsPanel({
                     supplyUsers={getSupplyUsersForRequest(objectAccesses, request)}
                     onReject={rejectToPreviousStep}
                     onSubmit={assignBySupplyManager}
+                  />
+                );
+              }
+
+              if (objectRole === "ACCOUNTANT") {
+                return (
+                  <AccountantRequestCard
+                    key={request.id}
+                    request={request}
+                    onApprove={approveByAccountant}
+                    onReject={rejectToPreviousStep}
                   />
                 );
               }
@@ -760,6 +780,13 @@ function getVisibleRequests(
       return (
         (request.type === "MATERIAL" || request.type === "MONEY") &&
         request.status === "PENDING_SUPPLY_MANAGER"
+      );
+    }
+
+    if (objectRole === "ACCOUNTANT") {
+      return (
+        (request.type === "MATERIAL" || request.type === "MONEY") &&
+        request.status === "PENDING_ACCOUNTANT"
       );
     }
 

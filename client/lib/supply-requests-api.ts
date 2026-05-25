@@ -289,6 +289,19 @@ export function approveSupplyRequestByDeputyTransportDirector(
   );
 }
 
+export function approveSupplyRequestByAccountant(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/accountant/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function rejectSupplyRequestByDeputyTransportDirector(
   requestId: string,
   comment?: string,

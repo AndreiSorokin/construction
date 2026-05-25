@@ -265,6 +265,15 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/accountant/approve")
+  approveByAccountant(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByAccountant(id, dto, user.id);
+  }
+
   @Patch(":id/invoices/send-to-director")
   @UseInterceptors(FilesInterceptor("files", 10))
   attachInvoicesAndSendToDirector(

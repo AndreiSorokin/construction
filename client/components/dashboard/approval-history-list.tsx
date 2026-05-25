@@ -1,8 +1,5 @@
 import { Clock3 } from "lucide-react";
-import {
-  requestStatusLabels,
-  userRoleLabels,
-} from "@/lib/domain-labels";
+import { requestStatusLabels, userRoleLabels } from "@/lib/domain-labels";
 import {
   ApprovalAction,
   ApprovalHistoryEntry,
@@ -20,22 +17,27 @@ type ItemChangeDetails = {
   materialName?: string;
   oldQuantity?: string;
   newQuantity?: string;
+  oldOrderQuantity?: string;
+  newOrderQuantity?: string;
+  oldStockQuantity?: string;
+  newStockQuantity?: string;
   quantity?: string;
   estimatedPriceSnapshot?: string;
 };
 
 const actionLabels: Record<ApprovalAction, string> = {
   CREATED: "Создана",
-  APPROVED: "УтвержденаT",
+  APPROVED: "Утверждена",
   REJECTED: "Отклонена",
   RETURNED: "Возвращена",
   SENT_TO_PTO: "Отправлена в ПТО",
   SENT_TO_CHIEF_ENGINEER: "Отправлена главному инженеру",
   SENT_TO_SUPPLY_MANAGER: "Отправлена начальнику снабжения",
-  SENT_TO_SUPPLY: "Отправлена в снабжение",
+  SENT_TO_SUPPLY: "Отправлена снабженцу",
   SENT_TO_GARAGE_MANAGER: "Отправлена заведующему гаражом",
   SENT_TO_WAREHOUSE_MANAGER: "Отправлена начальнику складского хозяйства",
   SENT_TO_STOREKEEPER: "Отправлена кладовщику",
+  SENT_TO_ACCOUNTANT: "Отправлена бухгалтеру",
   SENT_TO_AUTHOR: "Отправлена автору заявки",
   ASSIGNED_TO_SUPPLY: "Назначена снабженцу",
   SENT_TO_DIRECTOR: "Отправлена директору",
@@ -47,7 +49,6 @@ const actionLabels: Record<ApprovalAction, string> = {
   REQUEST_ITEM_UPDATED: "Позиция изменена",
   REQUEST_ITEM_DELETED: "Позиция удалена",
 };
-
 
 export function ApprovalHistoryList({
   compact = false,
@@ -68,40 +69,44 @@ export function ApprovalHistoryList({
         История согласования
       </div>
       <div className="mt-3 grid gap-3">
-        {history.map((entry) => (
-          <div
-            className="border-l-2 border-slate-200 pl-3 text-sm"
-            key={entry.id}
-          >
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-medium text-slate-950">
-                {actionLabels[entry.action] ?? entry.action}
-              </span>
-              <span className="text-slate-500">
-                {formatHistoryDate(entry.createdAt)}
-              </span>
-            </div>
-            <div className="mt-1 text-slate-600">
-              {formatActor(entry)}
-              {entry.fromStatus || entry.toStatus ? (
-                <>
-                  {" "}
-                  · {formatStatusTransition(entry.fromStatus, entry.toStatus)}
-                </>
+        {history.map((entry) => {
+          const itemChange = formatItemChange(entry);
+
+          return (
+            <div
+              className="border-l-2 border-slate-200 pl-3 text-sm"
+              key={entry.id}
+            >
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-medium text-slate-950">
+                  {actionLabels[entry.action] ?? entry.action}
+                </span>
+                <span className="text-slate-500">
+                  {formatHistoryDate(entry.createdAt)}
+                </span>
+              </div>
+              <div className="mt-1 text-slate-600">
+                {formatActor(entry)}
+                {entry.fromStatus || entry.toStatus ? (
+                  <>
+                    {" "}
+                    - {formatStatusTransition(entry.fromStatus, entry.toStatus)}
+                  </>
+                ) : null}
+              </div>
+              {itemChange ? (
+                <div className="mt-2 rounded-md bg-white px-3 py-2 text-slate-700">
+                  {itemChange}
+                </div>
+              ) : null}
+              {entry.comment ? (
+                <div className="mt-2 rounded-md bg-white px-3 py-2 text-slate-700">
+                  {translateSystemComment(entry.comment)}
+                </div>
               ) : null}
             </div>
-            {formatItemChange(entry) ? (
-              <div className="mt-2 rounded-md bg-white px-3 py-2 text-slate-700">
-                {formatItemChange(entry)}
-              </div>
-            ) : null}
-            {entry.comment ? (
-              <div className="mt-2 rounded-md bg-white px-3 py-2 text-slate-700">
-                {translateSystemComment(entry.comment)}
-              </div>
-            ) : null}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -113,7 +118,7 @@ function formatActor(entry: ApprovalHistoryEntry) {
   const actorEmail = entry.actor?.email;
   const actorRole = details?.actorRole ? userRoleLabels[details.actorRole] : null;
 
-  return [actorName, actorEmail, actorRole].filter(Boolean).join(" · ");
+  return [actorName, actorEmail, actorRole].filter(Boolean).join(" - ");
 }
 
 function formatItemChange(entry: ApprovalHistoryEntry) {
@@ -124,15 +129,19 @@ function formatItemChange(entry: ApprovalHistoryEntry) {
   }
 
   if (entry.action === "REQUEST_ITEM_UPDATED") {
-    return `Материал: ${details.materialName}. Количество: ${formatQuantity(
-      details.oldQuantity,
-    )} -> ${formatQuantity(details.newQuantity)}.`;
+    const changedFields = formatQuantityChanges(details);
+
+    if (!changedFields.length) {
+      return `Материал: ${details.materialName}. Позиция изменена.`;
+    }
+
+    return `Материал: ${details.materialName}. ${changedFields.join(" ")}`;
   }
 
   if (entry.action === "REQUEST_ITEM_DELETED") {
     return `Материал: ${details.materialName}. Удаленное количество: ${formatQuantity(
       details.quantity,
-    )}. !<5B=0O F5=0: ${formatMoney(details.estimatedPriceSnapshot)}.`;
+    )}. Оцененная цена: ${formatMoney(details.estimatedPriceSnapshot)}.`;
   }
 
   return null;
@@ -144,6 +153,44 @@ function getItemChangeDetails(value: unknown): ItemChangeDetails | null {
   }
 
   return value as ItemChangeDetails;
+}
+
+function formatQuantityChanges(details: ItemChangeDetails) {
+  const changes: string[] = [];
+
+  if (details.newQuantity !== undefined) {
+    changes.push(
+      `Количество: ${formatQuantity(details.oldQuantity)} -> ${formatQuantity(
+        details.newQuantity,
+      )}.`,
+    );
+  }
+
+  if (
+    details.newQuantity === undefined &&
+    details.newStockQuantity !== undefined &&
+    details.oldQuantity !== undefined
+  ) {
+    changes.push(`Количество: ${formatQuantity(details.oldQuantity)}.`);
+  }
+
+  if (details.newStockQuantity !== undefined) {
+    changes.push(
+      `Количество на складе: ${formatQuantity(
+        details.oldStockQuantity,
+      )} -> ${formatQuantity(details.newStockQuantity)}.`,
+    );
+  }
+
+  if (details.newOrderQuantity !== undefined) {
+    changes.push(
+      `Количество на заказ: ${formatQuantity(
+        details.oldOrderQuantity,
+      )} -> ${formatQuantity(details.newOrderQuantity)}.`,
+    );
+  }
+
+  return changes;
 }
 
 function formatStatusTransition(
@@ -173,7 +220,11 @@ function formatHistoryDate(value: string) {
 }
 
 function formatQuantity(value?: string) {
-  const numberValue = Number(value ?? 0);
+  if (value === undefined || value === null || value === "") {
+    return "-";
+  }
+
+  const numberValue = Number(value);
 
   return Number.isFinite(numberValue)
     ? numberValue.toLocaleString("ru-KZ")

@@ -31,6 +31,7 @@ const accessRoleLabels: Record<UserObjectAccess["role"], string> = {
   GARAGE_MANAGER: "Заведующий гаражом",
   WAREHOUSE_MANAGER: "Начальник складского хозяйства",
   STOREKEEPER: "Кладовщик",
+  ACCOUNTANT: "Бухгалтер",
   SECRETARY: "Секретарь",
   DIRECTOR: "Директор",
 };

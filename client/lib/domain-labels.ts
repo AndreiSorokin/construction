@@ -14,7 +14,8 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
   CREATED: "Создана",
   PENDING_PTO: "В ПТО",
   PENDING_CHIEF_ENGINEER: "У главного инженера",
-  PENDING_DEPUTY_PRODUCTION_DIRECTOR: "У зам. директора по производству",
+  PENDING_DEPUTY_PRODUCTION_DIRECTOR:
+    "У зам. директора по производству",
   PENDING_DEPUTY_TRANSPORT_DIRECTOR: "У зам. директора по транспорту",
   PENDING_SUPPLY_MANAGER: "У начальника снабжения",
   PENDING_SUPPLY: "У снабженца",
@@ -22,6 +23,7 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
   PENDING_GARAGE_MANAGER: "У заведующего гаражом",
   PENDING_WAREHOUSE_MANAGER: "У начальника складского хозяйства",
   PENDING_STOREKEEPER: "У кладовщика",
+  PENDING_ACCOUNTANT: "У бухгалтера",
   PENDING_TRANSPORT_AUTHOR: "У автора заявки",
   RETURNED_TO_SUPPLY: "Возвращена снабжению",
   REJECTED: "Отклонена",
@@ -43,6 +45,7 @@ export const userRoleLabels: Record<UserRole, string> = {
   GARAGE_MANAGER: "Заведующий гаражом",
   WAREHOUSE_MANAGER: "Начальник складского хозяйства",
   STOREKEEPER: "Кладовщик",
+  ACCOUNTANT: "Бухгалтер",
   SECRETARY: "Секретарь",
   DIRECTOR: "Директор",
 };
