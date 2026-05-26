@@ -514,6 +514,30 @@ export async function downloadSupplyRequestInvoice(
   URL.revokeObjectURL(url);
 }
 
+export async function getSupplyRequestInvoicePreview(
+  requestId: string,
+  invoiceId: string,
+) {
+  const token = getAccessToken();
+  const response = await fetch(
+    `${API_URL}/supply-requests/${requestId}/invoices/${invoiceId}/download`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Не удалось открыть счет");
+  }
+
+  const blob = await response.blob();
+
+  return {
+    contentType: response.headers.get("Content-Type") ?? blob.type,
+    url: URL.createObjectURL(blob),
+  };
+}
+
 export function deleteSupplyRequestInvoice(
   requestId: string,
   invoiceId: string,

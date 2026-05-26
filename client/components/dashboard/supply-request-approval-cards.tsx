@@ -1,11 +1,14 @@
 ﻿"use client";
 
 import { Check, X } from "lucide-react";
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
 import { requestStatusLabels } from "@/lib/domain-labels";
-import { downloadSupplyRequestInvoice } from "@/lib/supply-requests-api";
-import { SupplyRequest, User } from "@/lib/types";
+import {
+  downloadSupplyRequestInvoice,
+  getSupplyRequestInvoicePreview,
+} from "@/lib/supply-requests-api";
+import { SupplyRequest, SupplyRequestInvoice, User } from "@/lib/types";
 
 export type ObjectRequestGroup = {
   objectId: string;
@@ -1401,6 +1404,22 @@ function InvoiceList({
   onDeleteInvoice?: (request: SupplyRequest, invoiceId: string) => void;
   request: SupplyRequest;
 }) {
+  const [preview, setPreview] = useState<{
+    contentType: string;
+    invoice: SupplyRequestInvoice;
+    url: string;
+  } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.url) {
+        URL.revokeObjectURL(preview.url);
+      }
+    };
+  }, [preview?.url]);
+
   if (request.type === "MONEY") {
     return null;
   }
@@ -1413,55 +1432,192 @@ function InvoiceList({
     );
   }
 
+  async function openPreview(invoice: SupplyRequestInvoice) {
+    setPreviewError(null);
+    setIsPreviewLoading(invoice.id);
+
+    try {
+      const nextPreview = await getSupplyRequestInvoicePreview(
+        request.id,
+        invoice.id,
+      );
+
+      if (preview?.url) {
+        URL.revokeObjectURL(preview.url);
+      }
+
+      setPreview({
+        ...nextPreview,
+        invoice,
+      });
+    } catch {
+      setPreviewError("Не удалось открыть счет для просмотра.");
+    } finally {
+      setIsPreviewLoading(null);
+    }
+  }
+
+  function closePreview() {
+    if (preview?.url) {
+      URL.revokeObjectURL(preview.url);
+    }
+
+    setPreview(null);
+    setPreviewError(null);
+  }
+
   return (
-    <div className="mt-4 rounded-md bg-slate-50 p-3">
-      <div className="text-sm font-medium text-slate-950">
-        Прикрепленные счета
-      </div>
-      <div className="mt-2 grid gap-2">
-        {request.invoices.map((invoice) => (
-          <div
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm"
-            key={invoice.id}
-          >
-            <div>
-              <div className="font-medium text-slate-950">
-                {invoice.originalName}
+    <>
+      <div className="mt-4 rounded-md bg-slate-50 p-3">
+        <div className="text-sm font-medium text-slate-950">
+          Прикрепленные счета
+        </div>
+        {previewError ? (
+          <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {previewError}
+          </div>
+        ) : null}
+        <div className="mt-2 grid gap-2">
+          {request.invoices.map((invoice) => (
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm"
+              key={invoice.id}
+            >
+              <div>
+                <div className="font-medium text-slate-950">
+                  {invoice.originalName}
+                </div>
+                <div className="text-slate-500">
+                  {formatFileSize(invoice.size)} ·{" "}
+                  {invoice.uploadedBy?.name ?? invoice.uploadedById}
+                </div>
               </div>
-              <div className="text-slate-500">
-                {formatFileSize(invoice.size)} ·{" "}
-                {invoice.uploadedBy?.name ?? invoice.uploadedById}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                onClick={() =>
-                  void downloadSupplyRequestInvoice(
-                    request.id,
-                    invoice.id,
-                    invoice.originalName,
-                  ).catch(() => window.alert("Не удалось скачать счет"))
-                }
-                type="button"
-              >
-                Скачать
-              </button>
-              {onDeleteInvoice ? (
+              <div className="flex items-center gap-2">
                 <button
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50"
-                  onClick={() => onDeleteInvoice(request, invoice.id)}
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-teal-200 bg-white px-3 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isPreviewLoading === invoice.id}
+                  onClick={() => void openPreview(invoice)}
                   type="button"
                 >
-                  Удалить
+                  {isPreviewLoading === invoice.id
+                    ? "Открываем..."
+                    : "Просмотреть"}
                 </button>
-              ) : null}
-              <div className="text-xs text-slate-500">
-                {new Date(invoice.createdAt).toLocaleDateString("ru-KZ")}
+                <button
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={() =>
+                    void downloadSupplyRequestInvoice(
+                      request.id,
+                      invoice.id,
+                      invoice.originalName,
+                    ).catch(() => window.alert("Не удалось скачать счет"))
+                  }
+                  type="button"
+                >
+                  Скачать
+                </button>
+                {onDeleteInvoice ? (
+                  <button
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50"
+                    onClick={() => onDeleteInvoice(request, invoice.id)}
+                    type="button"
+                  >
+                    Удалить
+                  </button>
+                ) : null}
+                <div className="text-xs text-slate-500">
+                  {new Date(invoice.createdAt).toLocaleDateString("ru-KZ")}
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+
+      {preview ? (
+        <InvoicePreviewModal
+          contentType={preview.contentType}
+          invoice={preview.invoice}
+          onClose={closePreview}
+          url={preview.url}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function InvoicePreviewModal({
+  contentType,
+  invoice,
+  onClose,
+  url,
+}: {
+  contentType: string;
+  invoice: SupplyRequestInvoice;
+  onClose: () => void;
+  url: string;
+}) {
+  const canPreviewAsImage = contentType.startsWith("image/");
+  const canPreviewAsPdf = contentType.includes("pdf");
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium text-slate-950">
+              {invoice.originalName}
+            </div>
+            <div className="mt-0.5 text-xs text-slate-500">
+              {formatFileSize(invoice.size)}
+            </div>
           </div>
-        ))}
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-3">
+          {canPreviewAsImage ? (
+            <img
+              alt={invoice.originalName}
+              className="mx-auto max-h-[72vh] max-w-full rounded-md bg-white object-contain"
+              src={url}
+            />
+          ) : canPreviewAsPdf ? (
+            <iframe
+              className="h-[72vh] w-full rounded-md border border-slate-200 bg-white"
+              src={url}
+              title={invoice.originalName}
+            />
+          ) : (
+            <div className="rounded-md bg-white p-4 text-sm text-slate-600">
+              Этот формат нельзя надежно показать в браузере. Скачайте файл,
+              чтобы открыть его в подходящей программе.
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
+          <a
+            className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            download={invoice.originalName}
+            href={url}
+          >
+            Скачать
+          </a>
+          <button
+            className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={onClose}
+            type="button"
+          >
+            Закрыть
+          </button>
+        </div>
       </div>
     </div>
   );
