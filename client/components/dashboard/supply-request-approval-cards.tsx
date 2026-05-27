@@ -173,6 +173,115 @@ export function SupplyManagerTransportRequestCard({
   );
 }
 
+export function SimpleApprovalCard({
+  onApprove,
+  onReject,
+  request,
+}: {
+  onApprove: (request: SupplyRequest) => void;
+  onReject: (request: SupplyRequest) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="rounded-md border border-slate-200 p-4">
+      <RequestSummaryCard request={request} variant="approval">
+        <RequestDetails request={request} />
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={() => onApprove(request)}
+            type="button"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
+      </RequestSummaryCard>
+    </div>
+  );
+}
+
+export function DeputyProductionAssignmentCard({
+  onReject,
+  onSubmit,
+  request,
+  workshopManagers,
+}: {
+  onReject: (request: SupplyRequest) => void;
+  onSubmit: (
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) => void;
+  request: SupplyRequest;
+  workshopManagers: User[];
+}) {
+  return (
+    <form
+      className="rounded-md border border-slate-200 p-4"
+      onSubmit={(event) => onSubmit(request, event)}
+    >
+      <RequestSummaryCard request={request} variant="approval">
+        <ProductionDetails request={request} />
+        <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3">
+          <label className="grid gap-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              Назначенный начальник цеха
+            </span>
+            <select
+              className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+              name="workshopManagerId"
+              required
+            >
+              <option value="">Выберите начальника цеха</option>
+              {workshopManagers.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.name} ({manager.email})
+                </option>
+              ))}
+            </select>
+          </label>
+          <input
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            name="comment"
+            placeholder="Комментарий зам. директора по производству"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              onClick={() => onReject(request)}
+              type="button"
+            >
+              <X size={16} />
+              Отклонить
+            </button>
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={!workshopManagers.length}
+              type="submit"
+            >
+              <Check size={16} />
+              Согласовать
+            </button>
+          </div>
+          {!workshopManagers.length ? (
+            <div className="text-sm text-amber-700">
+              На этом объекте пока нет пользователя с ролью начальника цеха.
+            </div>
+          ) : null}
+        </div>
+      </RequestSummaryCard>
+    </form>
+  );
+}
+
 export function GarageManagerTransportRequestCard({
   onComplete,
   onReject,
@@ -380,10 +489,8 @@ export function ChiefEngineerRequestCard({
               onUpdateItem={onUpdateItem}
             />
           </>
-        ) : request.type === "TRANSPORT" ? (
-          <TransportDetails request={request} />
         ) : (
-          <MoneyDetails request={request} />
+          <RequestDetails request={request} />
         )}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
         {request.type === "MATERIAL" || request.type === "TRANSPORT" ? (
@@ -490,10 +597,8 @@ export function DeputyProductionDirectorRequestCard({
             />
             <Totals request={request} mode="pto" />
           </>
-        ) : request.type === "TRANSPORT" ? (
-          <TransportDetails request={request} />
         ) : (
-          <MoneyDetails request={request} />
+          <RequestDetails request={request} />
         )}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
@@ -892,11 +997,7 @@ export function DirectorRequestCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
 
-      {request.type === "TRANSPORT" ? (
-        <TransportDetails request={request} />
-      ) : request.type === "MONEY" ? (
-        <MoneyDetails request={request} />
-      ) : (
+      {request.type === "MATERIAL" ? (
         <>
           <PriceComparisonTable
             request={request}
@@ -906,6 +1007,8 @@ export function DirectorRequestCard({
           />
           <Totals request={request} mode="pto" />
         </>
+      ) : (
+        <RequestDetails request={request} />
       )}
       <InvoiceList request={request} />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
@@ -1378,6 +1481,28 @@ function TransportDetails({ request }: { request: SupplyRequest }) {
   );
 }
 
+function ProductionDetails({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm">
+      <div>
+        <div className="text-slate-500">Описание заявки</div>
+        <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
+          {request.purpose ?? "Не указано"}
+        </div>
+      </div>
+      {request.assignedWorkshopManager ? (
+        <div>
+          <div className="text-slate-500">Назначенный начальник цеха</div>
+          <div className="mt-1 font-medium text-slate-950">
+            {request.assignedWorkshopManager.name} (
+            {request.assignedWorkshopManager.email})
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MoneyDetails({ request }: { request: SupplyRequest }) {
   return (
     <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">
@@ -1395,6 +1520,22 @@ function MoneyDetails({ request }: { request: SupplyRequest }) {
       </div>
     </div>
   );
+}
+
+function RequestDetails({ request }: { request: SupplyRequest }) {
+  if (request.type === "MATERIAL") {
+    return <MaterialItemsTable request={request} />;
+  }
+
+  if (request.type === "TRANSPORT") {
+    return <TransportDetails request={request} />;
+  }
+
+  if (request.type === "PRODUCTION") {
+    return <ProductionDetails request={request} />;
+  }
+
+  return <MoneyDetails request={request} />;
 }
 
 function InvoiceList({

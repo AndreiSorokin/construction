@@ -75,13 +75,19 @@ export type SupplyRequestStatus =
   | "PENDING_STOREKEEPER"
   | "PENDING_ACCOUNTANT"
   | "PENDING_TRANSPORT_AUTHOR"
+  | "PENDING_WORKSHOP_MANAGER"
+  | "PENDING_PRODUCTION_AUTHOR"
   | "RETURNED_TO_SUPPLY"
   | "REJECTED"
   | "IN_PROGRESS"
   | "COMPLETED"
   | "ARCHIVED";
 
-export type SupplyRequestType = "MATERIAL" | "TRANSPORT" | "MONEY";
+export type SupplyRequestType =
+  | "MATERIAL"
+  | "TRANSPORT"
+  | "MONEY"
+  | "PRODUCTION";
 
 export type SupplyRequestItemFulfillmentStatus =
   | "PENDING"
@@ -101,6 +107,7 @@ export type ApprovalAction =
   | "SENT_TO_WAREHOUSE_MANAGER"
   | "SENT_TO_STOREKEEPER"
   | "SENT_TO_ACCOUNTANT"
+  | "SENT_TO_WORKSHOP_MANAGER"
   | "SENT_TO_AUTHOR"
   | "ASSIGNED_TO_SUPPLY"
   | "SENT_TO_DIRECTOR"
@@ -161,6 +168,7 @@ export type SupplyRequest = {
   createdAt: string;
   assignedSupplyUserId?: string | null;
   assignedStorekeeperId?: string | null;
+  assignedWorkshopManagerId?: string | null;
   assignedById?: string | null;
   assignedAt?: string | null;
   transportType?: string | null;
@@ -172,6 +180,7 @@ export type SupplyRequest = {
   author?: User;
   assignedSupplyUser?: User | null;
   assignedStorekeeper?: User | null;
+  assignedWorkshopManager?: User | null;
   assignedBy?: User | null;
   invoices?: SupplyRequestInvoice[];
   items: SupplyRequestItem[];

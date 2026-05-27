@@ -20,9 +20,11 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
+import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
+import { CreateProductionSupplyRequestDto } from "./dto/create-production-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
 import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
@@ -61,6 +63,16 @@ const TRANSPORT_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
   SupplyRequestStatus.COMPLETED,
 ]
+
+const PRODUCTION_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+  SupplyRequestStatus.PENDING_PTO,
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+  SupplyRequestStatus.PENDING_WORKSHOP_MANAGER,
+  SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR,
+  SupplyRequestStatus.COMPLETED,
+];
 
 const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
   MATERIAL: {
@@ -124,6 +136,10 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     SITE_MANAGER: TRANSPORT_COMMON_ROUTE,
     WORKSHOP_MANAGER: TRANSPORT_COMMON_ROUTE,
     SUPPLY: TRANSPORT_COMMON_ROUTE,
+  },
+  PRODUCTION: {
+    FOREMAN: PRODUCTION_COMMON_ROUTE,
+    SITE_MANAGER: PRODUCTION_COMMON_ROUTE,
   },
 };
 
@@ -262,6 +278,46 @@ export class SupplyRequestsService {
           authorId,
           amount: new Prisma.Decimal(dto.amount),
           paymentPurpose: dto.paymentPurpose.trim(),
+          status: route.status,
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: route.status,
+              comment: route.comment,
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
+  async createProductionRequest(
+    dto: CreateProductionSupplyRequestDto,
+    authorId: string,
+  ) {
+    if (!dto.purpose.trim()) {
+      throw new BadRequestException(
+        "Production request must contain purpose",
+      );
+    }
+
+    const route = await this.getInitialRequestRoute(
+      authorId,
+      dto.objectId,
+      SupplyRequestType.PRODUCTION,
+    );
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "PRD"),
+          type: SupplyRequestType.PRODUCTION,
+          objectId: dto.objectId,
+          authorId,
+          purpose: dto.purpose.trim(),
           status: route.status,
           approvalHistory: {
             create: {
@@ -772,6 +828,34 @@ export class SupplyRequestsService {
     });
   }
 
+  async approveByPto(id: string, dto: RequestActionDto, actorId: string) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_PTO,
+    ]);
+
+    if (request.type !== SupplyRequestType.PRODUCTION) {
+      throw new BadRequestException(
+        "Only production requests can be approved without PTO prices",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [UserRole.PTO]);
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
   async approveByChiefEngineer(
     id: string,
     dto: RequestActionDto,
@@ -784,7 +868,8 @@ export class SupplyRequestsService {
     if (
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.TRANSPORT &&
-      request.type !== SupplyRequestType.MONEY
+      request.type !== SupplyRequestType.MONEY &&
+      request.type !== SupplyRequestType.PRODUCTION
     ) {
       throw new BadRequestException("Unsupported request type");
     }
@@ -972,6 +1057,57 @@ export class SupplyRequestsService {
         dto.comment,
       ),
     );
+  }
+
+  async assignToWorkshopManager(
+    id: string,
+    dto: AssignWorkshopManagerDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR],
+      SupplyRequestType.PRODUCTION,
+    );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(dto.workshopManagerId, request.objectId, [
+      UserRole.WORKSHOP_MANAGER,
+    ]);
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.supplyRequest.update({
+        where: { id },
+        data: {
+          assignedWorkshopManagerId: dto.workshopManagerId,
+          assignedById: actorId,
+          assignedAt: new Date(),
+          status: nextStatus,
+        },
+      });
+
+      await tx.approvalHistory.create({
+        data: {
+          requestId: id,
+          actorId,
+          action: ApprovalAction.SENT_TO_WORKSHOP_MANAGER,
+          fromStatus: request.status,
+          toStatus: nextStatus,
+          comment: dto.comment,
+          changesJson: {
+            assignedWorkshopManagerId: dto.workshopManagerId,
+          },
+        },
+      });
+
+      return tx.supplyRequest.findUnique({
+        where: { id },
+        include: this.requestInclude,
+      });
+    });
   }
 
   async rejectByDeputyProductionDirector(
@@ -1226,6 +1362,73 @@ export class SupplyRequestsService {
     if (request.authorId !== actorId) {
       throw new ForbiddenException(
         "Only the transport request author can confirm completion",
+      );
+    }
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async approveByWorkshopManager(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_WORKSHOP_MANAGER],
+      SupplyRequestType.PRODUCTION,
+    );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.WORKSHOP_MANAGER,
+    ]);
+
+    if (request.assignedWorkshopManagerId !== actorId) {
+      throw new ForbiddenException(
+        "Only the assigned workshop manager can process this request",
+      );
+    }
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async completeProductionByAuthor(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR],
+      SupplyRequestType.PRODUCTION,
+    );
+
+    if (request.authorId !== actorId) {
+      throw new ForbiddenException(
+        "Only the production request author can confirm completion",
       );
     }
 
@@ -1746,6 +1949,7 @@ export class SupplyRequestsService {
     },
     assignedSupplyUser: true,
     assignedStorekeeper: true,
+    assignedWorkshopManager: true,
     assignedBy: true,
     object: {
       include: {
@@ -1825,6 +2029,7 @@ export class SupplyRequestsService {
         items: true,
         assignedSupplyUser: true,
         assignedStorekeeper: true,
+        assignedWorkshopManager: true,
         author: {
           include: {
             objectAccesses: true,
@@ -1953,6 +2158,7 @@ export class SupplyRequestsService {
       MATERIAL: "Заявка на материалы",
       TRANSPORT: "Заявка на спец технику",
       MONEY: "Заявка на средства",
+      PRODUCTION: "Заявка на производство",
     };
 
     const statusLabel: Partial<Record<SupplyRequestStatus, string>> = {
@@ -1970,6 +2176,8 @@ export class SupplyRequestsService {
       PENDING_WAREHOUSE_MANAGER: "начальнику складского хозяйства",
       PENDING_STOREKEEPER: "кладовщику",
       PENDING_TRANSPORT_AUTHOR: "автору заявки",
+      PENDING_WORKSHOP_MANAGER: "начальнику цеха",
+      PENDING_PRODUCTION_AUTHOR: "автору заявки",
     };
 
     return `${requestLabel[requestType]} создана и отправлена ${
@@ -2088,6 +2296,8 @@ export class SupplyRequestsService {
       PENDING_WAREHOUSE_MANAGER: ApprovalAction.SENT_TO_WAREHOUSE_MANAGER,
       PENDING_STOREKEEPER: ApprovalAction.SENT_TO_STOREKEEPER,
       PENDING_TRANSPORT_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
+      PENDING_WORKSHOP_MANAGER: ApprovalAction.SENT_TO_WORKSHOP_MANAGER,
+      PENDING_PRODUCTION_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
       IN_PROGRESS: ApprovalAction.MARKED_IN_PROGRESS,
       COMPLETED: ApprovalAction.COMPLETED,
       ARCHIVED: ApprovalAction.ARCHIVED,
@@ -2145,10 +2355,13 @@ export class SupplyRequestsService {
     request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
     actorId: string,
   ) {
-    if (request.status === SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR) {
+    if (
+      request.status === SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR ||
+      request.status === SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR
+    ) {
       if (request.authorId !== actorId) {
         throw new ForbiddenException(
-          "Only the transport request author can process this request",
+          "Only the request author can process this request",
         );
       }
 
@@ -2179,6 +2392,7 @@ export class SupplyRequestsService {
       PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,
       PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
       PENDING_STOREKEEPER: UserRole.STOREKEEPER,
+      PENDING_WORKSHOP_MANAGER: UserRole.WORKSHOP_MANAGER,
     };
 
     const role = roleByStatus[request.status];
@@ -2197,6 +2411,15 @@ export class SupplyRequestsService {
     ) {
       throw new ForbiddenException(
         "Only the assigned storekeeper can process this request",
+      );
+    }
+
+    if (
+      request.status === SupplyRequestStatus.PENDING_WORKSHOP_MANAGER &&
+      request.assignedWorkshopManagerId !== actorId
+    ) {
+      throw new ForbiddenException(
+        "Only the assigned workshop manager can process this request",
       );
     }
   }

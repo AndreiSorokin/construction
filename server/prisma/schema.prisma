@@ -45,6 +45,8 @@ enum SupplyRequestStatus {
   PENDING_STOREKEEPER
   PENDING_ACCOUNTANT
   PENDING_TRANSPORT_AUTHOR
+  PENDING_WORKSHOP_MANAGER
+  PENDING_PRODUCTION_AUTHOR
   RETURNED_TO_SUPPLY
   REJECTED
   IN_PROGRESS
@@ -56,6 +58,7 @@ enum SupplyRequestType {
   MATERIAL
   TRANSPORT
   MONEY
+  PRODUCTION
 }
 
 enum ObjectLimitType {
@@ -77,6 +80,7 @@ enum ApprovalAction {
   SENT_TO_WAREHOUSE_MANAGER
   SENT_TO_STOREKEEPER
   SENT_TO_ACCOUNTANT
+  SENT_TO_WORKSHOP_MANAGER
   SENT_TO_AUTHOR
   ASSIGNED_TO_SUPPLY
   SENT_TO_DIRECTOR
@@ -113,6 +117,7 @@ model User {
   supplyRequests              SupplyRequest[]        @relation("SupplyRequestAuthor")
   assignedRequests            SupplyRequest[]        @relation("AssignedSupplyUser")
   assignedStorekeeperRequests SupplyRequest[]        @relation("AssignedStorekeeper")
+  assignedWorkshopRequests    SupplyRequest[]        @relation("AssignedWorkshopManager")
   assignedByRequests          SupplyRequest[]        @relation("AssignedByUser")
   approvalActions             ApprovalHistory[]      @relation("ApprovalActor")
   priceChanges                RequestPriceHistory[]  @relation("PriceChangeActor")
@@ -207,6 +212,7 @@ model SupplyRequest {
   authorId              String
   assignedSupplyUserId  String?
   assignedStorekeeperId String?
+  assignedWorkshopManagerId String?
   assignedById          String?
   assignedAt            DateTime?
   transportType         String?
@@ -217,6 +223,7 @@ model SupplyRequest {
   author                User                   @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
   assignedSupplyUser    User?                  @relation("AssignedSupplyUser", fields: [assignedSupplyUserId], references: [id])
   assignedStorekeeper   User?                  @relation("AssignedStorekeeper", fields: [assignedStorekeeperId], references: [id])
+  assignedWorkshopManager User?                @relation("AssignedWorkshopManager", fields: [assignedWorkshopManagerId], references: [id])
   assignedBy            User?                  @relation("AssignedByUser", fields: [assignedById], references: [id])
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
@@ -228,6 +235,7 @@ model SupplyRequest {
   @@index([authorId])
   @@index([assignedSupplyUserId])
   @@index([assignedStorekeeperId])
+  @@index([assignedWorkshopManagerId])
   @@index([assignedById])
   @@index([status])
   @@index([type])

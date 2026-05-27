@@ -31,6 +31,7 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "SUPPLY_MANAGER",
     "PTO",
   ],
+  PRODUCTION: ["FOREMAN", "SITE_MANAGER"],
 };
 
 export function canCreateRequestType(

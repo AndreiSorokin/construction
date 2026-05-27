@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
 import { MoneyRequestModal } from "@/components/dashboard/money-request-modal";
+import { ProductionRequestModal } from "@/components/dashboard/production-request-modal";
 import { TransportRequestModal } from "@/components/dashboard/transport-request-modal";
 import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
@@ -69,6 +70,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const [isMaterialRequestOpen, setIsMaterialRequestOpen] = useState(false);
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
   const [isMoneyRequestOpen, setIsMoneyRequestOpen] = useState(false);
+  const [isProductionRequestOpen, setIsProductionRequestOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [isEditingObjectName, setIsEditingObjectName] = useState(false);
   const [roleEditTarget, setRoleEditTarget] =
@@ -88,6 +90,10 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     "TRANSPORT",
   );
   const canCreateMoneyRequest = canCreateRequestType(currentObjectRole, "MONEY");
+  const canCreateProductionRequest = canCreateRequestType(
+    currentObjectRole,
+    "PRODUCTION",
+  );
   const canInviteUsers = currentObjectRole === "DIRECTOR";
   const canDeleteObject = currentObjectRole === "DIRECTOR";
 
@@ -388,6 +394,17 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </button>
                   ) : null}
 
+                  {canCreateProductionRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-indigo-200 bg-white px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
+                      onClick={() => setIsProductionRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Заявка на производство
+                    </button>
+                  ) : null}
+
                   {canDeleteObject ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
@@ -483,6 +500,13 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               isOpen={isMoneyRequestOpen}
               object={object}
               onClose={() => setIsMoneyRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+            />
+            <ProductionRequestModal
+              isOpen={isProductionRequestOpen}
+              object={object}
+              onClose={() => setIsProductionRequestOpen(false)}
               onError={showError}
               onSuccess={showSuccess}
             />

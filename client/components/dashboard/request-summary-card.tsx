@@ -3,9 +3,8 @@
 import {
   Banknote,
   Boxes,
-  CalendarDays,
   ChevronDown,
-  ClipboardList,
+  Factory,
   History,
   Truck,
 } from "lucide-react";
@@ -44,6 +43,8 @@ const statusClasses: Record<SupplyRequestStatus, string> = {
   PENDING_STOREKEEPER: "bg-stone-100 text-stone-700",
   PENDING_ACCOUNTANT: "bg-rose-50 text-rose-700",
   PENDING_TRANSPORT_AUTHOR: "bg-lime-50 text-lime-700",
+  PENDING_WORKSHOP_MANAGER: "bg-indigo-50 text-indigo-700",
+  PENDING_PRODUCTION_AUTHOR: "bg-indigo-50 text-indigo-700",
   RETURNED_TO_SUPPLY: "bg-orange-50 text-orange-700",
   REJECTED: "bg-red-50 text-red-700",
   IN_PROGRESS: "bg-teal-50 text-teal-700",
@@ -55,6 +56,7 @@ const typeClasses: Record<SupplyRequestType, string> = {
   MATERIAL: "bg-teal-50 text-teal-700",
   TRANSPORT: "bg-lime-50 text-lime-700",
   MONEY: "bg-violet-50 text-violet-700",
+  PRODUCTION: "bg-indigo-50 text-indigo-700",
 };
 
 export function RequestSummaryCard({
@@ -74,6 +76,10 @@ export function RequestSummaryCard({
 
   if (request.type === "TRANSPORT") {
     return "Транспорт";
+  }
+
+  if (request.type === "PRODUCTION") {
+    return request.purpose ?? "Производство";
   }
 
   return request.items
@@ -187,6 +193,10 @@ function getTypeIcon(type: SupplyRequestType) {
 
   if (type === "MONEY") {
     return Banknote;
+  }
+
+  if (type === "PRODUCTION") {
+    return Factory;
   }
 
   return Boxes;

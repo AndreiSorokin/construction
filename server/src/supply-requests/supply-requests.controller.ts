@@ -20,9 +20,11 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
+import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
+import { CreateProductionSupplyRequestDto } from "./dto/create-production-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
 import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
@@ -60,6 +62,14 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.createMoneyRequest(dto, user.id);
+  }
+
+  @Post("production")
+  createProductionRequest(
+    @Body() dto: CreateProductionSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createProductionRequest(dto, user.id);
   }
 
   @Get()
@@ -152,6 +162,15 @@ export class SupplyRequestsController {
     return this.supplyRequestsService.setPtoLimitPrices(id, dto, user.id);
   }
 
+  @Patch(":id/pto/approve")
+  approveByPto(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByPto(id, dto, user.id);
+  }
+
   @Patch(":id/chief-engineer/approve")
   approveByChiefEngineer(
     @Param("id") id: string,
@@ -220,6 +239,19 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.approveByDeputyProductionDirector(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/deputy-production-director/assign-workshop")
+  assignToWorkshopManager(
+    @Param("id") id: string,
+    @Body() dto: AssignWorkshopManagerDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.assignToWorkshopManager(
       id,
       dto,
       user.id,
@@ -341,6 +373,32 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.completeTransportByAuthor(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/workshop-manager/approve")
+  approveByWorkshopManager(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByWorkshopManager(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/production/author/complete")
+  completeProductionByAuthor(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeProductionByAuthor(
       id,
       dto,
       user.id,

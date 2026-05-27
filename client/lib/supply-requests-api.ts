@@ -51,6 +51,20 @@ export function createMoneySupplyRequest(
   });
 }
 
+export type CreateProductionSupplyRequestPayload = {
+  objectId: string;
+  purpose: string;
+};
+
+export function createProductionSupplyRequest(
+  payload: CreateProductionSupplyRequestPayload,
+) {
+  return apiClient<SupplyRequest>("/supply-requests/production", {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export function getSupplyRequests() {
   return apiClient<SupplyRequest[]>("/supply-requests");
 }
@@ -150,6 +164,16 @@ export function setPtoLimitPrices(
       body: payload,
     },
   );
+}
+
+export function approveSupplyRequestByPto(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(`/supply-requests/${requestId}/pto/approve`, {
+    method: "PATCH",
+    body: { comment },
+  });
 }
 
 export function updateSupplyRequestItem(
@@ -259,6 +283,22 @@ export function approveSupplyRequestByDeputyProductionDirector(
     {
       method: "PATCH",
       body: { comment },
+    },
+  );
+}
+
+export function assignWorkshopManager(
+  requestId: string,
+  payload: {
+    workshopManagerId: string;
+    comment?: string;
+  },
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/deputy-production-director/assign-workshop`,
+    {
+      method: "PATCH",
+      body: payload,
     },
   );
 }
@@ -402,6 +442,32 @@ export function completeTransportByAuthor(
 ) {
   return apiClient<SupplyRequest>(
     `/supply-requests/${requestId}/transport/author/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function approveSupplyRequestByWorkshopManager(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/workshop-manager/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function completeProductionByAuthor(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/production/author/complete`,
     {
       method: "PATCH",
       body: { comment },

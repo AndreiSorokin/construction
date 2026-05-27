@@ -5,11 +5,13 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   AccountantRequestCard,
   ChiefEngineerRequestCard,
+  DeputyProductionAssignmentCard,
   DeputyProductionDirectorRequestCard,
   DirectorRequestCard,
   GarageManagerTransportRequestCard,
   ObjectApprovalGroup,
   PtoRequestCard,
+  SimpleApprovalCard,
   SupplyInProgressCard,
   SupplyManagerRequestCard,
   SupplyManagerTransportRequestCard,
@@ -26,11 +28,15 @@ import {
   approveSupplyRequestByDeputyProductionDirector,
   approveSupplyRequestByDeputyTransportDirector,
   approveSupplyRequestByDirector,
+  approveSupplyRequestByPto,
   approveSupplyRequestByWarehouseManager,
+  approveSupplyRequestByWorkshopManager,
   approveSupplyRequestByAccountant,
+  assignWorkshopManager,
   assignSupplyRequest,
   attachInvoicesAndSendToDirector,
   completeTransportByAuthor,
+  completeProductionByAuthor,
   completeTransportByGarageManager,
   completeSupplyRequest,
   completeSupplyRequestByStorekeeper,
@@ -122,6 +128,22 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function approveByPto(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий ПТО");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await approveSupplyRequestByPto(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} согласована ПТО`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function approveByChiefEngineer(request: SupplyRequest) {
     try {
       await approveSupplyRequestByChiefEngineer(request.id);
@@ -173,6 +195,25 @@ export function SupplyRequestsPanel({
       onSuccess(
         `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
       );
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function assignByDeputyProductionDirector(
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+
+    try {
+      await assignWorkshopManager(request.id, {
+        workshopManagerId: String(form.get("workshopManagerId")),
+        comment: String(form.get("comment") ?? ""),
+      });
+      onSuccess(`Заявка ${request.requestNumber} назначена начальнику цеха`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -478,6 +519,38 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function approveByWorkshopManager(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий начальника цеха");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await approveSupplyRequestByWorkshopManager(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отправлена автору`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function completeProductionByRequestAuthor(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к закрытию заявки");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await completeProductionByAuthor(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} закрыта`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function approveByDirector(request: SupplyRequest) {
     try {
       await approveSupplyRequestByDirector(request.id);
@@ -543,7 +616,33 @@ export function SupplyRequestsPanel({
                 );
               }
 
+              if (
+                request.type === "PRODUCTION" &&
+                request.status === "PENDING_PRODUCTION_AUTHOR" &&
+                request.authorId === user.id
+              ) {
+                return (
+                  <SimpleApprovalCard
+                    key={request.id}
+                    request={request}
+                    onApprove={completeProductionByRequestAuthor}
+                    onReject={rejectToPreviousStep}
+                  />
+                );
+              }
+
               if (objectRole === "PTO") {
+                if (request.type === "PRODUCTION") {
+                  return (
+                    <SimpleApprovalCard
+                      key={request.id}
+                      request={request}
+                      onApprove={approveByPto}
+                      onReject={rejectToPreviousStep}
+                    />
+                  );
+                }
+
                 return (
                   <PtoRequestCard
                     key={request.id}
@@ -582,6 +681,21 @@ export function SupplyRequestsPanel({
               }
 
               if (objectRole === "DEPUTY_PRODUCTION_DIRECTOR") {
+                if (request.type === "PRODUCTION") {
+                  return (
+                    <DeputyProductionAssignmentCard
+                      key={request.id}
+                      request={request}
+                      workshopManagers={getWorkshopManagersForRequest(
+                        objectAccesses,
+                        request,
+                      )}
+                      onReject={rejectToPreviousStep}
+                      onSubmit={assignByDeputyProductionDirector}
+                    />
+                  );
+                }
+
                 return (
                   <DeputyProductionDirectorRequestCard
                     key={request.id}
@@ -708,6 +822,17 @@ export function SupplyRequestsPanel({
                 );
               }
 
+              if (objectRole === "WORKSHOP_MANAGER") {
+                return (
+                  <SimpleApprovalCard
+                    key={request.id}
+                    request={request}
+                    onApprove={approveByWorkshopManager}
+                    onReject={rejectToPreviousStep}
+                  />
+                );
+              }
+
               if (objectRole === "DIRECTOR") {
                 return (
                   <DirectorRequestCard
@@ -746,8 +871,19 @@ function getVisibleRequests(
       return true;
     }
 
+    if (
+      request.type === "PRODUCTION" &&
+      request.status === "PENDING_PRODUCTION_AUTHOR" &&
+      request.authorId === userId
+    ) {
+      return true;
+    }
+
     if (objectRole === "PTO") {
-      return request.type === "MATERIAL" && request.status === "PENDING_PTO";
+      return (
+        (request.type === "MATERIAL" || request.type === "PRODUCTION") &&
+        request.status === "PENDING_PTO"
+      );
     }
 
     if (objectRole === "CHIEF_ENGINEER") {
@@ -763,6 +899,14 @@ function getVisibleRequests(
 
     if (objectRole === "DEPUTY_PRODUCTION_DIRECTOR") {
       return request.status === "PENDING_DEPUTY_PRODUCTION_DIRECTOR";
+    }
+
+    if (objectRole === "WORKSHOP_MANAGER") {
+      return (
+        request.type === "PRODUCTION" &&
+        request.status === "PENDING_WORKSHOP_MANAGER" &&
+        request.assignedWorkshopManagerId === userId
+      );
     }
 
     if (objectRole === "DEPUTY_TRANSPORT_DIRECTOR") {
@@ -810,7 +954,9 @@ function getVisibleRequests(
 
     if (objectRole === "DIRECTOR") {
       return (
-        (request.type === "MATERIAL" || request.type === "MONEY") &&
+        (request.type === "MATERIAL" ||
+          request.type === "MONEY" ||
+          request.type === "PRODUCTION") &&
         request.status === "PENDING_DIRECTOR"
       );
     }
@@ -882,6 +1028,21 @@ function getStorekeepersForRequest(
   return (
     objectAccess?.object.userAccesses
       ?.filter((access) => access.role === "STOREKEEPER" && access.user)
+      .map((access) => access.user as User) ?? []
+  );
+}
+
+function getWorkshopManagersForRequest(
+  objectAccesses: UserObjectAccess[],
+  request: SupplyRequest,
+) {
+  const objectAccess = objectAccesses.find(
+    (access) => access.objectId === request.objectId,
+  );
+
+  return (
+    objectAccess?.object.userAccesses
+      ?.filter((access) => access.role === "WORKSHOP_MANAGER" && access.user)
       .map((access) => access.user as User) ?? []
   );
 }
