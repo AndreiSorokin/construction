@@ -133,14 +133,14 @@ function formatItemChange(entry: ApprovalHistoryEntry) {
     const changedFields = formatQuantityChanges(details);
 
     if (!changedFields.length) {
-      return `Материал: ${details.materialName}. Позиция изменена.`;
+      return `ТМЦ: ${details.materialName}. Позиция изменена.`;
     }
 
-    return `Материал: ${details.materialName}. ${changedFields.join(" ")}`;
+    return `ТМЦ: ${details.materialName}. ${changedFields.join(" ")}`;
   }
 
   if (entry.action === "REQUEST_ITEM_DELETED") {
-    return `Материал: ${details.materialName}. Удаленное количество: ${formatQuantity(
+    return `ТМЦ: ${details.materialName}. Удаленное количество: ${formatQuantity(
       details.quantity,
     )}. Оцененная цена: ${formatMoney(details.estimatedPriceSnapshot)}.`;
   }
@@ -243,7 +243,7 @@ function formatMoney(value?: string) {
 function translateSystemComment(comment: string) {
   const systemComments: Record<string, string> = {
     "Material supply request created and sent to PTO":
-      "Заявка на материалы создана и отправлена",
+      "Заявка на ТМЦ создана и отправлена",
     "Transport request created and sent to supply":
       "Заявка на транспорт создана и отправлена",
     "Money request created and sent to director":

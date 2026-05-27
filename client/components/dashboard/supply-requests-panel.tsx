@@ -453,6 +453,16 @@ export function SupplyRequestsPanel({
       .getAll("completedItemIds")
       .map((itemId) => String(itemId));
 
+    if (completedItemIds.length < request.items.length) {
+      const isConfirmed = window.confirm(
+        "Вы уверены, что хотите согласовать заявку неполной?",
+      );
+
+      if (!isConfirmed) {
+        return;
+      }
+    }
+
     try {
       await completeSupplyRequestByStorekeeper(request.id, {
         comment: String(form.get("comment") ?? ""),

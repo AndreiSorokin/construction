@@ -2155,7 +2155,7 @@ export class SupplyRequestsService {
     status: SupplyRequestStatus,
   ) {
     const requestLabel: Record<SupplyRequestType, string> = {
-      MATERIAL: "Заявка на материалы",
+      MATERIAL: "Заявка на ТМЦ",
       TRANSPORT: "Заявка на спец технику",
       MONEY: "Заявка на средства",
       PRODUCTION: "Заявка на производство",

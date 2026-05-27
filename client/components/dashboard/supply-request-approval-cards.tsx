@@ -388,7 +388,7 @@ export function PtoRequestCard({
         <table className="w-full min-w-[980px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-500">
-              <th className="py-2 pr-3 font-medium">Материал</th>
+              <th className="py-2 pr-3 font-medium">ТМЦ</th>
               <MaterialQuantityHeaders />
               <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
               <th className="py-2 pr-3 font-medium">Удаление</th>
@@ -1178,7 +1178,7 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
       <table className="w-full min-w-[760px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
             {shouldShowFulfillmentStatus ? (
               <th className="py-2 pr-3 font-medium">Статус</th>
@@ -1246,7 +1246,7 @@ function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Исполнено</th>
-            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
           </tr>
         </thead>
@@ -1299,7 +1299,7 @@ function EditableMaterialItemsTable({
       <table className="w-full min-w-[860px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
             <th className="py-2 pr-3 font-medium">Удаление</th>
           </tr>
@@ -1346,7 +1346,7 @@ function WarehouseStockItemsTable({
       <table className="w-full min-w-[700px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <th className="py-2 pr-3 font-medium">Количество</th>
             <th className="py-2 pr-3 font-medium">Количество на складе</th>
           </tr>
@@ -1401,7 +1401,7 @@ function PriceComparisonTable({
       <table className="w-full min-w-[980px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
-            <th className="py-2 pr-3 font-medium">Материал</th>
+            <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
             <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
             <th className="py-2 pr-3 font-medium">Итого ПТО</th>

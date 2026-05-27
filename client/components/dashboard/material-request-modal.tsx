@@ -148,10 +148,10 @@ export function MaterialRequestModal({
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">
-              {"Заявка на материалы"}
+              {"Заявка на ТМЦ"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {`${object.name}: добавьте позиции вручную. Справочник материалов не требуется.`}
+              {`${object.name}: добавьте позиции ТМЦ вручную. Справочник ТМЦ не требуется.`}
             </p>
           </div>
           <button

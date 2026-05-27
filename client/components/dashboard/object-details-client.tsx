@@ -368,7 +368,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                       type="button"
                     >
                       <Send size={16} />
-                      Заявка на материалы
+                      Заявка на ТМЦ
                     </button>
                   ) : null}
 

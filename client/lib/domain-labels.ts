@@ -5,7 +5,7 @@ import {
 } from "@/lib/types";
 
 export const requestTypeLabels: Record<SupplyRequestType, string> = {
-  MATERIAL: "Материалы",
+  MATERIAL: "ТМЦ",
   TRANSPORT: "Транспорт",
   MONEY: "Денежные средства",
   PRODUCTION: "Производство",

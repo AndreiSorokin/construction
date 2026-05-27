@@ -145,7 +145,7 @@ function getDetailLabel(request: SupplyRequest) {
     return "Вид техники";
   }
 
-  return "Материалы";
+  return "ТМЦ";
 }
 
 function getDetailValue(request: SupplyRequest) {
