@@ -1,7 +1,12 @@
 import { apiClient } from "./api";
 import { getAccessToken } from "./auth-storage";
 import { API_URL } from "./config";
-import { SupplyRequest, SupplyRequestStatus, SupplyRequestType } from "./types";
+import {
+  MoneyRequestPaymentType,
+  SupplyRequest,
+  SupplyRequestStatus,
+  SupplyRequestType,
+} from "./types";
 
 export type CreateMaterialSupplyRequestPayload = {
   objectId: string;
@@ -39,6 +44,7 @@ export function createTransportSupplyRequest(
 export type CreateMoneySupplyRequestPayload = {
   objectId: string;
   amount: string;
+  paymentType: MoneyRequestPaymentType;
   paymentPurpose: string;
 };
 
@@ -52,6 +58,7 @@ export function createMoneySupplyRequest(
 }
 
 export type CreateProductionSupplyRequestPayload = {
+  files?: File[];
   objectId: string;
   purpose: string;
 };
@@ -59,9 +66,18 @@ export type CreateProductionSupplyRequestPayload = {
 export function createProductionSupplyRequest(
   payload: CreateProductionSupplyRequestPayload,
 ) {
+  const form = new FormData();
+
+  form.append("objectId", payload.objectId);
+  form.append("purpose", payload.purpose);
+
+  for (const file of payload.files ?? []) {
+    form.append("files", file);
+  }
+
   return apiClient<SupplyRequest>("/supply-requests/production", {
     method: "POST",
-    body: payload,
+    body: form,
   });
 }
 
@@ -594,6 +610,57 @@ export async function getSupplyRequestInvoicePreview(
 
   if (!response.ok) {
     throw new Error("Не удалось открыть счет");
+  }
+
+  const blob = await response.blob();
+
+  return {
+    contentType: response.headers.get("Content-Type") ?? blob.type,
+    url: URL.createObjectURL(blob),
+  };
+}
+
+export async function downloadSupplyRequestAttachment(
+  requestId: string,
+  attachmentId: string,
+  fileName: string,
+) {
+  const token = getAccessToken();
+  const response = await fetch(
+    `${API_URL}/supply-requests/${requestId}/attachments/${attachmentId}/download`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Не удалось скачать файл");
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function getSupplyRequestAttachmentPreview(
+  requestId: string,
+  attachmentId: string,
+) {
+  const token = getAccessToken();
+  const response = await fetch(
+    `${API_URL}/supply-requests/${requestId}/attachments/${attachmentId}/download`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("Не удалось открыть файл");
   }
 
   const blob = await response.blob();

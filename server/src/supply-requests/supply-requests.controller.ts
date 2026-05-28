@@ -65,11 +65,17 @@ export class SupplyRequestsController {
   }
 
   @Post("production")
+  @UseInterceptors(FilesInterceptor("files", 10))
   createProductionRequest(
     @Body() dto: CreateProductionSupplyRequestDto,
+    @UploadedFiles() files: Express.Multer.File[],
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.supplyRequestsService.createProductionRequest(dto, user.id);
+    return this.supplyRequestsService.createProductionRequest(
+      dto,
+      files,
+      user.id,
+    );
   }
 
   @Get()
@@ -103,6 +109,29 @@ export class SupplyRequestsController {
     });
 
     return new StreamableFile(invoice.file);
+  }
+
+  @Get(":id/attachments/:attachmentId/download")
+  async downloadAttachment(
+    @Param("id") id: string,
+    @Param("attachmentId") attachmentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const attachment = await this.supplyRequestsService.findAttachmentFile(
+      id,
+      attachmentId,
+      user.id,
+    );
+
+    response.set({
+      "Content-Type": attachment.mimeType,
+      "Content-Disposition": `inline; filename="${encodeURIComponent(
+        attachment.originalName,
+      )}"`,
+    });
+
+    return new StreamableFile(attachment.file);
   }
 
   @Delete(":id/invoices/:invoiceId")

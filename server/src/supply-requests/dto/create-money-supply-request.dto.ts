@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsNumberString, IsString } from "class-validator";
+import { MoneyRequestPaymentType } from "@prisma/client";
+import { IsEnum, IsNotEmpty, IsNumberString, IsString } from "class-validator";
 
 export class CreateMoneySupplyRequestDto {
   @IsString()
@@ -7,6 +8,9 @@ export class CreateMoneySupplyRequestDto {
 
   @IsNumberString()
   amount: string;
+
+  @IsEnum(MoneyRequestPaymentType)
+  paymentType: MoneyRequestPaymentType;
 
   @IsString()
   @IsNotEmpty()

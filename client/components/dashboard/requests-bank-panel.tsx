@@ -113,13 +113,19 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
           value={request.invoices?.length ? `${request.invoices.length} шт.` : "-"}
         />
         {request.type === "MONEY" ? (
-          <Info
-            label="Назначение платежа"
-            value={request.paymentPurpose ?? "-"}
-          />
+          <>
+            <Info label="Тип оплаты" value={formatPaymentType(request.paymentType)} />
+            <Info
+              label="Назначение платежа"
+              value={request.paymentPurpose ?? "-"}
+            />
+          </>
         ) : null}
         {request.type === "TRANSPORT" ? (
           <Info label="Назначение техники" value={request.purpose ?? "-"} />
+        ) : null}
+        {request.type === "PRODUCTION" ? (
+          <Info label="Задача на производство" value={request.purpose ?? "-"} />
         ) : null}
       </div>
       <MaterialItemsStatusList request={request} />
@@ -145,6 +151,10 @@ function getDetailLabel(request: SupplyRequest) {
     return "Вид техники";
   }
 
+  if (request.type === "PRODUCTION") {
+    return "Производство";
+  }
+
   return "ТМЦ";
 }
 
@@ -155,6 +165,10 @@ function getDetailValue(request: SupplyRequest) {
 
   if (request.type === "MONEY") {
     return formatMoney(toNumber(request.amount));
+  }
+
+  if (request.type === "PRODUCTION") {
+    return request.purpose ?? "Производство";
   }
 
   const itemsCount = request.items.length;
@@ -202,4 +216,16 @@ function toNumber(value: string | number | null | undefined) {
 
 function formatMoney(value: number) {
   return `${value.toLocaleString("ru-KZ")} тг`;
+}
+
+function formatPaymentType(type: SupplyRequest["paymentType"]) {
+  if (type === "CASH") {
+    return "Наличные";
+  }
+
+  if (type === "NON_CASH") {
+    return "Безналичные";
+  }
+
+  return "-";
 }

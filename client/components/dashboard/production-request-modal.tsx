@@ -44,9 +44,13 @@ export function ProductionRequestModal({
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const files = form
+      .getAll("files")
+      .filter((file): file is File => file instanceof File && file.size > 0);
 
     try {
       const request = await createProductionSupplyRequest({
+        files,
         objectId: object.id,
         purpose: String(form.get("purpose")),
       });
@@ -72,7 +76,7 @@ export function ProductionRequestModal({
               Заявка на производство
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {object.name}: опишите задачу для производственной цепочки.
+              {object.name}: опишите задачу и приложите файлы или фото.
             </p>
           </div>
           <button
@@ -99,6 +103,19 @@ export function ProductionRequestModal({
               name="purpose"
               placeholder="Например: изготовить металлоконструкции по чертежам"
               required
+            />
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              Файлы и фото
+            </span>
+            <input
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar"
+              className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
+              multiple
+              name="files"
+              type="file"
             />
           </label>
 

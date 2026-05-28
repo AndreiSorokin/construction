@@ -46,10 +46,15 @@ export function MoneyRequestModal({
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const amount = String(form.get("amount") ?? "");
+    const paymentType = String(form.get("paymentType") ?? "");
     const paymentPurpose = String(form.get("paymentPurpose") ?? "").trim();
 
-    if (toNumber(amount) <= 0 || !paymentPurpose) {
-      onError("Укажите сумму и назначение платежа");
+    if (
+      toNumber(amount) <= 0 ||
+      (paymentType !== "CASH" && paymentType !== "NON_CASH") ||
+      !paymentPurpose
+    ) {
+      onError("Укажите сумму, тип оплаты и назначение платежа");
       return;
     }
 
@@ -57,6 +62,7 @@ export function MoneyRequestModal({
       const request = await createMoneySupplyRequest({
         objectId: object.id,
         amount,
+        paymentType,
         paymentPurpose,
       });
 
@@ -112,6 +118,24 @@ export function MoneyRequestModal({
               step="0.01"
               type="number"
             />
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="text-sm font-medium text-slate-700">
+              Тип оплаты
+            </span>
+            <select
+              className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+              defaultValue=""
+              name="paymentType"
+              required
+            >
+              <option value="" disabled>
+                Выберите тип оплаты
+              </option>
+              <option value="CASH">Наличные</option>
+              <option value="NON_CASH">Безналичные</option>
+            </select>
           </label>
 
           <label className="grid gap-1.5">

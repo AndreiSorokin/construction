@@ -6,9 +6,16 @@ import { RequestSummaryCard } from "@/components/dashboard/request-summary-card"
 import { requestStatusLabels } from "@/lib/domain-labels";
 import {
   downloadSupplyRequestInvoice,
+  downloadSupplyRequestAttachment,
+  getSupplyRequestAttachmentPreview,
   getSupplyRequestInvoicePreview,
 } from "@/lib/supply-requests-api";
-import { SupplyRequest, SupplyRequestInvoice, User } from "@/lib/types";
+import {
+  SupplyRequest,
+  SupplyRequestAttachment,
+  SupplyRequestInvoice,
+  User,
+} from "@/lib/types";
 
 export type ObjectRequestGroup = {
   objectId: string;
@@ -1483,22 +1490,25 @@ function TransportDetails({ request }: { request: SupplyRequest }) {
 
 function ProductionDetails({ request }: { request: SupplyRequest }) {
   return (
-    <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm">
-      <div>
-        <div className="text-slate-500">Описание заявки</div>
-        <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
-          {request.purpose ?? "Не указано"}
-        </div>
-      </div>
-      {request.assignedWorkshopManager ? (
+    <div className="mt-4 grid gap-3">
+      <div className="grid gap-3 rounded-md bg-slate-50 p-3 text-sm">
         <div>
-          <div className="text-slate-500">Назначенный начальник цеха</div>
-          <div className="mt-1 font-medium text-slate-950">
-            {request.assignedWorkshopManager.name} (
-            {request.assignedWorkshopManager.email})
+          <div className="text-slate-500">Описание заявки</div>
+          <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
+            {request.purpose ?? "Не указано"}
           </div>
         </div>
-      ) : null}
+        {request.assignedWorkshopManager ? (
+          <div>
+            <div className="text-slate-500">Назначенный начальник цеха</div>
+            <div className="mt-1 font-medium text-slate-950">
+              {request.assignedWorkshopManager.name} (
+              {request.assignedWorkshopManager.email})
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <AttachmentList request={request} />
     </div>
   );
 }
@@ -1513,6 +1523,12 @@ function MoneyDetails({ request }: { request: SupplyRequest }) {
         </div>
       </div>
       <div>
+        <div className="text-slate-500">Тип оплаты</div>
+        <div className="mt-1 font-medium text-slate-950">
+          {formatPaymentType(request.paymentType)}
+        </div>
+      </div>
+      <div>
         <div className="text-slate-500">Назначение платежа</div>
         <div className="mt-1 font-medium text-slate-950">
           {request.paymentPurpose ?? "Не указано"}
@@ -1520,6 +1536,18 @@ function MoneyDetails({ request }: { request: SupplyRequest }) {
       </div>
     </div>
   );
+}
+
+function formatPaymentType(type: SupplyRequest["paymentType"]) {
+  if (type === "CASH") {
+    return "Наличные";
+  }
+
+  if (type === "NON_CASH") {
+    return "Безналичные";
+  }
+
+  return "Не указано";
 }
 
 function RequestDetails({ request }: { request: SupplyRequest }) {
@@ -1536,6 +1564,194 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
   }
 
   return <MoneyDetails request={request} />;
+}
+
+function AttachmentList({ request }: { request: SupplyRequest }) {
+  const [preview, setPreview] = useState<{
+    attachment: SupplyRequestAttachment;
+    contentType: string;
+    url: string;
+  } | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.url) {
+        URL.revokeObjectURL(preview.url);
+      }
+    };
+  }, [preview?.url]);
+
+  if (!request.attachments?.length) {
+    return null;
+  }
+
+  async function openPreview(attachment: SupplyRequestAttachment) {
+    setIsPreviewLoading(attachment.id);
+
+    try {
+      const nextPreview = await getSupplyRequestAttachmentPreview(
+        request.id,
+        attachment.id,
+      );
+
+      if (preview?.url) {
+        URL.revokeObjectURL(preview.url);
+      }
+
+      setPreview({
+        ...nextPreview,
+        attachment,
+      });
+    } finally {
+      setIsPreviewLoading(null);
+    }
+  }
+
+  function closePreview() {
+    if (preview?.url) {
+      URL.revokeObjectURL(preview.url);
+    }
+
+    setPreview(null);
+  }
+
+  return (
+    <>
+      <div className="rounded-md bg-slate-50 p-3">
+        <div className="text-sm font-medium text-slate-950">
+          Прикрепленные файлы и фото
+        </div>
+        <div className="mt-2 grid gap-2">
+          {request.attachments.map((attachment) => (
+            <div
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm"
+              key={attachment.id}
+            >
+              <div>
+                <div className="font-medium text-slate-950">
+                  {attachment.originalName}
+                </div>
+                <div className="text-slate-500">
+                  {formatFileSize(attachment.size)} ·{" "}
+                  {attachment.uploadedBy?.name ?? attachment.uploadedById}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-teal-200 bg-white px-3 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isPreviewLoading === attachment.id}
+                  onClick={() => void openPreview(attachment)}
+                  type="button"
+                >
+                  {isPreviewLoading === attachment.id
+                    ? "Открываем..."
+                    : "Просмотреть"}
+                </button>
+                <button
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  onClick={() =>
+                    void downloadSupplyRequestAttachment(
+                      request.id,
+                      attachment.id,
+                      attachment.originalName,
+                    ).catch(() => window.alert("Не удалось скачать файл"))
+                  }
+                  type="button"
+                >
+                  Скачать
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {preview ? (
+        <AttachmentPreviewModal
+          attachment={preview.attachment}
+          contentType={preview.contentType}
+          onClose={closePreview}
+          url={preview.url}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function AttachmentPreviewModal({
+  attachment,
+  contentType,
+  onClose,
+  url,
+}: {
+  attachment: SupplyRequestAttachment;
+  contentType: string;
+  onClose: () => void;
+  url: string;
+}) {
+  const canPreviewAsImage = contentType.startsWith("image/");
+  const canPreviewAsPdf = contentType.includes("pdf");
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium text-slate-950">
+              {attachment.originalName}
+            </div>
+            <div className="mt-0.5 text-xs text-slate-500">
+              {formatFileSize(attachment.size)}
+            </div>
+          </div>
+          <button
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-3">
+          {canPreviewAsImage ? (
+            <img
+              alt={attachment.originalName}
+              className="mx-auto max-h-[72vh] max-w-full rounded-md bg-white object-contain"
+              src={url}
+            />
+          ) : canPreviewAsPdf ? (
+            <iframe
+              className="h-[72vh] w-full rounded-md border border-slate-200 bg-white"
+              src={url}
+              title={attachment.originalName}
+            />
+          ) : (
+            <div className="rounded-md bg-white p-4 text-sm text-slate-600">
+              Этот формат нельзя надежно показать в браузере. Скачайте файл,
+              чтобы открыть его в подходящей программе.
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
+          <a
+            className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            download={attachment.originalName}
+            href={url}
+          >
+            Скачать
+          </a>
+          <button
+            className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            onClick={onClose}
+            type="button"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function InvoiceList({

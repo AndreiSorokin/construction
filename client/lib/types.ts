@@ -89,6 +89,8 @@ export type SupplyRequestType =
   | "MONEY"
   | "PRODUCTION";
 
+export type MoneyRequestPaymentType = "CASH" | "NON_CASH";
+
 export type SupplyRequestItemFulfillmentStatus =
   | "PENDING"
   | "COMPLETED"
@@ -158,6 +160,18 @@ export type SupplyRequestInvoice = {
   uploadedBy?: User;
 };
 
+export type SupplyRequestAttachment = {
+  id: string;
+  requestId: string;
+  uploadedById: string;
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+  uploadedBy?: User;
+};
+
 export type SupplyRequest = {
   id: string;
   requestNumber: string;
@@ -174,6 +188,7 @@ export type SupplyRequest = {
   transportType?: string | null;
   purpose?: string | null;
   amount?: string | null;
+  paymentType?: MoneyRequestPaymentType | null;
   paymentPurpose?: string | null;
   authorObjectRole?: UserRole | null;
   object?: ObjectEntity;
@@ -183,6 +198,7 @@ export type SupplyRequest = {
   assignedWorkshopManager?: User | null;
   assignedBy?: User | null;
   invoices?: SupplyRequestInvoice[];
+  attachments?: SupplyRequestAttachment[];
   items: SupplyRequestItem[];
   approvalHistory?: ApprovalHistoryEntry[];
 };

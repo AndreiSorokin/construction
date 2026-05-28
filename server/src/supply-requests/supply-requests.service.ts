@@ -150,6 +150,11 @@ export class SupplyRequestsService {
     "uploads",
     "invoices",
   );
+  private readonly attachmentUploadsDir = join(
+    process.cwd(),
+    "uploads",
+    "attachments",
+  );
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -277,6 +282,7 @@ export class SupplyRequestsService {
           objectId: dto.objectId,
           authorId,
           amount: new Prisma.Decimal(dto.amount),
+          paymentType: dto.paymentType,
           paymentPurpose: dto.paymentPurpose.trim(),
           status: route.status,
           approvalHistory: {
@@ -296,6 +302,7 @@ export class SupplyRequestsService {
 
   async createProductionRequest(
     dto: CreateProductionSupplyRequestDto,
+    files: Express.Multer.File[] | undefined,
     authorId: string,
   ) {
     if (!dto.purpose.trim()) {
@@ -310,8 +317,12 @@ export class SupplyRequestsService {
       SupplyRequestType.PRODUCTION,
     );
 
-    return this.prisma.$transaction(async (tx) =>
-      tx.supplyRequest.create({
+    if (files?.length) {
+      await mkdir(this.attachmentUploadsDir, { recursive: true });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.supplyRequest.create({
         data: {
           requestNumber: await this.createRequestNumber(tx, "PRD"),
           type: SupplyRequestType.PRODUCTION,
@@ -330,8 +341,32 @@ export class SupplyRequestsService {
           },
         },
         include: this.requestInclude,
-      }),
-    );
+      });
+
+      for (const file of files ?? []) {
+        const storedName = `${randomUUID()}${extname(file.originalname)}`;
+        const filePath = join(this.attachmentUploadsDir, storedName);
+
+        await writeFile(filePath, file.buffer);
+
+        await tx.supplyRequestAttachment.create({
+          data: {
+            requestId: request.id,
+            uploadedById: authorId,
+            originalName: file.originalname,
+            storedName,
+            mimeType: file.mimetype,
+            size: file.size,
+            path: filePath,
+          },
+        });
+      }
+
+      return tx.supplyRequest.findUnique({
+        where: { id: request.id },
+        include: this.requestInclude,
+      });
+    });
   }
 
   async findAll(query: FindSupplyRequestsDto = {}) {
@@ -460,6 +495,38 @@ export class SupplyRequestsService {
       file: createReadStream(invoice.path),
       mimeType: invoice.mimeType,
       originalName: invoice.originalName,
+    };
+  }
+
+  async findAttachmentFile(
+    id: string,
+    attachmentId: string,
+    actorId: string,
+  ) {
+    const attachment = await this.prisma.supplyRequestAttachment.findFirst({
+      where: {
+        id: attachmentId,
+        requestId: id,
+      },
+      include: {
+        request: {
+          select: {
+            objectId: true,
+          },
+        },
+      },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException("Attachment not found");
+    }
+
+    await this.ensureUserObjectAccess(actorId, attachment.request.objectId);
+
+    return {
+      file: createReadStream(attachment.path),
+      mimeType: attachment.mimeType,
+      originalName: attachment.originalName,
     };
   }
 
@@ -1959,6 +2026,10 @@ export class SupplyRequestsService {
       },
     },
     invoices: {
+      include: { uploadedBy: true },
+      orderBy: { createdAt: "asc" as const },
+    },
+    attachments: {
       include: { uploadedBy: true },
       orderBy: { createdAt: "asc" as const },
     },

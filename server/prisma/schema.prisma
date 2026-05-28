@@ -61,6 +61,11 @@ enum SupplyRequestType {
   PRODUCTION
 }
 
+enum MoneyRequestPaymentType {
+  CASH
+  NON_CASH
+}
+
 enum ObjectLimitType {
   MATERIAL
   TRANSPORT
@@ -122,6 +127,7 @@ model User {
   approvalActions             ApprovalHistory[]      @relation("ApprovalActor")
   priceChanges                RequestPriceHistory[]  @relation("PriceChangeActor")
   uploadedInvoices            SupplyRequestInvoice[] @relation("InvoiceUploader")
+  uploadedAttachments         SupplyRequestAttachment[] @relation("AttachmentUploader")
   sentInvitations             Invitation[]           @relation("InvitationInviter")
 }
 
@@ -218,6 +224,7 @@ model SupplyRequest {
   transportType         String?
   purpose               String?
   amount                Decimal?               @db.Decimal(18, 2)
+  paymentType           MoneyRequestPaymentType?
   paymentPurpose        String?
   object                ObjectEntity           @relation(fields: [objectId], references: [id])
   author                User                   @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
@@ -229,6 +236,7 @@ model SupplyRequest {
   updatedAt             DateTime               @updatedAt
   items                 SupplyRequestItem[]
   invoices              SupplyRequestInvoice[]
+  attachments           SupplyRequestAttachment[]
   approvalHistory       ApprovalHistory[]
 
   @@index([objectId])
@@ -274,6 +282,23 @@ model SupplyRequestInvoice {
   createdAt    DateTime      @default(now())
   request      SupplyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   uploadedBy   User          @relation("InvoiceUploader", fields: [uploadedById], references: [id])
+
+  @@index([requestId])
+  @@index([uploadedById])
+}
+
+model SupplyRequestAttachment {
+  id           String        @id @default(cuid())
+  requestId    String
+  uploadedById String
+  originalName String
+  storedName   String
+  mimeType     String
+  size         Int
+  path         String
+  createdAt    DateTime      @default(now())
+  request      SupplyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  uploadedBy   User          @relation("AttachmentUploader", fields: [uploadedById], references: [id])
 
   @@index([requestId])
   @@index([uploadedById])
