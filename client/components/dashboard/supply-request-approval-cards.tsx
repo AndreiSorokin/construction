@@ -1226,7 +1226,7 @@ function getFulfillmentStatusLabel(
   }
 
   if (status === "SKIPPED") {
-    return "Пропущено";
+    return "Оставлено";
   }
 
   return "Ожидает";
@@ -1279,7 +1279,7 @@ function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
       </table>
       <p className="mt-2 text-xs text-slate-500">
         Отмеченные позиции будут исполнены. Неотмеченные автоматически получат
-        статус «Пропущено».
+        статус Оставлено.
       </p>
     </div>
   );

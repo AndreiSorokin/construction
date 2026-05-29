@@ -22,15 +22,17 @@ import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
 import { getCurrentUser } from "@/lib/auth-api";
 import {
+  copyObjectAccesses,
   deleteObject,
   deleteObjectUserAccess,
   getObject,
+  getMyObjects,
   inviteObjectUser,
   updateObjectName,
   updateObjectUserRole,
 } from "@/lib/objects-api";
 import { canCreateRequestType } from "@/lib/request-route-config";
-import { ObjectEntity, User, UserRole } from "@/lib/types";
+import { ObjectEntity, User, UserObjectAccess, UserRole } from "@/lib/types";
 
 const objectTypeLabels = {
   CONSTRUCTION_OBJECT: "Строительный объект",
@@ -71,8 +73,12 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
   const [isMoneyRequestOpen, setIsMoneyRequestOpen] = useState(false);
   const [isProductionRequestOpen, setIsProductionRequestOpen] = useState(false);
+  const [isCopyStaffOpen, setIsCopyStaffOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [isEditingObjectName, setIsEditingObjectName] = useState(false);
+  const [myObjectAccesses, setMyObjectAccesses] = useState<UserObjectAccess[]>(
+    [],
+  );
   const [roleEditTarget, setRoleEditTarget] =
     useState<RoleEditTarget | null>(null);
   const { errorMessage, showError, clearError } = useErrorMessage();
@@ -105,12 +111,14 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     clearError();
 
     try {
-      const [nextObject, currentUser] = await Promise.all([
+      const [nextObject, currentUser, nextObjectAccesses] = await Promise.all([
         getObject(objectId),
         getCurrentUser(),
+        getMyObjects(),
       ]);
       setObject(nextObject);
       setUser(currentUser);
+      setMyObjectAccesses(nextObjectAccesses);
     } catch (error) {
       showError(error);
     }
@@ -258,6 +266,37 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     try {
       await deleteObjectUserAccess(objectId, userId);
       showSuccess("Пользователь удален из объекта");
+      await loadPage();
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  async function copyStaffFromObject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    clearError();
+    clearSuccess();
+
+    const form = new FormData(event.currentTarget);
+    const sourceObjectId = String(form.get("sourceObjectId") ?? "");
+    const mode = String(form.get("mode") ?? "SKIP_EXISTING") as
+      | "OVERWRITE_ROLES"
+      | "SKIP_EXISTING";
+
+    if (!sourceObjectId) {
+      showError("Выберите объект-источник");
+      return;
+    }
+
+    try {
+      const result = await copyObjectAccesses(objectId, {
+        mode,
+        sourceObjectId,
+      });
+      showSuccess(
+        `Штат скопирован: добавлено ${result.created}, обновлено ${result.updated}, Оставлено ${result.skipped}`,
+      );
+      setIsCopyStaffOpen(false);
       await loadPage();
     } catch (error) {
       showError(error);
@@ -429,6 +468,13 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                       <p className="mt-1 text-sm text-slate-600">
                         Назначьте роль и доступ к этому объекту или отделу.
                       </p>
+                      <button
+                        className="mt-4 h-10 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                        onClick={() => setIsCopyStaffOpen(true)}
+                        type="button"
+                      >
+                        Копировать из объекта
+                      </button>
                       <form className="mt-4 grid gap-3" onSubmit={inviteUser}>
                         <Field name="email" label="Email" type="email" />
                         <Field name="name" label="Имя" />
@@ -515,6 +561,13 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               onClose={() => setRoleEditTarget(null)}
               onSubmit={submitRoleEdit}
               role={roleEditTarget?.role}
+            />
+            <CopyStaffModal
+              currentObjectId={objectId}
+              isOpen={isCopyStaffOpen}
+              objectAccesses={myObjectAccesses}
+              onClose={() => setIsCopyStaffOpen(false)}
+              onSubmit={copyStaffFromObject}
             />
           </>
         )}
@@ -657,6 +710,104 @@ function RoleEditModal({
             type="submit"
           >
             {"Сохранить"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function CopyStaffModal({
+  currentObjectId,
+  isOpen,
+  objectAccesses,
+  onClose,
+  onSubmit,
+}: {
+  currentObjectId: string;
+  isOpen: boolean;
+  objectAccesses: UserObjectAccess[];
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  if (!isOpen) {
+    return null;
+  }
+
+  const sourceObjects = objectAccesses.filter(
+    (access) =>
+      access.objectId !== currentObjectId &&
+      access.role === "DIRECTOR" &&
+      access.object,
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 px-4">
+      <form
+        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
+        onSubmit={onSubmit}
+      >
+        <h2 className="font-semibold text-slate-950">
+          Копировать штат из объекта
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Пользователи и их роли будут скопированы из выбранного объекта в
+          текущий объект.
+        </p>
+
+        <label className="mt-4 grid gap-1.5">
+          <span className="text-sm font-medium text-slate-700">
+            Объект-источник
+          </span>
+          <select
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            name="sourceObjectId"
+            required
+          >
+            <option value="">Выберите объект</option>
+            {sourceObjects.map((access) => (
+              <option key={access.objectId} value={access.objectId}>
+                {access.object.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="mt-4 grid gap-1.5">
+          <span className="text-sm font-medium text-slate-700">
+            Если пользователь уже есть
+          </span>
+          <select
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            defaultValue="SKIP_EXISTING"
+            name="mode"
+            required
+          >
+            <option value="SKIP_EXISTING">Оставить существующую роль</option>
+            <option value="OVERWRITE_ROLES">Обновить роль</option>
+          </select>
+        </label>
+
+        {!sourceObjects.length ? (
+          <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Нет других объектов, где у вас есть роль директора.
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            Отмена
+          </button>
+          <button
+            className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!sourceObjects.length}
+            type="submit"
+          >
+            Скопировать
           </button>
         </div>
       </form>

@@ -87,6 +87,27 @@ export function deleteObjectUserAccess(objectId: string, userId: string) {
   });
 }
 
+export type CopyObjectAccessMode = "OVERWRITE_ROLES" | "SKIP_EXISTING";
+
+export function copyObjectAccesses(
+  targetObjectId: string,
+  payload: {
+    mode: CopyObjectAccessMode;
+    sourceObjectId: string;
+  },
+) {
+  return apiClient<{
+    created: number;
+    skipped: number;
+    updated: number;
+    sourceObjectId: string;
+    targetObjectId: string;
+  }>(`/objects/${targetObjectId}/access/copy`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export type InviteObjectUserPayload = {
   email: string;
   name: string;

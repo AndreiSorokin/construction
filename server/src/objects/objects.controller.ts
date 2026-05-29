@@ -13,6 +13,7 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/roles.guard";
 import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AddObjectAccessDto } from "./dto/add-object-access.dto";
+import { CopyObjectAccessDto } from "./dto/copy-object-access.dto";
 import { CreateObjectMaterialDto } from "./dto/create-object-material.dto";
 import { CreateObjectDto } from "./dto/create-object.dto";
 import { InviteUserDto } from "./dto/invite-user.dto";
@@ -62,6 +63,15 @@ export class ObjectsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.objectsService.addAccess(id, dto, user.id);
+  }
+
+  @Post(":id/access/copy")
+  copyAccesses(
+    @Param("id") id: string,
+    @Body() dto: CopyObjectAccessDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.objectsService.copyAccesses(id, dto, user.id);
   }
 
   @Patch(":id/access/:userId")

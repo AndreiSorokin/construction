@@ -9,6 +9,10 @@ import { ObjectLimitType, ObjectType, Prisma, UserRole } from "@prisma/client";
 import { MailService } from "../mail/mail.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AddObjectAccessDto } from "./dto/add-object-access.dto";
+import {
+  CopyObjectAccessDto,
+  CopyObjectAccessMode,
+} from "./dto/copy-object-access.dto";
 import { CreateObjectMaterialDto } from "./dto/create-object-material.dto";
 import { CreateObjectDto } from "./dto/create-object.dto";
 import { InviteUserDto } from "./dto/invite-user.dto";
@@ -180,6 +184,100 @@ export class ObjectsService {
         role: dto.role,
       },
     });
+  }
+
+  async copyAccesses(
+    targetObjectId: string,
+    dto: CopyObjectAccessDto,
+    actorId: string,
+  ) {
+    if (targetObjectId === dto.sourceObjectId) {
+      throw new BadRequestException("Source and target objects must differ");
+    }
+
+    const [sourceObject, targetObject] = await Promise.all([
+      this.prisma.objectEntity.findUnique({
+        where: { id: dto.sourceObjectId },
+        select: { id: true, name: true },
+      }),
+      this.prisma.objectEntity.findUnique({
+        where: { id: targetObjectId },
+        select: { id: true, name: true, ownerId: true },
+      }),
+    ]);
+
+    if (!sourceObject || !targetObject) {
+      throw new NotFoundException("Object not found");
+    }
+
+    await this.ensureUserObjectRole(actorId, targetObjectId, [
+      UserRole.DIRECTOR,
+    ]);
+    await this.ensureUserObjectRole(actorId, dto.sourceObjectId, [
+      UserRole.DIRECTOR,
+    ]);
+
+    const sourceAccesses = await this.prisma.userObjectAccess.findMany({
+      where: { objectId: dto.sourceObjectId },
+      select: {
+        role: true,
+        userId: true,
+      },
+    });
+
+    let created = 0;
+    let skipped = 0;
+    let updated = 0;
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const access of sourceAccesses) {
+        const existingAccess = await tx.userObjectAccess.findUnique({
+          where: {
+            userId_objectId: {
+              userId: access.userId,
+              objectId: targetObjectId,
+            },
+          },
+          select: { id: true, role: true },
+        });
+
+        if (existingAccess) {
+          if (access.userId === targetObject.ownerId) {
+            skipped += 1;
+            continue;
+          }
+
+          if (dto.mode === CopyObjectAccessMode.OVERWRITE_ROLES) {
+            await tx.userObjectAccess.update({
+              where: { id: existingAccess.id },
+              data: { role: access.role },
+            });
+            updated += existingAccess.role === access.role ? 0 : 1;
+          } else {
+            skipped += 1;
+          }
+
+          continue;
+        }
+
+        await tx.userObjectAccess.create({
+          data: {
+            objectId: targetObjectId,
+            role: access.role,
+            userId: access.userId,
+          },
+        });
+        created += 1;
+      }
+    });
+
+    return {
+      created,
+      skipped,
+      updated,
+      sourceObjectId: dto.sourceObjectId,
+      targetObjectId,
+    };
   }
 
   async updateAccessRole(
