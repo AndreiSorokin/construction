@@ -13,6 +13,7 @@ import { AcceptInvitationDto } from "./dto/accept-invitation.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { UpdatePasswordDto } from "./dto/update-password.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { AuthenticatedUser } from "./types/authenticated-user";
 import { JwtPayload } from "./types/jwt-payload";
@@ -197,6 +198,41 @@ export class AuthService {
         name: true,
       },
     });
+  }
+
+  async updatePassword(userId: string, dto: UpdatePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, passwordHash: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException("Invalid user");
+    }
+
+    const isCurrentPasswordValid = await compare(
+      dto.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException("Current password is incorrect");
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        "New password must be different from current password",
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: await hash(dto.newPassword, 12),
+      },
+    });
+
+    return { success: true };
   }
 
   private async createAuthResponse(user: AuthenticatedUser) {

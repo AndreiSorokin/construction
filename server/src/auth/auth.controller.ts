@@ -5,6 +5,7 @@ import { AcceptInvitationDto } from "./dto/accept-invitation.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { UpdatePasswordDto } from "./dto/update-password.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 import { AuthenticatedUser } from "./types/authenticated-user";
@@ -52,5 +53,14 @@ export class AuthController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.authService.updateProfile(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch("me/password")
+  updatePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdatePasswordDto,
+  ) {
+    return this.authService.updatePassword(user.id, dto);
   }
 }

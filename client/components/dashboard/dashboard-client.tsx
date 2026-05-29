@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Building2, Check, Factory, LogOut, Pencil, X } from "lucide-react";
+import { Building2, Check, Factory, KeyRound, LogOut, Pencil, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -9,7 +9,12 @@ import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { useSuccessMessage } from "@/hooks/use-success-message";
 import { apiClient } from "@/lib/api";
-import { getCurrentUser, logout, updateCurrentUserName } from "@/lib/auth-api";
+import {
+  getCurrentUser,
+  logout,
+  updateCurrentUserName,
+  updateCurrentUserPassword,
+} from "@/lib/auth-api";
 import {
   clearAuthSession,
   getStoredUser,
@@ -48,6 +53,7 @@ export function DashboardClient() {
   const [objects, setObjects] = useState<UserObjectAccess[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
 
@@ -169,6 +175,40 @@ export function DashboardClient() {
     }
   }
 
+  async function updateProfilePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    clearError();
+    clearSuccess();
+
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const currentPassword = String(form.get("currentPassword") ?? "");
+    const newPassword = String(form.get("newPassword") ?? "");
+    const confirmPassword = String(form.get("confirmPassword") ?? "");
+
+    if (newPassword.length < 6) {
+      showError("Новый пароль должен быть не короче 6 символов");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showError("Новый пароль и подтверждение не совпадают");
+      return;
+    }
+
+    try {
+      await updateCurrentUserPassword({
+        currentPassword,
+        newPassword,
+      });
+      formElement.reset();
+      setIsChangingPassword(false);
+      showSuccess("Пароль обновлен");
+    } catch (error) {
+      showError(error);
+    }
+  }
+
   if (!user) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-100">
@@ -209,7 +249,7 @@ export function DashboardClient() {
 
       <section className="mx-auto grid max-w-6xl gap-4 px-4 py-6">
         <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
             <div className="min-w-0">
               {isEditingName ? (
                 <form
@@ -256,8 +296,88 @@ export function DashboardClient() {
               )}
               <p className="mt-1 text-sm text-slate-600">{user.email}</p>
             </div>
-          </div>
 
+            <section className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-950">
+                    Безопасность
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Обновление пароля аккаунта.
+                  </p>
+                </div>
+                {!isChangingPassword ? (
+                  <button
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    onClick={() => setIsChangingPassword(true)}
+                    type="button"
+                  >
+                    <KeyRound size={16} />
+                    Сменить пароль
+                  </button>
+                ) : null}
+              </div>
+
+              {isChangingPassword ? (
+                <form
+                  className="mt-4 grid gap-3"
+                  onSubmit={updateProfilePassword}
+                >
+                  <label className="grid gap-1.5">
+                    <span className="text-sm font-medium text-slate-700">
+                      Текущий пароль
+                    </span>
+                    <input
+                      className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                      name="currentPassword"
+                      required
+                      type="password"
+                    />
+                  </label>
+                  <label className="grid gap-1.5">
+                    <span className="text-sm font-medium text-slate-700">
+                      Новый пароль
+                    </span>
+                    <input
+                      className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                      minLength={6}
+                      name="newPassword"
+                      required
+                      type="password"
+                    />
+                  </label>
+                  <label className="grid gap-1.5">
+                    <span className="text-sm font-medium text-slate-700">
+                      Повторите новый пароль
+                    </span>
+                    <input
+                      className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                      minLength={6}
+                      name="confirmPassword"
+                      required
+                      type="password"
+                    />
+                  </label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button
+                      className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      onClick={() => setIsChangingPassword(false)}
+                      type="button"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+                      type="submit"
+                    >
+                      Сохранить пароль
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+            </section>
+          </div>
         </div>
 
         <SupplyRequestsPanel

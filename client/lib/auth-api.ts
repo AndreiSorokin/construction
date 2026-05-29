@@ -47,6 +47,16 @@ export function updateCurrentUserName(name: string) {
   });
 }
 
+export function updateCurrentUserPassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  return apiClient<{ success: boolean }>("/auth/me/password", {
+    method: "PATCH",
+    body: payload,
+  });
+}
+
 export function logout() {
   return apiClient<{ success: boolean }>("/auth/logout", {
     method: "POST",
