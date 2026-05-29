@@ -245,7 +245,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
     try {
       await updateObjectUserRole(objectId, roleEditTarget.userId, nextRole);
-      showSuccess(" >;L ?>;L7>20B5;O >1=>2;5=0");
+      showSuccess("Роль пользователя обновлена");
       setRoleEditTarget(null);
       await loadPage();
     } catch (error) {
@@ -312,7 +312,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
         onClearSuccess={clearSuccess}
       />
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-700 text-white">
               <Factory size={20} />
@@ -334,7 +334,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 py-6">
+      <section className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:px-6 lg:py-6">
         {!object ? (
           <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
             Загружаем объект...
@@ -342,9 +342,9 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
         ) : (
           <>
             <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex min-w-0 gap-4">
-                  <span className="grid size-12 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+                <div className="flex min-w-0 gap-3 sm:gap-4">
+                  <span className="grid size-11 shrink-0 place-items-center rounded-md bg-slate-100 text-slate-700 sm:size-12">
                     <Building2 size={22} />
                   </span>
                   <div className="min-w-0">
@@ -355,7 +355,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                       >
                         <input
                           autoFocus
-                          className="h-10 min-w-0 rounded-md border border-slate-300 px-3 text-lg font-semibold text-slate-950 outline-none focus:border-teal-700"
+                          className="h-10 min-w-0 flex-1 rounded-md border border-slate-300 px-3 text-lg font-semibold text-slate-950 outline-none focus:border-teal-700"
                           defaultValue={object.name}
                           name="name"
                           required
@@ -378,7 +378,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                       </form>
                     ) : (
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <h1 className="break-words text-2xl font-semibold text-slate-950">
+                        <h1 className="break-words text-xl font-semibold text-slate-950 sm:text-2xl">
                           {object.name}
                         </h1>
                         {canInviteUsers ? (
@@ -399,7 +399,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:min-w-[28rem] xl:grid-cols-3">
                   {canCreateMaterialRequest ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
@@ -446,7 +446,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
                   {canDeleteObject ? (
                     <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50 sm:col-span-2 xl:col-span-1"
                       onClick={() => void handleDeleteObject()}
                       type="button"
                     >
@@ -458,27 +458,31 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               </div>
             </section>
 
-            <div className="mx-auto grid w-full max-w-md gap-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(20rem,24rem)_minmax(0,1fr)] lg:items-start">
               {canInviteUsers ? (
                 <aside className="grid min-w-0 gap-4 self-start">
                   <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                      <h2 className="font-semibold text-slate-950">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between lg:block">
+                      <div>
+                        <h2 className="font-semibold text-slate-950">
                         Пригласить пользователя
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Назначьте роль и доступ к этому объекту или отделу.
-                      </p>
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Назначьте роль и доступ к этому объекту или отделу.
+                        </p>
+                      </div>
                       <button
-                        className="mt-4 h-10 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50"
+                        className="h-10 shrink-0 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50 lg:mt-4 lg:w-full"
                         onClick={() => setIsCopyStaffOpen(true)}
                         type="button"
                       >
                         Копировать из объекта
                       </button>
-                      <form className="mt-4 grid gap-3" onSubmit={inviteUser}>
+                    </div>
+                      <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1" onSubmit={inviteUser}>
                         <Field name="email" label="Email" type="email" />
                         <Field name="name" label="Имя" />
-                        <label className="grid gap-1.5">
+                        <label className="grid gap-1.5 sm:col-span-2 lg:col-span-1">
                           <span className="text-sm font-medium text-slate-700">
                             {"Роль в системе"}
                           </span>
@@ -498,7 +502,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                           </select>
                         </label>
                         <button
-                          className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                          className="h-10 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:col-span-2 lg:col-span-1"
                           disabled={isInviting}
                           type="submit"
                         >
@@ -509,7 +513,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
 
                 </aside>
               ) : null}
-            </div>
 
             {canInviteUsers ? (
               <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -527,6 +530,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                 />
               </section>
             ) : null}
+            </div>
 
             <MaterialRequestModal
               isOpen={isMaterialRequestOpen}
@@ -603,8 +607,50 @@ function ObjectUsersList({
   }
 
   return (
-    <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[760px] border-collapse text-sm">
+    <>
+      <div className="mt-4 grid gap-3 md:hidden">
+        {accesses.map((access) => (
+          <article
+            className="rounded-md border border-slate-200 bg-white p-3"
+            key={access.id}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="break-words font-medium text-slate-950">
+                  {access.user?.name ?? "Без имени"}
+                </div>
+                <div className="mt-1 break-all text-sm text-slate-600">
+                  {access.user?.email ?? "Email не указан"}
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700">
+                {inviteRoleLabels[access.role]}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                className="h-9 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={access.userId === currentUserId}
+                onClick={() => onEditRole(access.userId, access.role)}
+                type="button"
+              >
+                Роль
+              </button>
+              <button
+                className="h-9 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={access.userId === currentUserId}
+                onClick={() => onDelete(access.userId)}
+                type="button"
+              >
+                Удалить
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="mt-4 hidden overflow-x-auto md:block">
+      <table className="w-full min-w-[720px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">Имя</th>
@@ -614,12 +660,12 @@ function ObjectUsersList({
           </tr>
         </thead>
         <tbody>
-      {accesses.map((access) => (
-        <tr className="border-b border-slate-100" key={access.id}>
-          <td className="py-3 pr-3 font-medium text-slate-950">
+          {accesses.map((access) => (
+        <tr className="border-b border-slate-100 align-top" key={access.id}>
+          <td className="max-w-[14rem] break-words py-3 pr-3 font-medium text-slate-950">
             {access.user?.name ?? "Без имени"}
           </td>
-          <td className="py-3 pr-3 text-slate-600">
+          <td className="max-w-[16rem] break-all py-3 pr-3 text-slate-600">
             {access.user?.email ?? "Email не указан"}
           </td>
           <td className="py-3 pr-3">
@@ -628,7 +674,7 @@ function ObjectUsersList({
             </span>
           </td>
           <td className="py-3 pr-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-end gap-2 lg:justify-start">
               <button
                 className="h-9 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={access.userId === currentUserId}
@@ -648,10 +694,11 @@ function ObjectUsersList({
             </div>
           </td>
         </tr>
-      ))}
+          ))}
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -671,9 +718,9 @@ function RoleEditModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 px-4">
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 px-4 py-4">
       <form
-        className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl"
+        className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl sm:p-5"
         onSubmit={onSubmit}
       >
         <h2 className="font-semibold text-slate-950">{"Редактировать роль"}</h2>
@@ -697,7 +744,7 @@ function RoleEditModal({
           </select>
         </label>
 
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
           <button
             className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             onClick={onClose}
@@ -742,9 +789,9 @@ function CopyStaffModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 px-4">
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 px-4 py-4">
       <form
-        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
+        className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl sm:p-5"
         onSubmit={onSubmit}
       >
         <h2 className="font-semibold text-slate-950">
@@ -794,7 +841,7 @@ function CopyStaffModal({
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
           <button
             className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
             onClick={onClose}
