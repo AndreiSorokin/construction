@@ -77,6 +77,7 @@ export type SupplyRequestStatus =
   | "PENDING_TRANSPORT_AUTHOR"
   | "PENDING_WORKSHOP_MANAGER"
   | "PENDING_PRODUCTION_AUTHOR"
+  | "PENDING_REQUEST_AUTHOR"
   | "RETURNED_TO_SUPPLY"
   | "REJECTED"
   | "IN_PROGRESS"
@@ -87,7 +88,9 @@ export type SupplyRequestType =
   | "MATERIAL"
   | "TRANSPORT"
   | "MONEY"
-  | "PRODUCTION";
+  | "PRODUCTION"
+  | "QUARRY"
+  | "EXPRESS_MATERIAL";
 
 export type MoneyRequestPaymentType = "CASH" | "NON_CASH";
 

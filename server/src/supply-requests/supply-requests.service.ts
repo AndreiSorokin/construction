@@ -4,7 +4,7 @@
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { createHash, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 import { createReadStream } from "fs";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
@@ -22,9 +22,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
+import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateProductionSupplyRequestDto } from "./dto/create-production-supply-request.dto";
+import { CreateQuarrySupplyRequestDto } from "./dto/create-quarry-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
 import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
@@ -37,6 +39,18 @@ import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto
 type RequestRouteMap = Partial<
   Record<SupplyRequestType, Partial<Record<UserRole, SupplyRequestStatus[]>>>
 >;
+
+function normalizeUploadedFileName(fileName: string) {
+  const normalizedName = fileName.trim() || "file";
+
+  if (!/[ÃÂÐÑ]/.test(normalizedName)) {
+    return normalizedName;
+  }
+
+  const decodedName = Buffer.from(normalizedName, "latin1").toString("utf8");
+
+  return decodedName.includes("�") ? normalizedName : decodedName;
+}
 
 const MATERIAL_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
@@ -71,6 +85,22 @@ const PRODUCTION_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
   SupplyRequestStatus.PENDING_WORKSHOP_MANAGER,
   SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR,
+  SupplyRequestStatus.COMPLETED,
+];
+
+const QUARRY_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+  SupplyRequestStatus.PENDING_SUPPLY,
+  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+  SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
+  SupplyRequestStatus.COMPLETED,
+];
+
+const EXPRESS_MATERIAL_COMMON_ROUTE = [
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_ACCOUNTANT,
+  SupplyRequestStatus.PENDING_REQUEST_AUTHOR,
   SupplyRequestStatus.COMPLETED,
 ];
 
@@ -140,6 +170,23 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
   PRODUCTION: {
     FOREMAN: PRODUCTION_COMMON_ROUTE,
     SITE_MANAGER: PRODUCTION_COMMON_ROUTE,
+  },
+  QUARRY: {
+    WORKSHOP_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      ...QUARRY_COMMON_ROUTE,
+    ],
+    SITE_MANAGER: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...QUARRY_COMMON_ROUTE,
+    ],
+    FOREMAN: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...QUARRY_COMMON_ROUTE,
+    ],
+  },
+  EXPRESS_MATERIAL: {
+    SUPPLY: EXPRESS_MATERIAL_COMMON_ROUTE,
   },
 };
 
@@ -217,6 +264,165 @@ export class SupplyRequestsService {
       });
 
       return request;
+    });
+  }
+
+  async createQuarryRequest(
+    dto: CreateQuarrySupplyRequestDto,
+    authorId: string,
+  ) {
+    if (!dto.items?.length) {
+      throw new BadRequestException("Request must contain at least one item");
+    }
+
+    const route = await this.getInitialRequestRoute(
+      authorId,
+      dto.objectId,
+      SupplyRequestType.QUARRY,
+    );
+
+    for (const item of dto.items) {
+      if (
+        !item.materialName.trim() ||
+        !item.measurementUnit.trim() ||
+        new Prisma.Decimal(item.quantity).lte(0)
+      ) {
+        throw new BadRequestException(
+          "Each quarry item must contain name, measurement unit and positive quantity",
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "QRY"),
+          type: SupplyRequestType.QUARRY,
+          objectId: dto.objectId,
+          authorId,
+          status: route.status,
+          items: {
+            create: dto.items.map((item) => ({
+              materialNameSnapshot: item.materialName.trim(),
+              materialTypeSnapshot: "",
+              measurementUnitSnapshot: item.measurementUnit.trim(),
+              estimatedPriceSnapshot: new Prisma.Decimal(0),
+              quantity: new Prisma.Decimal(item.quantity),
+              orderQuantity: new Prisma.Decimal(item.quantity),
+              stockQuantity: new Prisma.Decimal(0),
+            })),
+          },
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: route.status,
+              comment: route.comment,
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
+  async createExpressMaterialRequest(
+    dto: CreateExpressMaterialSupplyRequestDto,
+    files: Express.Multer.File[] | undefined,
+    authorId: string,
+  ) {
+    const items = this.parseExpressMaterialItems(dto.items);
+
+    if (!dto.comment.trim()) {
+      throw new BadRequestException(
+        "Express material request must contain comment",
+      );
+    }
+
+    if (!files?.length) {
+      throw new BadRequestException(
+        "Express material request must contain at least one invoice",
+      );
+    }
+
+    const route = await this.getInitialRequestRoute(
+      authorId,
+      dto.objectId,
+      SupplyRequestType.EXPRESS_MATERIAL,
+    );
+
+    for (const item of items) {
+      if (
+        !item.materialName.trim() ||
+        !item.measurementUnit.trim() ||
+        new Prisma.Decimal(item.quantity).lte(0)
+      ) {
+        throw new BadRequestException(
+          "Each express material item must contain name, measurement unit and positive quantity",
+        );
+      }
+    }
+
+    await mkdir(this.invoiceUploadsDir, { recursive: true });
+
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "EXP"),
+          type: SupplyRequestType.EXPRESS_MATERIAL,
+          objectId: dto.objectId,
+          authorId,
+          purpose: dto.comment.trim(),
+          status: route.status,
+          items: {
+            create: items.map((item) => ({
+              materialNameSnapshot: item.materialName.trim(),
+              materialTypeSnapshot: "",
+              measurementUnitSnapshot: item.measurementUnit.trim(),
+              estimatedPriceSnapshot: new Prisma.Decimal(0),
+              quantity: new Prisma.Decimal(item.quantity),
+              orderQuantity: new Prisma.Decimal(item.quantity),
+              stockQuantity: new Prisma.Decimal(0),
+            })),
+          },
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: route.status,
+              comment: route.comment,
+            },
+          },
+        },
+        include: this.requestInclude,
+      });
+
+      for (const file of files) {
+        const originalName = normalizeUploadedFileName(file.originalname);
+        const storedName = `${randomUUID()}${extname(originalName)}`;
+        const filePath = join(this.invoiceUploadsDir, storedName);
+
+        await writeFile(filePath, file.buffer);
+
+        await tx.supplyRequestInvoice.create({
+          data: {
+            requestId: request.id,
+            uploadedById: authorId,
+            originalName,
+            storedName,
+            mimeType: file.mimetype,
+            size: file.size,
+            path: filePath,
+          },
+        });
+      }
+
+      return tx.supplyRequest.findUnique({
+        where: { id: request.id },
+        include: this.requestInclude,
+      });
     });
   }
 
@@ -344,7 +550,8 @@ export class SupplyRequestsService {
       });
 
       for (const file of files ?? []) {
-        const storedName = `${randomUUID()}${extname(file.originalname)}`;
+        const originalName = normalizeUploadedFileName(file.originalname);
+        const storedName = `${randomUUID()}${extname(originalName)}`;
         const filePath = join(this.attachmentUploadsDir, storedName);
 
         await writeFile(filePath, file.buffer);
@@ -353,7 +560,7 @@ export class SupplyRequestsService {
           data: {
             requestId: request.id,
             uploadedById: authorId,
-            originalName: file.originalname,
+            originalName,
             storedName,
             mimeType: file.mimetype,
             size: file.size,
@@ -900,9 +1107,12 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_PTO,
     ]);
 
-    if (request.type !== SupplyRequestType.PRODUCTION) {
+    if (
+      request.type !== SupplyRequestType.PRODUCTION &&
+      request.type !== SupplyRequestType.QUARRY
+    ) {
       throw new BadRequestException(
-        "Only production requests can be approved without PTO prices",
+        "Only production and quarry requests can be approved without PTO prices",
       );
     }
 
@@ -934,6 +1144,7 @@ export class SupplyRequestsService {
     );
     if (
       request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.TRANSPORT &&
       request.type !== SupplyRequestType.MONEY &&
       request.type !== SupplyRequestType.PRODUCTION
@@ -1006,6 +1217,7 @@ export class SupplyRequestsService {
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.TRANSPORT
     ) {
       throw new BadRequestException(
@@ -1240,10 +1452,11 @@ export class SupplyRequestsService {
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
-      request.type !== SupplyRequestType.MONEY
+      request.type !== SupplyRequestType.MONEY &&
+      request.type !== SupplyRequestType.EXPRESS_MATERIAL
     ) {
       throw new BadRequestException(
-        "Only material and money requests can be approved by accountant",
+        "Only material, express material and money requests can be approved by accountant",
       );
     }
 
@@ -1315,10 +1528,11 @@ export class SupplyRequestsService {
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.MONEY
     ) {
       throw new BadRequestException(
-        "Only material and money requests can be assigned to supply",
+        "Only material, quarry and money requests can be assigned to supply",
       );
     }
 
@@ -1365,7 +1579,7 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_SUPPLY_MANAGER],
-      SupplyRequestType.TRANSPORT,
+      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY_MANAGER,
@@ -1394,7 +1608,7 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_GARAGE_MANAGER],
-      SupplyRequestType.TRANSPORT,
+      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.GARAGE_MANAGER,
@@ -1423,12 +1637,12 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR],
-      SupplyRequestType.TRANSPORT,
+      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY],
     );
 
     if (request.authorId !== actorId) {
       throw new ForbiddenException(
-        "Only the transport request author can confirm completion",
+        "Only the request author can confirm completion",
       );
     }
 
@@ -1514,6 +1728,38 @@ export class SupplyRequestsService {
     );
   }
 
+  async completeExpressMaterialByAuthor(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_REQUEST_AUTHOR],
+      SupplyRequestType.EXPRESS_MATERIAL,
+    );
+
+    if (request.authorId !== actorId) {
+      throw new ForbiddenException(
+        "Only the request author can confirm completion",
+      );
+    }
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
   async returnToPtoByChiefEngineer(
     id: string,
     dto: RequestActionDto,
@@ -1530,10 +1776,11 @@ export class SupplyRequestsService {
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.TRANSPORT
     ) {
       throw new BadRequestException(
-        "Only material and transport requests can be rejected by chief engineer",
+          "Only material, quarry and transport requests can be rejected by chief engineer",
       );
     }
 
@@ -1581,33 +1828,14 @@ export class SupplyRequestsService {
     ]);
     this.ensureAssignedSupplyUser(request, actorId);
 
-    const ptoTotalAmount = this.getMaterialPtoTotalAmount(request);
-
-    if (ptoTotalAmount.gt(100000)) {
-      if (!files || files.length < 3) {
-        throw new BadRequestException(
-          "Supply user must attach at least three different invoices when material request total is greater than 100000",
-        );
-      }
-
-      const fileHashes = files.map((file) =>
-        createHash("sha256").update(file.buffer).digest("hex"),
-      );
-
-      if (new Set(fileHashes).size !== fileHashes.length) {
-        throw new BadRequestException(
-          "Supply user attached duplicate invoices. Each invoice file must be different",
-        );
-      }
-    }
-
     if (files?.length) {
       await mkdir(this.invoiceUploadsDir, { recursive: true });
     }
 
     return this.prisma.$transaction(async (tx) => {
       for (const file of files ?? []) {
-        const storedName = `${randomUUID()}${extname(file.originalname)}`;
+        const originalName = normalizeUploadedFileName(file.originalname);
+        const storedName = `${randomUUID()}${extname(originalName)}`;
         const filePath = join(this.invoiceUploadsDir, storedName);
 
         await writeFile(filePath, file.buffer);
@@ -1616,7 +1844,7 @@ export class SupplyRequestsService {
           data: {
             requestId: id,
             uploadedById: actorId,
-            originalName: file.originalname,
+            originalName,
             storedName,
             mimeType: file.mimetype,
             size: file.size,
@@ -1677,20 +1905,13 @@ export class SupplyRequestsService {
     dto: RequestActionDto,
     actorId: string,
   ) {
-    void id;
-    void dto;
-    void actorId;
-    throw new BadRequestException(
-      "Supply users must attach invoices before sending request to director",
-    );
-
     const request = await this.ensureRequestStatus(
       id,
       [
         SupplyRequestStatus.PENDING_SUPPLY,
         SupplyRequestStatus.RETURNED_TO_SUPPLY,
       ],
-      SupplyRequestType.TRANSPORT,
+      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY,
@@ -1824,11 +2045,6 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_DIRECTOR,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
     ]);
-    if (request.type === SupplyRequestType.TRANSPORT) {
-      throw new BadRequestException(
-        "Transport requests are not archived by director",
-      );
-    }
 
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.DIRECTOR,
@@ -2092,7 +2308,7 @@ export class SupplyRequestsService {
   private async ensureRequestStatus(
     id: string,
     statuses: SupplyRequestStatus[],
-    type?: SupplyRequestType,
+    type?: SupplyRequestType | SupplyRequestType[],
   ) {
     const request = await this.prisma.supplyRequest.findUnique({
       where: { id },
@@ -2124,7 +2340,9 @@ export class SupplyRequestsService {
       );
     }
 
-    if (type && request.type !== type) {
+    const allowedTypes = Array.isArray(type) ? type : type ? [type] : null;
+
+    if (allowedTypes && !allowedTypes.includes(request.type)) {
       throw new BadRequestException(
         `Request type ${request.type} is not allowed for this action`,
       );
@@ -2221,6 +2439,22 @@ export class SupplyRequestsService {
     return REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
   }
 
+  private parseExpressMaterialItems(itemsJson: string) {
+    try {
+      const items = JSON.parse(itemsJson) as CreateMaterialSupplyRequestDto["items"];
+
+      if (!Array.isArray(items) || items.length < 1) {
+        throw new Error("empty");
+      }
+
+      return items;
+    } catch {
+      throw new BadRequestException(
+        "Express material request must contain valid items",
+      );
+    }
+  }
+
   private getCreatedRequestComment(
     requestType: SupplyRequestType,
     status: SupplyRequestStatus,
@@ -2230,6 +2464,8 @@ export class SupplyRequestsService {
       TRANSPORT: "Заявка на спец технику",
       MONEY: "Заявка на средства",
       PRODUCTION: "Заявка на производство",
+      QUARRY: "Заявка на карьер",
+      EXPRESS_MATERIAL: "Экспресс заявка ТМЦ",
     };
 
     const statusLabel: Partial<Record<SupplyRequestStatus, string>> = {
@@ -2249,6 +2485,7 @@ export class SupplyRequestsService {
       PENDING_TRANSPORT_AUTHOR: "автору заявки",
       PENDING_WORKSHOP_MANAGER: "начальнику цеха",
       PENDING_PRODUCTION_AUTHOR: "автору заявки",
+      PENDING_REQUEST_AUTHOR: "автору заявки",
     };
 
     return `${requestLabel[requestType]} создана и отправлена ${
@@ -2369,6 +2606,7 @@ export class SupplyRequestsService {
       PENDING_TRANSPORT_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
       PENDING_WORKSHOP_MANAGER: ApprovalAction.SENT_TO_WORKSHOP_MANAGER,
       PENDING_PRODUCTION_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
+      PENDING_REQUEST_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
       IN_PROGRESS: ApprovalAction.MARKED_IN_PROGRESS,
       COMPLETED: ApprovalAction.COMPLETED,
       ARCHIVED: ApprovalAction.ARCHIVED,
@@ -2428,7 +2666,8 @@ export class SupplyRequestsService {
   ) {
     if (
       request.status === SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR ||
-      request.status === SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR
+      request.status === SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR ||
+      request.status === SupplyRequestStatus.PENDING_REQUEST_AUTHOR
     ) {
       if (request.authorId !== actorId) {
         throw new ForbiddenException(
@@ -2525,11 +2764,13 @@ export class SupplyRequestsService {
     request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
   ) {
     if (
-      request.type === SupplyRequestType.MATERIAL &&
+      (request.type === SupplyRequestType.MATERIAL ||
+        request.type === SupplyRequestType.QUARRY ||
+        request.type === SupplyRequestType.EXPRESS_MATERIAL) &&
       request.items.length < 1
     ) {
       throw new BadRequestException(
-        "Material request has no active approved items",
+        "Request has no active approved items",
       );
     }
   }

@@ -32,6 +32,8 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "PTO",
   ],
   PRODUCTION: ["FOREMAN", "SITE_MANAGER"],
+  QUARRY: ["FOREMAN", "SITE_MANAGER", "WORKSHOP_MANAGER"],
+  EXPRESS_MATERIAL: ["SUPPLY"],
 };
 
 export function canCreateRequestType(

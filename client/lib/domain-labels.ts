@@ -9,6 +9,8 @@ export const requestTypeLabels: Record<SupplyRequestType, string> = {
   TRANSPORT: "Транспорт",
   MONEY: "Денежные средства",
   PRODUCTION: "Производство",
+  QUARRY: "Карьер",
+  EXPRESS_MATERIAL: "Экспресс ТМЦ",
 };
 
 export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
@@ -17,7 +19,8 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
   PENDING_CHIEF_ENGINEER: "У главного инженера",
   PENDING_DEPUTY_PRODUCTION_DIRECTOR:
     "У зам. директора по производству",
-  PENDING_DEPUTY_TRANSPORT_DIRECTOR: "У зам. директора по транспорту",
+  PENDING_DEPUTY_TRANSPORT_DIRECTOR:
+    "У зам. директора по транспорту",
   PENDING_SUPPLY_MANAGER: "У начальника снабжения",
   PENDING_SUPPLY: "У снабженца",
   PENDING_DIRECTOR: "У директора",
@@ -28,6 +31,7 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
   PENDING_TRANSPORT_AUTHOR: "У автора заявки",
   PENDING_WORKSHOP_MANAGER: "У начальника цеха",
   PENDING_PRODUCTION_AUTHOR: "У автора заявки",
+  PENDING_REQUEST_AUTHOR: "У автора заявки",
   RETURNED_TO_SUPPLY: "Возвращена снабжению",
   REJECTED: "Отклонена",
   IN_PROGRESS: "В работе",

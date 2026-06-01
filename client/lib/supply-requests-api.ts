@@ -26,6 +26,40 @@ export function createMaterialSupplyRequest(
   });
 }
 
+export function createQuarrySupplyRequest(
+  payload: CreateMaterialSupplyRequestPayload,
+) {
+  return apiClient<SupplyRequest>("/supply-requests/quarry", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export type CreateExpressMaterialSupplyRequestPayload =
+  CreateMaterialSupplyRequestPayload & {
+    comment: string;
+    files: File[];
+  };
+
+export function createExpressMaterialSupplyRequest(
+  payload: CreateExpressMaterialSupplyRequestPayload,
+) {
+  const form = new FormData();
+
+  form.append("objectId", payload.objectId);
+  form.append("comment", payload.comment);
+  form.append("items", JSON.stringify(payload.items));
+
+  for (const file of payload.files) {
+    form.append("files", file);
+  }
+
+  return apiClient<SupplyRequest>("/supply-requests/express-material", {
+    method: "POST",
+    body: form,
+  });
+}
+
 export type CreateTransportSupplyRequestPayload = {
   objectId: string;
   transportType: string;
@@ -517,6 +551,19 @@ export function rejectSupplyRequestByDirector(
   );
 }
 
+export function archiveSupplyRequestByDirector(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/director/archive`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function returnSupplyRequestToSupplyByDirector(
   requestId: string,
   comment?: string,
@@ -562,6 +609,39 @@ export function completeSupplyRequestByStorekeeper(
 export function approveTransportBySupply(requestId: string, comment?: string) {
   return apiClient<SupplyRequest>(
     `/supply-requests/${requestId}/transport/supply/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function approveQuarryBySupply(requestId: string, comment?: string) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/quarry/supply/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function completeQuarryByAuthor(requestId: string, comment?: string) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/quarry/author/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function completeExpressMaterialByAuthor(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/express-material/author/complete`,
     {
       method: "PATCH",
       body: { comment },

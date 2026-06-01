@@ -22,9 +22,11 @@ import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
+import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateProductionSupplyRequestDto } from "./dto/create-production-supply-request.dto";
+import { CreateQuarrySupplyRequestDto } from "./dto/create-quarry-supply-request.dto";
 import { CreateTransportSupplyRequestDto } from "./dto/create-transport-supply-request.dto";
 import { DeleteSupplyRequestItemDto } from "./dto/delete-supply-request-item.dto";
 import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
@@ -46,6 +48,28 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.createMaterialRequest(dto, user.id);
+  }
+
+  @Post("quarry")
+  createQuarryRequest(
+    @Body() dto: CreateQuarrySupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createQuarryRequest(dto, user.id);
+  }
+
+  @Post("express-material")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  createExpressMaterialRequest(
+    @Body() dto: CreateExpressMaterialSupplyRequestDto,
+    @UploadedFiles() files: Express.Multer.File[],
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createExpressMaterialRequest(
+      dto,
+      files,
+      user.id,
+    );
   }
 
   @Post("transport")
@@ -103,9 +127,10 @@ export class SupplyRequestsController {
 
     response.set({
       "Content-Type": invoice.mimeType,
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(
+      "Content-Disposition": createContentDisposition(
+        "attachment",
         invoice.originalName,
-      )}"`,
+      ),
     });
 
     return new StreamableFile(invoice.file);
@@ -126,9 +151,10 @@ export class SupplyRequestsController {
 
     response.set({
       "Content-Type": attachment.mimeType,
-      "Content-Disposition": `inline; filename="${encodeURIComponent(
+      "Content-Disposition": createContentDisposition(
+        "inline",
         attachment.originalName,
-      )}"`,
+      ),
     });
 
     return new StreamableFile(attachment.file);
@@ -408,6 +434,19 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/quarry/author/complete")
+  completeQuarryByAuthor(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeTransportByAuthor(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/workshop-manager/approve")
   approveByWorkshopManager(
     @Param("id") id: string,
@@ -434,8 +473,34 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/express-material/author/complete")
+  completeExpressMaterialByAuthor(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeExpressMaterialByAuthor(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/transport/supply/approve")
   approveTransportBySupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveTransportBySupply(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/quarry/supply/approve")
+  approveQuarryBySupply(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -509,4 +574,14 @@ export class SupplyRequestsController {
   ) {
     return this.supplyRequestsService.archive(id, dto, user.id);
   }
+}
+
+function createContentDisposition(disposition: "attachment" | "inline", fileName: string) {
+  const fallbackName =
+    fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_") || "file";
+  const encodedName = encodeURIComponent(fileName)
+    .replace(/['()]/g, escape)
+    .replace(/\*/g, "%2A");
+
+  return `${disposition}; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`;
 }

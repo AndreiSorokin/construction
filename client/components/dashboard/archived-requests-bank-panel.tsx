@@ -29,7 +29,10 @@ export function ArchivedRequestsBankPanel({
   const [isOpen, setIsOpen] = useState(false);
 
   const completedRequests = useMemo(() => {
-    return requests.filter((request) => request.status === "COMPLETED");
+    return requests.filter(
+      (request) =>
+        request.status === "COMPLETED" || request.status === "ARCHIVED",
+    );
   }, [requests]);
 
   const requestGroups = useMemo(() => {
@@ -232,5 +235,11 @@ function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] 
 }
 
 function getRequestPositionsCount(request: SupplyRequest) {
-  return request.type === "MATERIAL" ? request.items.length : 1;
+  return (
+    request.type === "MATERIAL" ||
+    request.type === "QUARRY" ||
+    request.type === "EXPRESS_MATERIAL"
+  )
+    ? request.items.length
+    : 1;
 }

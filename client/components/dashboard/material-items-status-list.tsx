@@ -7,7 +7,12 @@ type MaterialItemsStatusListProps = {
 export function MaterialItemsStatusList({
   request,
 }: MaterialItemsStatusListProps) {
-  if (request.type !== "MATERIAL" || !request.items.length) {
+  if (
+    (request.type !== "MATERIAL" &&
+      request.type !== "QUARRY" &&
+      request.type !== "EXPRESS_MATERIAL") ||
+    !request.items.length
+  ) {
     return null;
   }
 

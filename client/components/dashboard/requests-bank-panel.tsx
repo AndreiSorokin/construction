@@ -21,7 +21,11 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
-  const requestGroups = groupRequestsByObject(requests);
+  const activeRequests = requests.filter(
+    (request) =>
+      request.status !== "COMPLETED" && request.status !== "ARCHIVED",
+  );
+  const requestGroups = groupRequestsByObject(activeRequests);
 
   useEffect(() => {
     void loadRequests();
@@ -78,7 +82,7 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
           </ObjectApprovalGroup>
         ))}
 
-        {!isLoading && !requests.length ? (
+        {!isLoading && !activeRequests.length ? (
           <div className="rounded-md border border-dashed border-slate-300 p-6 text-sm text-slate-500">
             Пока нет заявок.
           </div>
@@ -151,6 +155,10 @@ function getDetailLabel(request: SupplyRequest) {
     return "Вид техники";
   }
 
+  if (request.type === "QUARRY") {
+    return "Карьер";
+  }
+
   if (request.type === "PRODUCTION") {
     return "Производство";
   }
@@ -205,7 +213,13 @@ function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] 
 }
 
 function getRequestPositionsCount(request: SupplyRequest) {
-  return request.type === "MATERIAL" ? request.items.length : 1;
+  return (
+    request.type === "MATERIAL" ||
+    request.type === "QUARRY" ||
+    request.type === "EXPRESS_MATERIAL"
+  )
+    ? request.items.length
+    : 1;
 }
 
 function toNumber(value: string | number | null | undefined) {

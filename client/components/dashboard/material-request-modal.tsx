@@ -2,7 +2,11 @@
 
 import { Send, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
-import { createMaterialSupplyRequest } from "@/lib/supply-requests-api";
+import {
+  createExpressMaterialSupplyRequest,
+  createMaterialSupplyRequest,
+  createQuarrySupplyRequest,
+} from "@/lib/supply-requests-api";
 import { ObjectEntity } from "@/lib/types";
 
 type MaterialRequestFormItem = {
@@ -17,6 +21,7 @@ type MaterialRequestModalProps = {
   onClose: () => void;
   onError: (error: unknown) => void;
   onSuccess: (message: string) => void;
+  variant?: "material" | "quarry" | "express";
 };
 
 const measurementUnitOptions = [
@@ -45,6 +50,7 @@ export function MaterialRequestModal({
   onClose,
   onError,
   onSuccess,
+  variant = "material",
 }: MaterialRequestModalProps) {
   const [requestItems, setRequestItems] = useState<MaterialRequestFormItem[]>([
     createEmptyItem(),
@@ -104,39 +110,78 @@ export function MaterialRequestModal({
   }
 
   async function submitMaterialRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  event.preventDefault();
 
-    const items = requestItems
-      .map((item) => ({
-        materialName: item.materialName.trim(),
-        measurementUnit: item.measurementUnit.trim(),
-        quantity: item.quantity,
-      }))
-      .filter(
-        (item) =>
-          item.materialName &&
-          item.measurementUnit &&
-          toNumber(item.quantity) > 0,
-      );
+  const formElement = event.currentTarget;
 
-    if (!items.length) {
-      onError("Добавьте хотя бы одну позицию с названием, единицей измерения и количеством");
-      return;
-    }
+  const items = requestItems
+    .map((item) => ({
+      materialName: item.materialName.trim(),
+      measurementUnit: item.measurementUnit.trim(),
+      quantity: item.quantity,
+    }))
+    .filter(
+      (item) =>
+        item.materialName &&
+        item.measurementUnit &&
+        toNumber(item.quantity) > 0,
+    );
 
-    try {
-      const request = await createMaterialSupplyRequest({
+  if (!items.length) {
+    onError("Добавьте хотя бы одну позицию с названием, единицей измерения и количеством");
+    return;
+  }
+
+  try {
+    if (variant === "express") {
+      const form = new FormData(formElement);
+      const comment = String(form.get("comment") ?? "").trim();
+
+      const filesInput = formElement.elements.namedItem("files") as HTMLInputElement | null;
+      const files = Array.from(filesInput?.files ?? []);
+
+      if (!comment) {
+        onError("Укажите комментарий к экспресс-заявке");
+        return;
+      }
+
+      if (!files.length) {
+        onError("Прикрепите счет к экспресс-заявке");
+        return;
+      }
+
+      const request = await createExpressMaterialSupplyRequest({
+        comment,
+        files,
         objectId: object.id,
         items,
       });
 
       setRequestItems([createEmptyItem()]);
+      formElement.reset();
       onSuccess(`Заявка ${request.requestNumber} создана и отправлена`);
       onClose();
-    } catch (error) {
-      onError(error);
+      return;
     }
+
+    const createRequest =
+      variant === "quarry"
+        ? createQuarrySupplyRequest
+        : createMaterialSupplyRequest;
+
+    const request = await createRequest({
+      objectId: object.id,
+      items,
+    });
+
+    setRequestItems([createEmptyItem()]);
+    formElement.reset();
+    onSuccess(`Заявка ${request.requestNumber} создана и отправлена`);
+    onClose();
+  } catch (error) {
+    onError(error);
   }
+}
 
   return (
     <div
@@ -148,10 +193,18 @@ export function MaterialRequestModal({
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5">
           <div>
             <h2 className="text-lg font-semibold text-slate-950">
-              {"Заявка на ТМЦ"}
+              {variant === "quarry"
+                ? "Заявка на карьер"
+                : variant === "express"
+                  ? "Экспресс заявка ТМЦ"
+                  : "Заявка на ТМЦ"}
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {`${object.name}: добавьте позиции ТМЦ вручную. Справочник ТМЦ не требуется.`}
+              {variant === "quarry"
+                ? `${object.name}: добавьте позиции для карьера вручную.`
+                : variant === "express"
+                  ? `${object.name}: добавьте позиции, комментарий и счет.`
+                  : `${object.name}: добавьте позиции ТМЦ вручную. Справочник ТМЦ не требуется.`}
             </p>
           </div>
           <button
@@ -247,6 +300,34 @@ export function MaterialRequestModal({
                 );
               })}
             </div>
+
+            {variant === "express" ? (
+              <div className="mt-4 grid gap-3 rounded-md border border-slate-200 p-3">
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-medium text-slate-700">
+                    Комментарий
+                  </span>
+                  <textarea
+                    className="min-h-24 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-700"
+                    name="comment"
+                    placeholder="Кратко опишите причину экспресс-заявки"
+                    required
+                  />
+                </label>
+                <label className="grid gap-1.5">
+                  <span className="text-sm font-medium text-slate-700">
+                    Счет
+                  </span>
+                  <input
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
+                    multiple
+                    name="files"
+                    required
+                    type="file"
+                  />
+                </label>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">

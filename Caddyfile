@@ -1,0 +1,17 @@
+sk.interstil.kz {
+	encode zstd gzip
+
+	request_body {
+		max_size 20MB
+	}
+
+	@api path /api /api/*
+	handle @api {
+		uri strip_prefix /api
+		reverse_proxy server:3000
+	}
+
+	handle {
+		reverse_proxy client:3001
+	}
+}

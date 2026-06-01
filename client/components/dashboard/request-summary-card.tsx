@@ -20,6 +20,7 @@ import {
   SupplyRequestItem,
   SupplyRequestStatus,
   SupplyRequestType,
+  UserRole,
 } from "@/lib/types";
 
 type RequestSummaryCardProps = {
@@ -45,6 +46,7 @@ const statusClasses: Record<SupplyRequestStatus, string> = {
   PENDING_TRANSPORT_AUTHOR: "bg-lime-50 text-lime-700",
   PENDING_WORKSHOP_MANAGER: "bg-indigo-50 text-indigo-700",
   PENDING_PRODUCTION_AUTHOR: "bg-indigo-50 text-indigo-700",
+  PENDING_REQUEST_AUTHOR: "bg-cyan-50 text-cyan-700",
   RETURNED_TO_SUPPLY: "bg-orange-50 text-orange-700",
   REJECTED: "bg-red-50 text-red-700",
   IN_PROGRESS: "bg-teal-50 text-teal-700",
@@ -57,6 +59,8 @@ const typeClasses: Record<SupplyRequestType, string> = {
   TRANSPORT: "bg-lime-50 text-lime-700",
   MONEY: "bg-violet-50 text-violet-700",
   PRODUCTION: "bg-indigo-50 text-indigo-700",
+  QUARRY: "bg-stone-100 text-stone-700",
+  EXPRESS_MATERIAL: "bg-cyan-50 text-cyan-700",
 };
 
 export function RequestSummaryCard({
@@ -80,6 +84,10 @@ export function RequestSummaryCard({
 
   if (request.type === "PRODUCTION") {
     return request.purpose ?? "Производство";
+  }
+
+  if (request.type === "QUARRY" || request.type === "EXPRESS_MATERIAL") {
+    return request.items.map((item) => item.materialNameSnapshot).join(", ");
   }
 
   return request.items
@@ -107,6 +115,9 @@ export function RequestSummaryCard({
           <span className="min-w-0">
             <span className="block truncate font-medium text-slate-950">
               {getRequestItemsLabel(request)}
+            </span>
+            <span className="mt-1 block truncate text-xs text-slate-500">
+              {getCurrentHolderLabel(request)}
             </span>
           </span>
         </button>
@@ -161,6 +172,7 @@ export function getRequestStatusLabel(status: SupplyRequestStatus) {
 function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
   const authorRole = getAuthorObjectRole(request);
   const authorRoleLabel = authorRole ? userRoleLabels[authorRole] : "Роль не указана";
+  const currentHolderLabel = getCurrentHolderLabel(request);
 
   return (
     <div className="mb-4 grid gap-2 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-3">
@@ -173,6 +185,7 @@ function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
       <MetaItem label="Автор" value={request.author?.name ?? "Не указан"} />
       <MetaItem label="Email автора" value={request.author?.email ?? "Не указан"} />
       <MetaItem label="Должность автора" value={authorRoleLabel} />
+      <MetaItem label="Сейчас у" value={currentHolderLabel} />
     </div>
   );
 }
@@ -218,4 +231,94 @@ function getAuthorObjectRole(request: SupplyRequest) {
   return request.author?.objectAccesses?.find(
     (access) => access.objectId === request.objectId,
   )?.role;
+}
+
+function getCurrentHolderLabel(request: SupplyRequest) {
+  if (request.status === "COMPLETED") {
+    return "Заявка исполнена";
+  }
+
+  if (request.status === "ARCHIVED") {
+    return "Заявка в архиве";
+  }
+
+  if (request.status === "REJECTED") {
+    return "Заявка отклонена";
+  }
+
+  if (
+    request.status === "PENDING_SUPPLY" ||
+    request.status === "RETURNED_TO_SUPPLY" ||
+    request.status === "IN_PROGRESS"
+  ) {
+    return request.assignedSupplyUser
+      ? formatUserHolder("Снабженец", request.assignedSupplyUser)
+      : formatRoleHolders(request, "SUPPLY");
+  }
+
+  if (request.status === "PENDING_STOREKEEPER") {
+    return request.assignedStorekeeper
+      ? formatUserHolder("Кладовщик", request.assignedStorekeeper)
+      : formatRoleHolders(request, "STOREKEEPER");
+  }
+
+  if (request.status === "PENDING_WORKSHOP_MANAGER") {
+    return request.assignedWorkshopManager
+      ? formatUserHolder("Начальник цеха", request.assignedWorkshopManager)
+      : formatRoleHolders(request, "WORKSHOP_MANAGER");
+  }
+
+  if (
+    request.status === "PENDING_TRANSPORT_AUTHOR" ||
+    request.status === "PENDING_PRODUCTION_AUTHOR" ||
+    request.status === "PENDING_REQUEST_AUTHOR"
+  ) {
+    return request.author
+      ? formatUserHolder("Автор", request.author)
+      : "У автора заявки";
+  }
+
+  const role = holderRoleByStatus[request.status];
+
+  if (!role) {
+    return requestStatusLabels[request.status];
+  }
+
+  return formatRoleHolders(request, role);
+}
+
+const holderRoleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
+  CREATED: "FOREMAN",
+  PENDING_ACCOUNTANT: "ACCOUNTANT",
+  PENDING_CHIEF_ENGINEER: "CHIEF_ENGINEER",
+  PENDING_DEPUTY_PRODUCTION_DIRECTOR: "DEPUTY_PRODUCTION_DIRECTOR",
+  PENDING_DEPUTY_TRANSPORT_DIRECTOR: "DEPUTY_TRANSPORT_DIRECTOR",
+  PENDING_DIRECTOR: "DIRECTOR",
+  PENDING_GARAGE_MANAGER: "GARAGE_MANAGER",
+  PENDING_PTO: "PTO",
+  PENDING_SUPPLY_MANAGER: "SUPPLY_MANAGER",
+  PENDING_WAREHOUSE_MANAGER: "WAREHOUSE_MANAGER",
+};
+
+function formatRoleHolders(request: SupplyRequest, role: UserRole) {
+  const roleLabel = userRoleLabels[role] ?? role;
+  const users =
+    request.object?.userAccesses
+      ?.filter((access) => access.role === role && access.user)
+      .map((access) => access.user)
+      .filter((user): user is NonNullable<typeof user> => Boolean(user)) ?? [];
+
+  if (!users.length) {
+    return `${roleLabel} не назначен на этом объекте/цехе`;
+  }
+
+  const formattedUsers = users
+    .map((user) => `${user.name ?? "Без имени"} (${user.email})`)
+    .join(", ");
+
+  return `${roleLabel}: ${formattedUsers}`;
+}
+
+function formatUserHolder(label: string, user: { email: string; name?: string | null }) {
+  return `${label}: ${user.name ?? "Без имени"} (${user.email})`;
 }

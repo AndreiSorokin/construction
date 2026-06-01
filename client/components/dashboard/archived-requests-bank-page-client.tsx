@@ -33,7 +33,7 @@ export function ArchivedRequestsBankPageClient() {
 
   return (
    <main className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="relative z-[200] border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-700 text-white">

@@ -1,0 +1,1 @@
+ALTER TYPE "SupplyRequestType" ADD VALUE IF NOT EXISTS 'QUARRY';

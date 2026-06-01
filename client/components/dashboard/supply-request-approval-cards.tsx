@@ -488,7 +488,7 @@ export function ChiefEngineerRequestCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
 
-        {request.type === "MATERIAL" ? (
+        {isItemRequest(request) ? (
           <>
             <EditableMaterialItemsTable
               request={request}
@@ -500,7 +500,7 @@ export function ChiefEngineerRequestCard({
           <RequestDetails request={request} />
         )}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {request.type === "MATERIAL" || request.type === "TRANSPORT" ? (
+        {isItemRequest(request) || request.type === "TRANSPORT" ? (
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReturn(request)}
@@ -594,7 +594,7 @@ export function DeputyProductionDirectorRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
-        {request.type === "MATERIAL" ? (
+        {isItemRequest(request) ? (
           <>
             <PriceComparisonTable
               request={request}
@@ -642,7 +642,9 @@ export function AccountantRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
-        {request.type === "MATERIAL" ? (
+        {request.type === "EXPRESS_MATERIAL" ? (
+          <ExpressMaterialDetails request={request} />
+        ) : isItemRequest(request) ? (
           <>
             <PriceComparisonTable request={request} mode="pto" />
             <Totals request={request} mode="pto" />
@@ -709,7 +711,7 @@ export function SupplyRequestCard({
             type="file"
           />
           <span className="text-xs text-slate-500">
-            Если итог по заявке больше 100 000, нужно прикрепить минимум три разных счета.
+            Можно отправить заявку без счетов или прикрепить любое количество файлов.
           </span>
         </label>
         <input
@@ -818,7 +820,6 @@ export function SupplyTransportRequestCard({
             className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-700 focus:border-teal-700"
             multiple
             name="files"
-            required
             type="file"
           />
         </label>
@@ -982,12 +983,14 @@ export function StorekeeperRequestCard({
 
 export function DirectorRequestCard({
   onApprove,
+  onArchive,
   onDeleteItem,
   onReject,
   onUpdateItem,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
+  onArchive: (request: SupplyRequest) => void;
   onDeleteItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -1004,7 +1007,9 @@ export function DirectorRequestCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
 
-      {request.type === "MATERIAL" ? (
+      {request.type === "EXPRESS_MATERIAL" ? (
+        <ExpressMaterialDetails request={request} />
+      ) : isItemRequest(request) ? (
         <>
           <PriceComparisonTable
             request={request}
@@ -1019,6 +1024,14 @@ export function DirectorRequestCard({
       )}
       <InvoiceList request={request} />
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <button
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          onClick={() => onArchive(request)}
+          type="button"
+        >
+          <X size={16} />
+          Удалить
+        </button>
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReject(request)}
@@ -1550,8 +1563,20 @@ function formatPaymentType(type: SupplyRequest["paymentType"]) {
   return "Не указано";
 }
 
+function isItemRequest(request: SupplyRequest) {
+  return (
+    request.type === "MATERIAL" ||
+    request.type === "QUARRY" ||
+    request.type === "EXPRESS_MATERIAL"
+  );
+}
+
 function RequestDetails({ request }: { request: SupplyRequest }) {
-  if (request.type === "MATERIAL") {
+  if (request.type === "EXPRESS_MATERIAL") {
+    return <ExpressMaterialDetails request={request} />;
+  }
+
+  if (isItemRequest(request)) {
     return <MaterialItemsTable request={request} />;
   }
 
@@ -1564,6 +1589,20 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
   }
 
   return <MoneyDetails request={request} />;
+}
+
+function ExpressMaterialDetails({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="grid gap-3">
+      <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm">
+        <div className="text-slate-500">Комментарий</div>
+        <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
+          {request.purpose ?? "Не указан"}
+        </div>
+      </div>
+      <MaterialItemsTable request={request} />
+    </div>
+  );
 }
 
 function AttachmentList({ request }: { request: SupplyRequest }) {
@@ -1835,59 +1874,63 @@ function InvoiceList({
           </div>
         ) : null}
         <div className="mt-2 grid gap-2">
-          {request.invoices.map((invoice) => (
-            <div
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm"
-              key={invoice.id}
-            >
-              <div>
-                <div className="font-medium text-slate-950">
-                  {invoice.originalName}
+          {request.invoices.map((invoice) => {
+            const displayName = normalizeDisplayedFileName(invoice.originalName);
+
+            return (
+              <div
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-2 text-sm"
+                key={invoice.id}
+              >
+                <div>
+                  <div className="font-medium text-slate-950">
+                    {displayName}
+                  </div>
+                  <div className="text-slate-500">
+                    {formatFileSize(invoice.size)} ·{" "}
+                    {invoice.uploadedBy?.name ?? invoice.uploadedById}
+                  </div>
                 </div>
-                <div className="text-slate-500">
-                  {formatFileSize(invoice.size)} ·{" "}
-                  {invoice.uploadedBy?.name ?? invoice.uploadedById}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-teal-200 bg-white px-3 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={isPreviewLoading === invoice.id}
-                  onClick={() => void openPreview(invoice)}
-                  type="button"
-                >
-                  {isPreviewLoading === invoice.id
-                    ? "Открываем..."
-                    : "Просмотреть"}
-                </button>
-                <button
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  onClick={() =>
-                    void downloadSupplyRequestInvoice(
-                      request.id,
-                      invoice.id,
-                      invoice.originalName,
-                    ).catch(() => window.alert("Не удалось скачать счет"))
-                  }
-                  type="button"
-                >
-                  Скачать
-                </button>
-                {onDeleteInvoice ? (
+                <div className="flex items-center gap-2">
                   <button
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50"
-                    onClick={() => onDeleteInvoice(request, invoice.id)}
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-teal-200 bg-white px-3 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isPreviewLoading === invoice.id}
+                    onClick={() => void openPreview(invoice)}
                     type="button"
                   >
-                    Удалить
+                    {isPreviewLoading === invoice.id
+                      ? "Открываем..."
+                      : "Просмотреть"}
                   </button>
-                ) : null}
-                <div className="text-xs text-slate-500">
-                  {new Date(invoice.createdAt).toLocaleDateString("ru-KZ")}
+                  <button
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    onClick={() =>
+                      void downloadSupplyRequestInvoice(
+                        request.id,
+                        invoice.id,
+                        displayName,
+                      ).catch(() => window.alert("Не удалось скачать счет"))
+                    }
+                    type="button"
+                  >
+                    Скачать
+                  </button>
+                  {onDeleteInvoice ? (
+                    <button
+                      className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-700 hover:bg-red-50"
+                      onClick={() => onDeleteInvoice(request, invoice.id)}
+                      type="button"
+                    >
+                      Удалить
+                    </button>
+                  ) : null}
+                  <div className="text-xs text-slate-500">
+                    {new Date(invoice.createdAt).toLocaleDateString("ru-KZ")}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -1916,6 +1959,7 @@ function InvoicePreviewModal({
 }) {
   const canPreviewAsImage = contentType.startsWith("image/");
   const canPreviewAsPdf = contentType.includes("pdf");
+  const displayName = normalizeDisplayedFileName(invoice.originalName);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
@@ -1923,7 +1967,7 @@ function InvoicePreviewModal({
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-slate-950">
-              {invoice.originalName}
+              {displayName}
             </div>
             <div className="mt-0.5 text-xs text-slate-500">
               {formatFileSize(invoice.size)}
@@ -1941,7 +1985,7 @@ function InvoicePreviewModal({
         <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-3">
           {canPreviewAsImage ? (
             <img
-              alt={invoice.originalName}
+              alt={displayName}
               className="mx-auto max-h-[72vh] max-w-full rounded-md bg-white object-contain"
               src={url}
             />
@@ -1949,7 +1993,7 @@ function InvoicePreviewModal({
             <iframe
               className="h-[72vh] w-full rounded-md border border-slate-200 bg-white"
               src={url}
-              title={invoice.originalName}
+              title={displayName}
             />
           ) : (
             <div className="rounded-md bg-white p-4 text-sm text-slate-600">
@@ -1962,7 +2006,7 @@ function InvoicePreviewModal({
         <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
           <a
             className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            download={invoice.originalName}
+            download={displayName}
             href={url}
           >
             Скачать
@@ -2057,4 +2101,17 @@ function formatFileSize(value: number) {
   }
 
   return `${(value / 1024 / 1024).toFixed(1)} МБ`;
+}
+
+function normalizeDisplayedFileName(fileName: string) {
+  if (!/[ÃÂÐÑ]/.test(fileName)) {
+    return fileName;
+  }
+
+  const bytes = Uint8Array.from(
+    Array.from(fileName, (char) => char.charCodeAt(0) & 255),
+  );
+  const decodedName = new TextDecoder("utf-8").decode(bytes);
+
+  return decodedName.includes("�") ? fileName : decodedName;
 }

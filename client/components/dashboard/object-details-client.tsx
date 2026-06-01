@@ -70,6 +70,9 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const [object, setObject] = useState<ObjectEntity | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isMaterialRequestOpen, setIsMaterialRequestOpen] = useState(false);
+  const [isQuarryRequestOpen, setIsQuarryRequestOpen] = useState(false);
+  const [isExpressMaterialRequestOpen, setIsExpressMaterialRequestOpen] =
+    useState(false);
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
   const [isMoneyRequestOpen, setIsMoneyRequestOpen] = useState(false);
   const [isProductionRequestOpen, setIsProductionRequestOpen] = useState(false);
@@ -90,6 +93,14 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const canCreateMaterialRequest = canCreateRequestType(
     currentObjectRole,
     "MATERIAL",
+  );
+  const canCreateQuarryRequest = canCreateRequestType(
+    currentObjectRole,
+    "QUARRY",
+  );
+  const canCreateExpressMaterialRequest = canCreateRequestType(
+    currentObjectRole,
+    "EXPRESS_MATERIAL",
   );
   const canCreateTransportRequest = canCreateRequestType(
     currentObjectRole,
@@ -311,7 +322,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
         onClearError={clearError}
         onClearSuccess={clearSuccess}
       />
-      <header className="border-b border-slate-200 bg-white">
+      <header className="relative z-[200] border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-700 text-white">
@@ -419,6 +430,28 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     >
                       <Send size={16} />
                       Заявка на транспорт
+                    </button>
+                  ) : null}
+
+                  {canCreateQuarryRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-stone-200 bg-white px-3 text-sm font-medium text-stone-700 hover:bg-stone-50"
+                      onClick={() => setIsQuarryRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Заявка на карьер
+                    </button>
+                  ) : null}
+
+                  {canCreateExpressMaterialRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-cyan-200 bg-white px-3 text-sm font-medium text-cyan-700 hover:bg-cyan-50"
+                      onClick={() => setIsExpressMaterialRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Экспресс ТМЦ
                     </button>
                   ) : null}
 
@@ -538,6 +571,22 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               onClose={() => setIsMaterialRequestOpen(false)}
               onError={showError}
               onSuccess={showSuccess}
+            />
+            <MaterialRequestModal
+              isOpen={isQuarryRequestOpen}
+              object={object}
+              onClose={() => setIsQuarryRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+              variant="quarry"
+            />
+            <MaterialRequestModal
+              isOpen={isExpressMaterialRequestOpen}
+              object={object}
+              onClose={() => setIsExpressMaterialRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+              variant="express"
             />
             <TransportRequestModal
               isOpen={isTransportRequestOpen}

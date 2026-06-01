@@ -32,10 +32,14 @@ import {
   approveSupplyRequestByWarehouseManager,
   approveSupplyRequestByWorkshopManager,
   approveSupplyRequestByAccountant,
+  approveQuarryBySupply,
+  archiveSupplyRequestByDirector,
   assignWorkshopManager,
   assignSupplyRequest,
   attachInvoicesAndSendToDirector,
   completeTransportByAuthor,
+  completeQuarryByAuthor,
+  completeExpressMaterialByAuthor,
   completeProductionByAuthor,
   completeTransportByGarageManager,
   completeSupplyRequest,
@@ -393,25 +397,25 @@ export function SupplyRequestsPanel({
             .files ?? [])
         : [],
     );
-    const totalAmount = request.items.reduce(
-      (total, item) => total + Number(item.ptoLimitPrice ?? 0),
-      0,
-    );
-
-    if (totalAmount > 100000 && files.length < 3) {
-      onError(
-        "Если сумма заявки больше 100 000, снабженец должен прикрепить минимум три разных счета",
-      );
-      return;
-    }
 
     try {
-      await attachInvoicesAndSendToDirector(request.id, {
-        comment: String(form.get("comment") ?? ""),
-        files,
-      });
+      if (request.type === "QUARRY") {
+        await approveQuarryBySupply(
+          request.id,
+          String(form.get("comment") ?? ""),
+        );
+      } else {
+        await attachInvoicesAndSendToDirector(request.id, {
+          comment: String(form.get("comment") ?? ""),
+          files,
+        });
+      }
 
-      onSuccess(`Заявка ${request.requestNumber} отправлена директору`);
+      onSuccess(
+        request.type === "QUARRY"
+          ? `Заявка ${request.requestNumber} отправлена заведующему гаражом`
+          : `Заявка ${request.requestNumber} отправлена директору`,
+      );
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -495,6 +499,24 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function approveQuarryBySupplyUser(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий снабжения");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await approveQuarryBySupply(request.id, comment);
+      onSuccess(
+        `Заявка ${request.requestNumber} отправлена заведующему гаражом`,
+      );
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function completeByGarageManager(request: SupplyRequest) {
     const comment = window.prompt("Комментарий для автора заявки");
 
@@ -521,7 +543,27 @@ export function SupplyRequestsPanel({
     }
 
     try {
-      await completeTransportByAuthor(request.id, comment);
+      if (request.type === "QUARRY") {
+        await completeQuarryByAuthor(request.id, comment);
+      } else {
+        await completeTransportByAuthor(request.id, comment);
+      }
+      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function completeExpressMaterialByRequestAuthor(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к подтверждению исполнения");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await completeExpressMaterialByAuthor(request.id, comment);
       onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
       await loadRequests();
     } catch (error) {
@@ -539,6 +581,26 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByWorkshopManager(request.id, comment);
       onSuccess(`Заявка ${request.requestNumber} отправлена автору`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function archiveByDirector(request: SupplyRequest) {
+    const isConfirmed = window.confirm(
+      `Удалить заявку ${request.requestNumber}? Она исчезнет из банка заявок, но останется в исполненных заявках.`,
+    );
+
+    if (!isConfirmed) {
+      return;
+    }
+
+    const comment = window.prompt("Комментарий к удалению заявки") ?? "";
+
+    try {
+      await archiveSupplyRequestByDirector(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} удалена`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -612,7 +674,7 @@ export function SupplyRequestsPanel({
               const objectRole = getObjectRole(objectAccesses, request.objectId);
 
               if (
-                request.type === "TRANSPORT" &&
+                (request.type === "TRANSPORT" || request.type === "QUARRY") &&
                 request.status === "PENDING_TRANSPORT_AUTHOR" &&
                 request.authorId === user.id
               ) {
@@ -636,6 +698,21 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onApprove={completeProductionByRequestAuthor}
+                    onReject={rejectToPreviousStep}
+                  />
+                );
+              }
+
+              if (
+                request.type === "EXPRESS_MATERIAL" &&
+                request.status === "PENDING_REQUEST_AUTHOR" &&
+                request.authorId === user.id
+              ) {
+                return (
+                  <SimpleApprovalCard
+                    key={request.id}
+                    request={request}
+                    onApprove={completeExpressMaterialByRequestAuthor}
                     onReject={rejectToPreviousStep}
                   />
                 );
@@ -792,6 +869,17 @@ export function SupplyRequestsPanel({
                   );
                 }
 
+                if (request.type === "QUARRY") {
+                  return (
+                    <SimpleApprovalCard
+                      key={request.id}
+                      request={request}
+                      onApprove={approveQuarryBySupplyUser}
+                      onReject={rejectToPreviousStep}
+                    />
+                  );
+                }
+
                 if (request.type === "TRANSPORT") {
                   return (
                     <SupplyTransportRequestCard
@@ -849,6 +937,7 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onApprove={approveByDirector}
+                    onArchive={archiveByDirector}
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
@@ -874,7 +963,7 @@ function getVisibleRequests(
     const objectRole = getObjectRole(objectAccesses, request.objectId);
 
     if (
-      request.type === "TRANSPORT" &&
+      (request.type === "TRANSPORT" || request.type === "QUARRY") &&
       request.status === "PENDING_TRANSPORT_AUTHOR" &&
       request.authorId === userId
     ) {
@@ -884,6 +973,14 @@ function getVisibleRequests(
     if (
       request.type === "PRODUCTION" &&
       request.status === "PENDING_PRODUCTION_AUTHOR" &&
+      request.authorId === userId
+    ) {
+      return true;
+    }
+
+    if (
+      request.type === "EXPRESS_MATERIAL" &&
+      request.status === "PENDING_REQUEST_AUTHOR" &&
       request.authorId === userId
     ) {
       return true;
@@ -925,28 +1022,35 @@ function getVisibleRequests(
 
     if (objectRole === "GARAGE_MANAGER") {
       return (
-        request.type === "TRANSPORT" &&
+        (request.type === "TRANSPORT" || request.type === "QUARRY") &&
         request.status === "PENDING_GARAGE_MANAGER"
       );
     }
 
     if (objectRole === "SUPPLY_MANAGER") {
       return (
-        (request.type === "MATERIAL" || request.type === "MONEY") &&
+        (request.type === "MATERIAL" ||
+          request.type === "MONEY" ||
+          request.type === "QUARRY") &&
         request.status === "PENDING_SUPPLY_MANAGER"
       );
     }
 
     if (objectRole === "ACCOUNTANT") {
       return (
-        (request.type === "MATERIAL" || request.type === "MONEY") &&
+        (request.type === "MATERIAL" ||
+          request.type === "MONEY" ||
+          request.type === "EXPRESS_MATERIAL") &&
         request.status === "PENDING_ACCOUNTANT"
       );
     }
 
     if (objectRole === "SUPPLY") {
       return (
-        (request.type === "MATERIAL" || request.type === "MONEY") &&
+        (request.type === "MATERIAL" ||
+          request.type === "MONEY" ||
+          request.type === "QUARRY" ||
+          request.type === "EXPRESS_MATERIAL") &&
         request.assignedSupplyUserId === userId &&
         (request.status === "PENDING_SUPPLY" ||
           request.status === "RETURNED_TO_SUPPLY" ||
@@ -966,7 +1070,9 @@ function getVisibleRequests(
       return (
         (request.type === "MATERIAL" ||
           request.type === "MONEY" ||
-          request.type === "PRODUCTION") &&
+          request.type === "PRODUCTION" ||
+          request.type === "QUARRY" ||
+          request.type === "EXPRESS_MATERIAL") &&
         request.status === "PENDING_DIRECTOR"
       );
     }
@@ -1000,7 +1106,13 @@ function groupRequestsByObject(requests: SupplyRequest[]): ObjectRequestGroup[] 
 }
 
 function getRequestApprovalPositionsCount(request: SupplyRequest) {
-  return request.type === "MATERIAL" ? request.items.length : 1;
+  return (
+    request.type === "MATERIAL" ||
+    request.type === "QUARRY" ||
+    request.type === "EXPRESS_MATERIAL"
+  )
+    ? request.items.length
+    : 1;
 }
 
 function getObjectRole(
