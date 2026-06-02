@@ -164,7 +164,9 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByWarehouseManager(request.id);
       onSuccess(
-        `Заявка ${request.requestNumber} отправлена в ПТО`,
+        request.object?.type === "WORKSHOP"
+          ? `Заявка ${request.requestNumber} отправлена начальнику снабжения`
+          : `Заявка ${request.requestNumber} отправлена в ПТО`,
       );
       await loadRequests();
     } catch (error) {

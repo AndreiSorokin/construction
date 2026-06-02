@@ -2435,8 +2435,19 @@ export class SupplyRequestsService {
     authorRole: UserRole,
     objectType: ObjectType,
   ) {
-    void objectType;
-    return REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
+    const route = REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
+
+    if (
+      requestType === SupplyRequestType.MATERIAL &&
+      objectType === ObjectType.WORKSHOP
+    ) {
+      return (
+        route?.filter((status) => status !== SupplyRequestStatus.PENDING_PTO) ??
+        null
+      );
+    }
+
+    return route;
   }
 
   private parseExpressMaterialItems(itemsJson: string) {

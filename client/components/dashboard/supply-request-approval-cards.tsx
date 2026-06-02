@@ -642,8 +642,8 @@ export function AccountantRequestCard({
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
-        {request.type === "EXPRESS_MATERIAL" ? (
-          <ExpressMaterialDetails request={request} />
+        {shouldShowPlainItemDetails(request) ? (
+          <PlainItemRequestDetails request={request} />
         ) : isItemRequest(request) ? (
           <>
             <PriceComparisonTable request={request} mode="pto" />
@@ -1007,8 +1007,8 @@ export function DirectorRequestCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
 
-      {request.type === "EXPRESS_MATERIAL" ? (
-        <ExpressMaterialDetails request={request} />
+      {shouldShowPlainItemDetails(request) ? (
+        <PlainItemRequestDetails request={request} />
       ) : isItemRequest(request) ? (
         <>
           <PriceComparisonTable
@@ -1572,8 +1572,8 @@ function isItemRequest(request: SupplyRequest) {
 }
 
 function RequestDetails({ request }: { request: SupplyRequest }) {
-  if (request.type === "EXPRESS_MATERIAL") {
-    return <ExpressMaterialDetails request={request} />;
+  if (shouldShowPlainItemDetails(request)) {
+    return <PlainItemRequestDetails request={request} />;
   }
 
   if (isItemRequest(request)) {
@@ -1591,17 +1591,26 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
   return <MoneyDetails request={request} />;
 }
 
-function ExpressMaterialDetails({ request }: { request: SupplyRequest }) {
+function PlainItemRequestDetails({ request }: { request: SupplyRequest }) {
   return (
     <div className="grid gap-3">
-      <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm">
-        <div className="text-slate-500">Комментарий</div>
-        <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
-          {request.purpose ?? "Не указан"}
+      {request.purpose ? (
+        <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm">
+          <div className="text-slate-500">Комментарий</div>
+          <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
+            {request.purpose}
+          </div>
         </div>
-      </div>
+      ) : null}
       <MaterialItemsTable request={request} />
     </div>
+  );
+}
+
+function shouldShowPlainItemDetails(request: SupplyRequest) {
+  return (
+    request.type === "EXPRESS_MATERIAL" ||
+    (request.type === "MATERIAL" && request.object?.type === "WORKSHOP")
   );
 }
 
