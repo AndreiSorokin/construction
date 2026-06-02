@@ -2524,10 +2524,21 @@ export class SupplyRequestsService {
     );
 
     if (!route?.length) {
-      throw new BadRequestException("Approval route is not configured");
+      throw new BadRequestException(
+        `Approval route is not configured for type ${request.type}, author role ${authorRole}, object type ${request.object.type}`,
+      );
     }
 
     const currentStepIndex = route.indexOf(request.status);
+
+    if (
+      currentStepIndex < 0 &&
+      request.type === SupplyRequestType.MATERIAL &&
+      request.object.type === ObjectType.WORKSHOP &&
+      request.status === SupplyRequestStatus.PENDING_PTO
+    ) {
+      return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+    }
 
     if (currentStepIndex < 0 || currentStepIndex >= route.length - 1) {
       throw new BadRequestException(
@@ -2558,7 +2569,9 @@ export class SupplyRequestsService {
     );
 
     if (!route?.length) {
-      throw new BadRequestException("Approval route is not configured");
+      throw new BadRequestException(
+        `Approval route is not configured for type ${request.type}, author role ${authorRole}, object type ${request.object.type}`,
+      );
     }
 
     const currentStepIndex = route.indexOf(request.status);
