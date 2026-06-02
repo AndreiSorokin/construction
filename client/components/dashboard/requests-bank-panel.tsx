@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCcw } from "lucide-react";
+import { RefreshCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { MaterialItemsStatusList } from "@/components/dashboard/material-items-status-list";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
@@ -10,8 +10,13 @@ import {
 } from "@/components/dashboard/supply-request-approval-cards";
 import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
-import { getSupplyRequests } from "@/lib/supply-requests-api";
-import { SupplyRequest } from "@/lib/types";
+import { useSuccessMessage } from "@/hooks/use-success-message";
+import { getCurrentUser } from "@/lib/auth-api";
+import {
+  deleteSupplyRequestByDirector,
+  getSupplyRequests,
+} from "@/lib/supply-requests-api";
+import { SupplyRequest, User } from "@/lib/types";
 
 type RequestsBankPanelProps = {
   onError?: (error: unknown) => void;
@@ -19,8 +24,10 @@ type RequestsBankPanelProps = {
 
 export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
+  const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
   const activeRequests = requests.filter(
     (request) =>
       request.status !== "COMPLETED" && request.status !== "ARCHIVED",
@@ -36,7 +43,12 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
     clearError();
 
     try {
-      setRequests(await getSupplyRequests());
+      const [nextRequests, currentUser] = await Promise.all([
+        getSupplyRequests(),
+        getCurrentUser(),
+      ]);
+      setRequests(nextRequests);
+      setUser(currentUser);
     } catch (error) {
       if (onError) {
         onError(error);
@@ -48,11 +60,38 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
     }
   }
 
+  async function deleteRequest(request: SupplyRequest) {
+    const confirmed = window.confirm(
+      `Удалить заявку ${request.requestNumber} навсегда? Она исчезнет из банка, исполненных заявок и истории.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    clearError();
+    clearSuccess();
+
+    try {
+      await deleteSupplyRequestByDirector(request.id);
+      showSuccess(`Заявка ${request.requestNumber} удалена`);
+      await loadRequests();
+    } catch (error) {
+      if (onError) {
+        onError(error);
+      } else {
+        showError(error);
+      }
+    }
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <NotificationToasts
         errorMessage={errorMessage}
+        successMessage={successMessage}
         onClearError={clearError}
+        onClearSuccess={clearSuccess}
       />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -77,6 +116,18 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
             {group.requests.map((request) => (
               <RequestSummaryCard key={request.id} request={request}>
                 <RequestDetails request={request} />
+                {canDeleteRequest(user, request) ? (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+                      onClick={() => void deleteRequest(request)}
+                      type="button"
+                    >
+                      <Trash2 size={16} />
+                      Удалить
+                    </button>
+                  </div>
+                ) : null}
               </RequestSummaryCard>
             ))}
           </ObjectApprovalGroup>
@@ -125,7 +176,13 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
             />
           </>
         ) : null}
-        {request.type === "TRANSPORT" ? (
+        {request.type === "BUSINESS_TRIP" ? (
+          <Info
+            label="Назначение командировки"
+            value={request.paymentPurpose ?? "-"}
+          />
+        ) : null}
+        {(request.type === "TRANSPORT" || request.type === "FUEL") ? (
           <Info label="Назначение техники" value={request.purpose ?? "-"} />
         ) : null}
         {request.type === "PRODUCTION" ? (
@@ -147,12 +204,20 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function getDetailLabel(request: SupplyRequest) {
+  if (request.type === "BUSINESS_TRIP") {
+    return "Сумма командировочных";
+  }
+
   if (request.type === "MONEY") {
     return "Сумма";
   }
 
   if (request.type === "TRANSPORT") {
     return "Вид техники";
+  }
+
+  if (request.type === "FUEL") {
+    return "Тип топлива";
   }
 
   if (request.type === "QUARRY") {
@@ -167,8 +232,16 @@ function getDetailLabel(request: SupplyRequest) {
 }
 
 function getDetailValue(request: SupplyRequest) {
+  if (request.type === "BUSINESS_TRIP") {
+    return formatMoney(toNumber(request.amount));
+  }
+
   if (request.type === "TRANSPORT") {
     return request.transportType ?? "Транспорт";
+  }
+
+  if (request.type === "FUEL") {
+    return request.transportType ?? "Топливо";
   }
 
   if (request.type === "MONEY") {
@@ -220,6 +293,18 @@ function getRequestPositionsCount(request: SupplyRequest) {
   )
     ? request.items.length
     : 1;
+}
+
+function canDeleteRequest(user: User | null, request: SupplyRequest) {
+  if (!user) {
+    return false;
+  }
+
+  return Boolean(
+    request.object?.userAccesses?.some(
+      (access) => access.userId === user.id && access.role === "DIRECTOR",
+    ),
+  );
 }
 
 function toNumber(value: string | number | null | undefined) {

@@ -150,7 +150,13 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
             value={request.paymentPurpose ?? "-"}
           />
         ) : null}
-        {request.type === "TRANSPORT" ? (
+        {request.type === "BUSINESS_TRIP" ? (
+          <Info
+            label="Назначение командировки"
+            value={request.paymentPurpose ?? "-"}
+          />
+        ) : null}
+        {(request.type === "TRANSPORT" || request.type === "FUEL") ? (
           <Info label="Назначение техники" value={request.purpose ?? "-"} />
         ) : null}
       </div>
@@ -169,6 +175,10 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function getDetailLabel(request: SupplyRequest) {
+  if (request.type === "BUSINESS_TRIP") {
+    return "Сумма командировочных";
+  }
+
   if (request.type === "MONEY") {
     return "Сумма";
   }
@@ -181,6 +191,10 @@ function getDetailLabel(request: SupplyRequest) {
 }
 
 function getDetailValue(request: SupplyRequest) {
+  if (request.type === "BUSINESS_TRIP") {
+    return formatMoney(toNumber(request.amount));
+  }
+
   if (request.type === "TRANSPORT") {
     return request.transportType ?? "Транспорт";
   }

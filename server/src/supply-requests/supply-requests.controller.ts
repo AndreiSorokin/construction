@@ -22,7 +22,9 @@ import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
+import { CreateBusinessTripSupplyRequestDto } from "./dto/create-business-trip-supply-request.dto";
 import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
+import { CreateFuelSupplyRequestDto } from "./dto/create-fuel-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateProductionSupplyRequestDto } from "./dto/create-production-supply-request.dto";
@@ -78,6 +80,22 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.createTransportRequest(dto, user.id);
+  }
+
+  @Post("fuel")
+  createFuelRequest(
+    @Body() dto: CreateFuelSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createFuelRequest(dto, user.id);
+  }
+
+  @Post("business-trip")
+  createBusinessTripRequest(
+    @Body() dto: CreateBusinessTripSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createBusinessTripRequest(dto, user.id);
   }
 
   @Post("money")
@@ -412,6 +430,19 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/supply-manager/send-to-director")
+  sendMaterialToDirectorBySupplyManager(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.sendMaterialToDirectorBySupplyManager(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/garage-manager/complete")
   completeByGarageManager(
     @Param("id") id: string,
@@ -486,6 +517,19 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/business-trip/author/complete")
+  completeBusinessTripByAuthor(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeBusinessTripByAuthor(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/transport/supply/approve")
   approveTransportBySupply(
     @Param("id") id: string,
@@ -546,6 +590,14 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.archiveByDirector(id, dto, user.id);
+  }
+
+  @Delete(":id/director")
+  deleteByDirector(
+    @Param("id") id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.deleteByDirector(id, user.id);
   }
 
   @Patch(":id/complete")

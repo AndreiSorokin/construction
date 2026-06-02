@@ -68,6 +68,7 @@ export type SupplyRequestStatus =
   | "PENDING_DEPUTY_PRODUCTION_DIRECTOR"
   | "PENDING_DEPUTY_TRANSPORT_DIRECTOR"
   | "PENDING_SUPPLY_MANAGER"
+  | "PENDING_SUPPLY_MANAGER_REVIEW"
   | "PENDING_SUPPLY"
   | "PENDING_DIRECTOR"
   | "PENDING_GARAGE_MANAGER"
@@ -90,7 +91,9 @@ export type SupplyRequestType =
   | "MONEY"
   | "PRODUCTION"
   | "QUARRY"
-  | "EXPRESS_MATERIAL";
+  | "EXPRESS_MATERIAL"
+  | "FUEL"
+  | "BUSINESS_TRIP";
 
 export type MoneyRequestPaymentType = "CASH" | "NON_CASH";
 

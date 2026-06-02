@@ -39,6 +39,7 @@ import {
   attachInvoicesAndSendToDirector,
   completeTransportByAuthor,
   completeQuarryByAuthor,
+  completeBusinessTripByAuthor,
   completeExpressMaterialByAuthor,
   completeProductionByAuthor,
   completeTransportByGarageManager,
@@ -48,6 +49,7 @@ import {
   deleteSupplyRequestItem,
   getSupplyRequests,
   rejectSupplyRequestToPreviousStep,
+  sendMaterialToDirectorBySupplyManager,
   sendMoneyRequestToDirector,
   sendTransportToGarageManager,
   setPtoLimitPrices,
@@ -285,6 +287,22 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function sendToDirectorBySupplyManager(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий для директора");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await sendMaterialToDirectorBySupplyManager(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отправлена директору`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function updateRequestItemQuantity(
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -416,7 +434,7 @@ export function SupplyRequestsPanel({
       onSuccess(
         request.type === "QUARRY"
           ? `Заявка ${request.requestNumber} отправлена заведующему гаражом`
-          : `Заявка ${request.requestNumber} отправлена директору`,
+          : `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
       );
       await loadRequests();
     } catch (error) {
@@ -573,6 +591,22 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function completeBusinessTripByRequestAuthor(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к подтверждению исполнения");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await completeBusinessTripByAuthor(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function approveByWorkshopManager(request: SupplyRequest) {
     const comment = window.prompt("Комментарий начальника цеха");
 
@@ -706,7 +740,8 @@ export function SupplyRequestsPanel({
               }
 
               if (
-                request.type === "EXPRESS_MATERIAL" &&
+                (request.type === "EXPRESS_MATERIAL" ||
+                  request.type === "BUSINESS_TRIP") &&
                 request.status === "PENDING_REQUEST_AUTHOR" &&
                 request.authorId === user.id
               ) {
@@ -714,7 +749,11 @@ export function SupplyRequestsPanel({
                   <SimpleApprovalCard
                     key={request.id}
                     request={request}
-                    onApprove={completeExpressMaterialByRequestAuthor}
+                    onApprove={
+                      request.type === "BUSINESS_TRIP"
+                        ? completeBusinessTripByRequestAuthor
+                        : completeExpressMaterialByRequestAuthor
+                    }
                     onReject={rejectToPreviousStep}
                   />
                 );
@@ -811,6 +850,17 @@ export function SupplyRequestsPanel({
               }
 
               if (objectRole === "SUPPLY_MANAGER") {
+                if (request.status === "PENDING_SUPPLY_MANAGER_REVIEW") {
+                  return (
+                    <SimpleApprovalCard
+                      key={request.id}
+                      request={request}
+                      onApprove={sendToDirectorBySupplyManager}
+                      onReject={rejectToPreviousStep}
+                    />
+                  );
+                }
+
                 if (request.type === "TRANSPORT") {
                   return (
                     <SupplyManagerTransportRequestCard
@@ -827,6 +877,11 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     supplyUsers={getSupplyUsersForRequest(objectAccesses, request)}
+                    onSendToDirector={
+                      request.type === "MATERIAL"
+                        ? sendToDirectorBySupplyManager
+                        : undefined
+                    }
                     onReject={rejectToPreviousStep}
                     onSubmit={assignBySupplyManager}
                   />
@@ -981,7 +1036,8 @@ function getVisibleRequests(
     }
 
     if (
-      request.type === "EXPRESS_MATERIAL" &&
+      (request.type === "EXPRESS_MATERIAL" ||
+        request.type === "BUSINESS_TRIP") &&
       request.status === "PENDING_REQUEST_AUTHOR" &&
       request.authorId === userId
     ) {
@@ -1024,7 +1080,9 @@ function getVisibleRequests(
 
     if (objectRole === "GARAGE_MANAGER") {
       return (
-        (request.type === "TRANSPORT" || request.type === "QUARRY") &&
+        (request.type === "TRANSPORT" ||
+          request.type === "QUARRY" ||
+          request.type === "FUEL") &&
         request.status === "PENDING_GARAGE_MANAGER"
       );
     }
@@ -1034,7 +1092,8 @@ function getVisibleRequests(
         (request.type === "MATERIAL" ||
           request.type === "MONEY" ||
           request.type === "QUARRY") &&
-        request.status === "PENDING_SUPPLY_MANAGER"
+        (request.status === "PENDING_SUPPLY_MANAGER" ||
+          request.status === "PENDING_SUPPLY_MANAGER_REVIEW")
       );
     }
 
@@ -1042,7 +1101,8 @@ function getVisibleRequests(
       return (
         (request.type === "MATERIAL" ||
           request.type === "MONEY" ||
-          request.type === "EXPRESS_MATERIAL") &&
+          request.type === "EXPRESS_MATERIAL" ||
+          request.type === "BUSINESS_TRIP") &&
         request.status === "PENDING_ACCOUNTANT"
       );
     }
@@ -1074,7 +1134,9 @@ function getVisibleRequests(
           request.type === "MONEY" ||
           request.type === "PRODUCTION" ||
           request.type === "QUARRY" ||
-          request.type === "EXPRESS_MATERIAL") &&
+          request.type === "FUEL" ||
+          request.type === "EXPRESS_MATERIAL" ||
+          request.type === "BUSINESS_TRIP") &&
         request.status === "PENDING_DIRECTOR"
       );
     }

@@ -450,12 +450,12 @@ export function DashboardClient() {
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-semibold text-slate-950">Исполненные заявки</h2>
+              <h2 className="font-semibold text-slate-950">Архив</h2>
               <Link
                 className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 href="/dashboard/archived-requests"
               >
-                Открыть исполненные заявки
+                Открыть архив
               </Link>
             </section>
 

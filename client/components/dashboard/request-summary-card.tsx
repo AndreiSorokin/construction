@@ -37,6 +37,7 @@ const statusClasses: Record<SupplyRequestStatus, string> = {
   PENDING_DEPUTY_PRODUCTION_DIRECTOR: "bg-fuchsia-50 text-fuchsia-700",
   PENDING_DEPUTY_TRANSPORT_DIRECTOR: "bg-orange-50 text-orange-700",
   PENDING_SUPPLY_MANAGER: "bg-sky-50 text-sky-700",
+  PENDING_SUPPLY_MANAGER_REVIEW: "bg-sky-50 text-sky-700",
   PENDING_SUPPLY: "bg-cyan-50 text-cyan-700",
   PENDING_DIRECTOR: "bg-violet-50 text-violet-700",
   PENDING_GARAGE_MANAGER: "bg-lime-50 text-lime-700",
@@ -61,6 +62,8 @@ const typeClasses: Record<SupplyRequestType, string> = {
   PRODUCTION: "bg-indigo-50 text-indigo-700",
   QUARRY: "bg-stone-100 text-stone-700",
   EXPRESS_MATERIAL: "bg-cyan-50 text-cyan-700",
+  FUEL: "bg-yellow-50 text-yellow-700",
+  BUSINESS_TRIP: "bg-fuchsia-50 text-fuchsia-700",
 };
 
 export function RequestSummaryCard({
@@ -80,6 +83,14 @@ export function RequestSummaryCard({
 
   if (request.type === "TRANSPORT") {
     return "Транспорт";
+  }
+
+  if (request.type === "FUEL") {
+    return request.transportType ?? "Топливо";
+  }
+
+  if (request.type === "BUSINESS_TRIP") {
+    return request.paymentPurpose ?? "Командировочные";
   }
 
   if (request.type === "PRODUCTION") {
@@ -297,6 +308,7 @@ const holderRoleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
   PENDING_GARAGE_MANAGER: "GARAGE_MANAGER",
   PENDING_PTO: "PTO",
   PENDING_SUPPLY_MANAGER: "SUPPLY_MANAGER",
+  PENDING_SUPPLY_MANAGER_REVIEW: "SUPPLY_MANAGER",
   PENDING_WAREHOUSE_MANAGER: "WAREHOUSE_MANAGER",
 };
 

@@ -13,7 +13,9 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { BusinessTripRequestModal } from "@/components/dashboard/business-trip-request-modal";
 import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
+import { FuelRequestModal } from "@/components/dashboard/fuel-request-modal";
 import { MoneyRequestModal } from "@/components/dashboard/money-request-modal";
 import { ProductionRequestModal } from "@/components/dashboard/production-request-modal";
 import { TransportRequestModal } from "@/components/dashboard/transport-request-modal";
@@ -75,6 +77,9 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     useState(false);
   const [isTransportRequestOpen, setIsTransportRequestOpen] = useState(false);
   const [isMoneyRequestOpen, setIsMoneyRequestOpen] = useState(false);
+  const [isFuelRequestOpen, setIsFuelRequestOpen] = useState(false);
+  const [isBusinessTripRequestOpen, setIsBusinessTripRequestOpen] =
+    useState(false);
   const [isProductionRequestOpen, setIsProductionRequestOpen] = useState(false);
   const [isCopyStaffOpen, setIsCopyStaffOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
@@ -107,6 +112,11 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     "TRANSPORT",
   );
   const canCreateMoneyRequest = canCreateRequestType(currentObjectRole, "MONEY");
+  const canCreateFuelRequest = canCreateRequestType(currentObjectRole, "FUEL");
+  const canCreateBusinessTripRequest = canCreateRequestType(
+    currentObjectRole,
+    "BUSINESS_TRIP",
+  );
   const canCreateProductionRequest = canCreateRequestType(
     currentObjectRole,
     "PRODUCTION",
@@ -466,6 +476,28 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </button>
                   ) : null}
 
+                  {canCreateFuelRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-yellow-200 bg-white px-3 text-sm font-medium text-yellow-700 hover:bg-yellow-50"
+                      onClick={() => setIsFuelRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Заявка на топливо
+                    </button>
+                  ) : null}
+
+                  {canCreateBusinessTripRequest ? (
+                    <button
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-fuchsia-200 bg-white px-3 text-sm font-medium text-fuchsia-700 hover:bg-fuchsia-50"
+                      onClick={() => setIsBusinessTripRequestOpen(true)}
+                      type="button"
+                    >
+                      <Send size={16} />
+                      Командировочные
+                    </button>
+                  ) : null}
+
                   {canCreateProductionRequest ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-indigo-200 bg-white px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
@@ -599,6 +631,20 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               isOpen={isMoneyRequestOpen}
               object={object}
               onClose={() => setIsMoneyRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+            />
+            <FuelRequestModal
+              isOpen={isFuelRequestOpen}
+              object={object}
+              onClose={() => setIsFuelRequestOpen(false)}
+              onError={showError}
+              onSuccess={showSuccess}
+            />
+            <BusinessTripRequestModal
+              isOpen={isBusinessTripRequestOpen}
+              object={object}
+              onClose={() => setIsBusinessTripRequestOpen(false)}
               onError={showError}
               onSuccess={showSuccess}
             />

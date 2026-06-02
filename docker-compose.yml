@@ -43,6 +43,8 @@ services:
     build:
       context: ./server
     restart: unless-stopped
+    volumes:
+      - ./uploads:/app/uploads
     environment:
       NODE_ENV: production
       PORT: 3000

@@ -49,7 +49,7 @@ export function ObjectApprovalGroup({
             {group.objectName}
           </span>
           <span className="mt-1 block text-sm text-slate-500">
-            Позиций на согласование: {group.positionsCount}
+            Заявок на согласование: {group.positionsCount}
           </span>
         </span>
         <div style={{cursor: 'pointer'}}>{isOpen ? "Свернуть" : "Развернуть"}</div>
@@ -65,11 +65,13 @@ export function ObjectApprovalGroup({
 }
 
 export function SupplyManagerRequestCard({
+  onSendToDirector,
   onReject,
   onSubmit,
   request,
   supplyUsers,
 }: {
+  onSendToDirector?: (request: SupplyRequest) => void;
   onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
@@ -124,6 +126,16 @@ export function SupplyManagerRequestCard({
             <X size={16} />
             Отклонить
           </button>
+          {onSendToDirector ? (
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50"
+              onClick={() => onSendToDirector(request)}
+              type="button"
+            >
+              <Check size={16} />
+              Сразу директору
+            </button>
+          ) : null}
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             disabled={!supplyUsers.length}
@@ -301,7 +313,7 @@ export function GarageManagerTransportRequestCard({
   return (
     <div className="rounded-md border border-lime-200 bg-lime-50/40 p-4">
       <RequestSummaryCard request={request} variant="approval">
-        <TransportDetails request={request} />
+        <RequestDetails request={request} />
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
           <button
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
@@ -500,7 +512,9 @@ export function ChiefEngineerRequestCard({
           <RequestDetails request={request} />
         )}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
-        {isItemRequest(request) || request.type === "TRANSPORT" ? (
+        {isItemRequest(request) ||
+        request.type === "TRANSPORT" ||
+        request.type === "FUEL" ? (
         <button
           className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
           onClick={() => onReturn(request)}
@@ -1527,22 +1541,30 @@ function ProductionDetails({ request }: { request: SupplyRequest }) {
 }
 
 function MoneyDetails({ request }: { request: SupplyRequest }) {
+  const isBusinessTrip = request.type === "BUSINESS_TRIP";
+
   return (
     <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">
       <div>
-        <div className="text-slate-500">{"Сумма"}</div>
+        <div className="text-slate-500">
+          {isBusinessTrip ? "Сумма командировочных" : "Сумма"}
+        </div>
         <div className="mt-1 font-medium text-slate-950">
           {formatMoney(toNumber(request.amount))}
         </div>
       </div>
-      <div>
-        <div className="text-slate-500">Тип оплаты</div>
-        <div className="mt-1 font-medium text-slate-950">
-          {formatPaymentType(request.paymentType)}
+      {!isBusinessTrip ? (
+        <div>
+          <div className="text-slate-500">Тип оплаты</div>
+          <div className="mt-1 font-medium text-slate-950">
+            {formatPaymentType(request.paymentType)}
+          </div>
         </div>
-      </div>
+      ) : null}
       <div>
-        <div className="text-slate-500">Назначение платежа</div>
+        <div className="text-slate-500">
+          {isBusinessTrip ? "Назначение командировки" : "Назначение платежа"}
+        </div>
         <div className="mt-1 font-medium text-slate-950">
           {request.paymentPurpose ?? "Не указано"}
         </div>
@@ -1584,6 +1606,10 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
     return <TransportDetails request={request} />;
   }
 
+  if (request.type === "FUEL") {
+    return <FuelDetails request={request} />;
+  }
+
   if (request.type === "PRODUCTION") {
     return <ProductionDetails request={request} />;
   }
@@ -1611,6 +1637,25 @@ function shouldShowPlainItemDetails(request: SupplyRequest) {
   return (
     request.type === "EXPRESS_MATERIAL" ||
     (request.type === "MATERIAL" && request.object?.type === "WORKSHOP")
+  );
+}
+
+function FuelDetails({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">
+      <div>
+        <div className="text-slate-500">Тип топлива</div>
+        <div className="mt-1 font-medium text-slate-950">
+          {request.transportType ?? "Не указан"}
+        </div>
+      </div>
+      <div>
+        <div className="text-slate-500">Назначение</div>
+        <div className="mt-1 font-medium text-slate-950">
+          {request.purpose ?? "Не указано"}
+        </div>
+      </div>
+    </div>
   );
 }
 

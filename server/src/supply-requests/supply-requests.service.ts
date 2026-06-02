@@ -6,7 +6,7 @@
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { createReadStream } from "fs";
-import { mkdir, unlink, writeFile } from "fs/promises";
+import { access, mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 import {
   ApprovalAction,
@@ -22,7 +22,9 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
+import { CreateBusinessTripSupplyRequestDto } from "./dto/create-business-trip-supply-request.dto";
 import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
+import { CreateFuelSupplyRequestDto } from "./dto/create-fuel-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
 import { CreateMoneySupplyRequestDto } from "./dto/create-money-supply-request.dto";
 import { CreateProductionSupplyRequestDto } from "./dto/create-production-supply-request.dto";
@@ -57,12 +59,17 @@ const MATERIAL_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_PTO,
   SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
   SupplyRequestStatus.PENDING_SUPPLY,
+  SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
   SupplyRequestStatus.PENDING_DIRECTOR,
   SupplyRequestStatus.PENDING_ACCOUNTANT,
   SupplyRequestStatus.IN_PROGRESS, //Back to supply
   SupplyRequestStatus.PENDING_STOREKEEPER,
   SupplyRequestStatus.COMPLETED,
 ];
+
+const MATERIAL_COMMON_ROUTE_WITHOUT_PTO = MATERIAL_COMMON_ROUTE.filter(
+  (status) => status !== SupplyRequestStatus.PENDING_PTO,
+);
 
 const MONEY_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_DIRECTOR,
@@ -77,6 +84,19 @@ const TRANSPORT_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
   SupplyRequestStatus.COMPLETED,
 ]
+
+const FUEL_AFTER_DIRECTOR_ROUTE = [
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+  SupplyRequestStatus.COMPLETED,
+];
+
+const BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE = [
+  SupplyRequestStatus.PENDING_DIRECTOR,
+  SupplyRequestStatus.PENDING_ACCOUNTANT,
+  SupplyRequestStatus.PENDING_REQUEST_AUTHOR,
+  SupplyRequestStatus.COMPLETED,
+];
 
 const PRODUCTION_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
@@ -117,7 +137,7 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     CHIEF_ENGINEER: MATERIAL_COMMON_ROUTE,
     GARAGE_MANAGER: [
       SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...MATERIAL_COMMON_ROUTE
+      ...MATERIAL_COMMON_ROUTE_WITHOUT_PTO,
     ],
     SECRETARY: MATERIAL_COMMON_ROUTE,
     WORKSHOP_MANAGER: [
@@ -166,6 +186,79 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     SITE_MANAGER: TRANSPORT_COMMON_ROUTE,
     WORKSHOP_MANAGER: TRANSPORT_COMMON_ROUTE,
     SUPPLY: TRANSPORT_COMMON_ROUTE,
+  },
+  FUEL: {
+    FOREMAN: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    SITE_MANAGER: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    WORKSHOP_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    CHIEF_ENGINEER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    DEPUTY_PRODUCTION_DIRECTOR: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    DEPUTY_TRANSPORT_DIRECTOR: FUEL_AFTER_DIRECTOR_ROUTE,
+    SUPPLY_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    SUPPLY: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    PTO: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    GARAGE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    WAREHOUSE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    STOREKEEPER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    ACCOUNTANT: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+    SECRETARY: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...FUEL_AFTER_DIRECTOR_ROUTE,
+    ],
+  },
+  BUSINESS_TRIP: {
+    FOREMAN: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
+    ],
+    SITE_MANAGER: [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
+    ],
+    WORKSHOP_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
+    ],
+    GARAGE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
+    ],
   },
   PRODUCTION: {
     FOREMAN: PRODUCTION_COMMON_ROUTE,
@@ -467,6 +560,85 @@ export class SupplyRequestsService {
     );
   }
 
+  async createFuelRequest(dto: CreateFuelSupplyRequestDto, authorId: string) {
+    if (!dto.fuelType.trim() || !dto.purpose.trim()) {
+      throw new BadRequestException(
+        "Fuel request must contain fuel type and purpose",
+      );
+    }
+
+    const route = await this.getInitialRequestRoute(
+      authorId,
+      dto.objectId,
+      SupplyRequestType.FUEL,
+    );
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "FUEL"),
+          type: SupplyRequestType.FUEL,
+          objectId: dto.objectId,
+          authorId,
+          transportType: dto.fuelType.trim(),
+          purpose: dto.purpose.trim(),
+          status: route.status,
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: route.status,
+              comment: route.comment,
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
+  async createBusinessTripRequest(
+    dto: CreateBusinessTripSupplyRequestDto,
+    authorId: string,
+  ) {
+    if (new Prisma.Decimal(dto.amount).lte(0) || !dto.purpose.trim()) {
+      throw new BadRequestException(
+        "Business trip request must contain positive amount and purpose",
+      );
+    }
+
+    const route = await this.getInitialRequestRoute(
+      authorId,
+      dto.objectId,
+      SupplyRequestType.BUSINESS_TRIP,
+    );
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "TRIP"),
+          type: SupplyRequestType.BUSINESS_TRIP,
+          objectId: dto.objectId,
+          authorId,
+          amount: new Prisma.Decimal(dto.amount),
+          paymentPurpose: dto.purpose.trim(),
+          status: route.status,
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: route.status,
+              comment: route.comment,
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
   async createMoneyRequest(dto: CreateMoneySupplyRequestDto, authorId: string) {
     if (new Prisma.Decimal(dto.amount).lte(0) || !dto.paymentPurpose.trim()) {
       throw new BadRequestException(
@@ -697,9 +869,14 @@ export class SupplyRequestsService {
     }
 
     await this.ensureUserObjectAccess(actorId, invoice.request.objectId);
+    const filePath = await this.resolveUploadedFilePath(
+      invoice.path,
+      this.invoiceUploadsDir,
+      invoice.storedName,
+    );
 
     return {
-      file: createReadStream(invoice.path),
+      file: createReadStream(filePath),
       mimeType: invoice.mimeType,
       originalName: invoice.originalName,
     };
@@ -729,12 +906,46 @@ export class SupplyRequestsService {
     }
 
     await this.ensureUserObjectAccess(actorId, attachment.request.objectId);
+    const filePath = await this.resolveUploadedFilePath(
+      attachment.path,
+      this.attachmentUploadsDir,
+      attachment.storedName,
+    );
 
     return {
-      file: createReadStream(attachment.path),
+      file: createReadStream(filePath),
       mimeType: attachment.mimeType,
       originalName: attachment.originalName,
     };
+  }
+
+  private async resolveUploadedFilePath(
+    storedPath: string,
+    uploadsDir: string,
+    storedName: string,
+  ) {
+    const fallbackPath = join(uploadsDir, storedName);
+
+    for (const filePath of [storedPath, fallbackPath]) {
+      try {
+        await access(filePath);
+        return filePath;
+      } catch {
+        // Try the next known location before reporting the file as missing.
+      }
+    }
+
+    throw new NotFoundException(
+      "Uploaded file is missing on the server storage",
+    );
+  }
+
+  private async unlinkIfExists(filePath: string) {
+    await unlink(filePath).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    });
   }
 
   async deleteInvoice(id: string, invoiceId: string, actorId: string) {
@@ -997,6 +1208,7 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
       SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
       SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
       SupplyRequestStatus.PENDING_SUPPLY,
       SupplyRequestStatus.PENDING_DIRECTOR,
       SupplyRequestStatus.PENDING_ACCOUNTANT,
@@ -1146,6 +1358,8 @@ export class SupplyRequestsService {
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.TRANSPORT &&
+      request.type !== SupplyRequestType.FUEL &&
+      request.type !== SupplyRequestType.BUSINESS_TRIP &&
       request.type !== SupplyRequestType.MONEY &&
       request.type !== SupplyRequestType.PRODUCTION
     ) {
@@ -1453,10 +1667,11 @@ export class SupplyRequestsService {
     if (
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.MONEY &&
-      request.type !== SupplyRequestType.EXPRESS_MATERIAL
+      request.type !== SupplyRequestType.EXPRESS_MATERIAL &&
+      request.type !== SupplyRequestType.BUSINESS_TRIP
     ) {
       throw new BadRequestException(
-        "Only material, express material and money requests can be approved by accountant",
+        "Only material, express material, money and business trip requests can be approved by accountant",
       );
     }
 
@@ -1600,6 +1815,43 @@ export class SupplyRequestsService {
     );
   }
 
+  async sendMaterialToDirectorBySupplyManager(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [
+        SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+        SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+      ],
+      SupplyRequestType.MATERIAL,
+    );
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY_MANAGER,
+    ]);
+
+    this.ensureMaterialRequestHasActiveItems(request);
+
+    const nextStatus =
+      request.status === SupplyRequestStatus.PENDING_SUPPLY_MANAGER
+        ? SupplyRequestStatus.PENDING_DIRECTOR
+        : this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
   async completeByGarageManager(
     id: string,
     dto: RequestActionDto,
@@ -1608,7 +1860,7 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_GARAGE_MANAGER],
-      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY],
+      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY, SupplyRequestType.FUEL],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.GARAGE_MANAGER,
@@ -1760,6 +2012,38 @@ export class SupplyRequestsService {
     );
   }
 
+  async completeBusinessTripByAuthor(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(
+      id,
+      [SupplyRequestStatus.PENDING_REQUEST_AUTHOR],
+      SupplyRequestType.BUSINESS_TRIP,
+    );
+
+    if (request.authorId !== actorId) {
+      throw new ForbiddenException(
+        "Only the request author can confirm completion",
+      );
+    }
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
   async returnToPtoByChiefEngineer(
     id: string,
     dto: RequestActionDto,
@@ -1777,10 +2061,12 @@ export class SupplyRequestsService {
     if (
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.QUARRY &&
-      request.type !== SupplyRequestType.TRANSPORT
+      request.type !== SupplyRequestType.TRANSPORT &&
+      request.type !== SupplyRequestType.FUEL &&
+      request.type !== SupplyRequestType.BUSINESS_TRIP
     ) {
       throw new BadRequestException(
-          "Only material, quarry and transport requests can be rejected by chief engineer",
+          "Only material, quarry, transport, fuel and business trip requests can be rejected by chief engineer",
       );
     }
 
@@ -2061,6 +2347,46 @@ export class SupplyRequestsService {
         dto.comment,
       ),
     );
+  }
+
+  async deleteByDirector(id: string, actorId: string) {
+    const request = await this.prisma.supplyRequest.findUnique({
+      where: { id },
+      include: {
+        attachments: true,
+        invoices: true,
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException("Supply request not found");
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.DIRECTOR,
+    ]);
+
+    const filePaths = new Set<string>();
+
+    for (const invoice of request.invoices) {
+      filePaths.add(invoice.path);
+      filePaths.add(join(this.invoiceUploadsDir, invoice.storedName));
+    }
+
+    for (const attachment of request.attachments) {
+      filePaths.add(attachment.path);
+      filePaths.add(join(this.attachmentUploadsDir, attachment.storedName));
+    }
+
+    await this.prisma.supplyRequest.delete({
+      where: { id },
+    });
+
+    await Promise.all(
+      Array.from(filePaths).map((filePath) => this.unlinkIfExists(filePath)),
+    );
+
+    return { success: true };
   }
 
   async complete(id: string, dto: SendToStorekeeperDto, actorId: string) {
@@ -2477,6 +2803,8 @@ export class SupplyRequestsService {
       PRODUCTION: "Заявка на производство",
       QUARRY: "Заявка на карьер",
       EXPRESS_MATERIAL: "Экспресс заявка ТМЦ",
+      FUEL: "Заявка на топливо",
+      BUSINESS_TRIP: "Заявка на командировочные",
     };
 
     const statusLabel: Partial<Record<SupplyRequestStatus, string>> = {
@@ -2487,6 +2815,7 @@ export class SupplyRequestsService {
       PENDING_DEPUTY_TRANSPORT_DIRECTOR:
         "заместителю директора по транспорту",
       PENDING_SUPPLY_MANAGER: "начальнику снабжения",
+      PENDING_SUPPLY_MANAGER_REVIEW: "начальнику снабжения на проверку",
       PENDING_SUPPLY: "снабженцу",
       PENDING_DIRECTOR: "директору",
       PENDING_ACCOUNTANT: "бухгалтеру",
@@ -2618,9 +2947,10 @@ export class SupplyRequestsService {
       PENDING_PTO: ApprovalAction.SENT_TO_PTO,
       PENDING_CHIEF_ENGINEER: ApprovalAction.SENT_TO_CHIEF_ENGINEER,
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-        ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+      ApprovalAction.SENT_TO_SUPPLY_MANAGER,
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: ApprovalAction.APPROVED,
       PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+      PENDING_SUPPLY_MANAGER_REVIEW: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
       PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
       PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
       PENDING_ACCOUNTANT: ApprovalAction.SENT_TO_ACCOUNTANT,
@@ -2721,6 +3051,7 @@ export class SupplyRequestsService {
         UserRole.DEPUTY_PRODUCTION_DIRECTOR,
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
+      PENDING_SUPPLY_MANAGER_REVIEW: UserRole.SUPPLY_MANAGER,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
       PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
       PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,

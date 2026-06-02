@@ -75,6 +75,34 @@ export function createTransportSupplyRequest(
   });
 }
 
+export type CreateFuelSupplyRequestPayload = {
+  fuelType: string;
+  objectId: string;
+  purpose: string;
+};
+
+export function createFuelSupplyRequest(payload: CreateFuelSupplyRequestPayload) {
+  return apiClient<SupplyRequest>("/supply-requests/fuel", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export type CreateBusinessTripSupplyRequestPayload = {
+  amount: string;
+  objectId: string;
+  purpose: string;
+};
+
+export function createBusinessTripSupplyRequest(
+  payload: CreateBusinessTripSupplyRequestPayload,
+) {
+  return apiClient<SupplyRequest>("/supply-requests/business-trip", {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export type CreateMoneySupplyRequestPayload = {
   objectId: string;
   amount: string;
@@ -473,6 +501,19 @@ export function sendTransportToGarageManager(
   );
 }
 
+export function sendMaterialToDirectorBySupplyManager(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/supply-manager/send-to-director`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function completeTransportByGarageManager(
   requestId: string,
   comment?: string,
@@ -564,6 +605,15 @@ export function archiveSupplyRequestByDirector(
   );
 }
 
+export function deleteSupplyRequestByDirector(requestId: string) {
+  return apiClient<{ success: boolean }>(
+    `/supply-requests/${requestId}/director`,
+    {
+      method: "DELETE",
+    },
+  );
+}
+
 export function returnSupplyRequestToSupplyByDirector(
   requestId: string,
   comment?: string,
@@ -642,6 +692,19 @@ export function completeExpressMaterialByAuthor(
 ) {
   return apiClient<SupplyRequest>(
     `/supply-requests/${requestId}/express-material/author/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function completeBusinessTripByAuthor(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/business-trip/author/complete`,
     {
       method: "PATCH",
       body: { comment },
