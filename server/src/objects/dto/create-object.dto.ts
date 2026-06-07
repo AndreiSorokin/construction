@@ -1,4 +1,4 @@
-import { ObjectType } from "@prisma/client";
+import { ObjectDirection, ObjectType } from "@prisma/client";
 import {
   IsEnum,
   IsNotEmpty,
@@ -15,6 +15,10 @@ export class CreateObjectDto {
 
   @IsEnum(ObjectType)
   type: ObjectType;
+
+  @IsOptional()
+  @IsEnum(ObjectDirection)
+  direction?: ObjectDirection;
 
   @ValidateIf((dto: CreateObjectDto) => dto.type === ObjectType.CONSTRUCTION_OBJECT)
   @IsOptional()

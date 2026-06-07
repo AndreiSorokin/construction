@@ -22,6 +22,7 @@ enum UserRole {
   STOREKEEPER
   ACCOUNTANT
   SECRETARY
+  MECHANIC
   DIRECTOR
 }
 
@@ -29,6 +30,12 @@ enum ObjectType {
   CONSTRUCTION_OBJECT
   INTERNAL_DEPARTMENT
   WORKSHOP
+}
+
+enum ObjectDirection {
+  TRANSPORT
+  CONSTRUCTION
+  PRODUCTION
 }
 
 enum SupplyRequestStatus {
@@ -65,6 +72,7 @@ enum SupplyRequestType {
   EXPRESS_MATERIAL
   FUEL
   BUSINESS_TRIP
+  APPEAL
 }
 
 enum MoneyRequestPaymentType {
@@ -141,6 +149,7 @@ model ObjectEntity {
   id             String             @id @default(cuid())
   name           String
   type           ObjectType
+  direction      ObjectDirection     @default(CONSTRUCTION)
   ownerId        String
   owner          User               @relation("ObjectOwner", fields: [ownerId], references: [id])
   createdAt      DateTime           @default(now())
@@ -228,6 +237,9 @@ model SupplyRequest {
   assignedById          String?
   assignedAt            DateTime?
   transportType         String?
+  transportObjectName   String?
+  transportDate         String?
+  transportTime         String?
   purpose               String?
   amount                Decimal?               @db.Decimal(18, 2)
   paymentType           MoneyRequestPaymentType?
@@ -268,6 +280,8 @@ model SupplyRequestItem {
   stockQuantity           Decimal                            @default(0) @db.Decimal(18, 3)
   ptoLimitPrice           Decimal?                           @db.Decimal(18, 2)
   supplierPurchasePrice   Decimal?                           @db.Decimal(18, 2)
+  cashPaidAmount          Decimal?                           @db.Decimal(18, 2)
+  cashPaymentComment      String?
   fulfillmentStatus       SupplyRequestItemFulfillmentStatus @default(PENDING)
   createdAt               DateTime                           @default(now())
   updatedAt               DateTime                           @updatedAt

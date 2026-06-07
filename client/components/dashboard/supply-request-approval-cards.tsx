@@ -24,6 +24,11 @@ export type ObjectRequestGroup = {
   requests: SupplyRequest[];
 };
 
+const approvalActionsClass =
+  "grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:justify-end sm:gap-2 [&>button]:h-7 [&>button]:w-full [&>button]:min-w-0 [&>button]:gap-1 [&>button]:px-1 [&>button]:text-[10px] [&>button]:leading-none sm:[&>button]:h-10 sm:[&>button]:w-auto sm:[&>button]:gap-2 sm:[&>button]:px-3 sm:[&>button]:text-sm [&>button>svg]:size-3 sm:[&>button>svg]:size-4";
+
+const approvalActionsWithMarginClass = `mt-4 ${approvalActionsClass}`;
+
 export function ObjectApprovalGroup({
   children,
   group,
@@ -49,7 +54,7 @@ export function ObjectApprovalGroup({
             {group.objectName}
           </span>
           <span className="mt-1 block text-sm text-slate-500">
-            Заявок на согласование: {group.positionsCount}
+            Заявок на согласование: {group.requests.length}
           </span>
         </span>
         <div style={{cursor: 'pointer'}}>{isOpen ? "Свернуть" : "Развернуть"}</div>
@@ -87,13 +92,7 @@ export function SupplyManagerRequestCard({
     >
       <RequestSummaryCard request={request} variant="approval">
 
-      {request.type === "TRANSPORT" ? (
-        <TransportDetails request={request} />
-      ) : request.type === "MONEY" ? (
-        <MoneyDetails request={request} />
-      ) : (
-        <MaterialItemsTable request={request} />
-      )}
+      <RequestDetails request={request} />
       <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3">
         <label className="grid gap-1.5">
           <span className="text-sm font-medium text-slate-700">
@@ -117,9 +116,9 @@ export function SupplyManagerRequestCard({
           name="comment"
           placeholder="Комментарий начальника снабжения"
         />
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -128,7 +127,7 @@ export function SupplyManagerRequestCard({
           </button>
           {onSendToDirector ? (
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-teal-200 bg-white px-3 text-sm font-medium text-teal-700 hover:bg-teal-50"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-teal-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-teal-700 hover:bg-teal-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               onClick={() => onSendToDirector(request)}
               type="button"
             >
@@ -137,7 +136,7 @@ export function SupplyManagerRequestCard({
             </button>
           ) : null}
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             disabled={!supplyUsers.length}
             type="submit"
           >
@@ -169,9 +168,9 @@ export function SupplyManagerTransportRequestCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
         <TransportDetails request={request} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -179,7 +178,7 @@ export function SupplyManagerTransportRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onSendToGarage(request)}
             type="button"
           >
@@ -205,9 +204,9 @@ export function SimpleApprovalCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
         <RequestDetails request={request} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -215,7 +214,44 @@ export function SimpleApprovalCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
+            onClick={() => onApprove(request)}
+            type="button"
+          >
+            <Check size={16} />
+            Согласовать
+          </button>
+        </div>
+      </RequestSummaryCard>
+    </div>
+  );
+}
+
+export function SupplyManagerReviewCard({
+  onApprove,
+  onReject,
+  request,
+}: {
+  onApprove: (request: SupplyRequest) => void;
+  onReject: (request: SupplyRequest) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="rounded-md border border-sky-200 bg-sky-50/30 p-4">
+      <RequestSummaryCard request={request} variant="approval">
+        <RequestDetails request={request} />
+        <InvoiceList request={request} />
+        <div className={approvalActionsWithMarginClass}>
+          <button
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
+            onClick={() => onReject(request)}
+            type="button"
+          >
+            <X size={16} />
+            Отклонить
+          </button>
+          <button
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onApprove(request)}
             type="button"
           >
@@ -272,9 +308,9 @@ export function DeputyProductionAssignmentCard({
             name="comment"
             placeholder="Комментарий зам. директора по производству"
           />
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className={approvalActionsClass}>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               onClick={() => onReject(request)}
               type="button"
             >
@@ -282,7 +318,7 @@ export function DeputyProductionAssignmentCard({
               Отклонить
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               disabled={!workshopManagers.length}
               type="submit"
             >
@@ -314,9 +350,9 @@ export function GarageManagerTransportRequestCard({
     <div className="rounded-md border border-lime-200 bg-lime-50/40 p-4">
       <RequestSummaryCard request={request} variant="approval">
         <RequestDetails request={request} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -324,7 +360,7 @@ export function GarageManagerTransportRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onComplete(request)}
             type="button"
           >
@@ -350,9 +386,9 @@ export function TransportAuthorCompletionCard({
     <div className="rounded-md border border-lime-200 bg-lime-50/40 p-4">
       <RequestSummaryCard request={request} variant="approval">
         <TransportDetails request={request} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -360,7 +396,7 @@ export function TransportAuthorCompletionCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onComplete(request)}
             type="button"
           >
@@ -453,9 +489,9 @@ export function PtoRequestCard({
           name="comment"
           placeholder="Комментарий ПТО"
         />
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -463,7 +499,7 @@ export function PtoRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             type="submit"
           >
             <Check size={16} />
@@ -511,12 +547,12 @@ export function ChiefEngineerRequestCard({
         ) : (
           <RequestDetails request={request} />
         )}
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div className={approvalActionsWithMarginClass}>
         {isItemRequest(request) ||
         request.type === "TRANSPORT" ||
         request.type === "FUEL" ? (
         <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+          className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
           onClick={() => onReturn(request)}
           type="button"
         >
@@ -525,7 +561,7 @@ export function ChiefEngineerRequestCard({
         </button>
         ) : null}
         <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+          className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
           onClick={() => onApprove(request)}
           type="button"
         >
@@ -557,9 +593,9 @@ export function WarehouseManagerRequestCard({
     <div className="rounded-md border border-slate-200 p-4">
       <RequestSummaryCard request={request} variant="approval">
         <WarehouseStockItemsTable request={request} onUpdateItem={onUpdateItem} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -567,7 +603,7 @@ export function WarehouseManagerRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onApprove(request)}
             type="button"
           >
@@ -621,9 +657,9 @@ export function DeputyProductionDirectorRequestCard({
         ) : (
           <RequestDetails request={request} />
         )}
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -631,7 +667,7 @@ export function DeputyProductionDirectorRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onApprove(request)}
             type="button"
           >
@@ -667,9 +703,9 @@ export function AccountantRequestCard({
           <MoneyDetails request={request} />
         )}
         <InvoiceList request={request} />
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsWithMarginClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -677,7 +713,7 @@ export function AccountantRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onApprove(request)}
             type="button"
           >
@@ -711,7 +747,7 @@ export function SupplyRequestCard({
     >
       <RequestSummaryCard request={request} variant="approval">
 
-      <MaterialItemsTable request={request} />
+      <SupplierMaterialItemsTable request={request} />
       <InvoiceList request={request} onDeleteInvoice={onDeleteInvoice} />
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5">
@@ -733,9 +769,9 @@ export function SupplyRequestCard({
           name="comment"
           placeholder="Комментарий снабжения"
         />
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -743,7 +779,7 @@ export function SupplyRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             type="submit"
           >
             <Check size={16} />
@@ -774,16 +810,16 @@ export function SupplyMoneyRequestCard({
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
-        <MoneyDetails request={request} />
+        <RequestDetails request={request} />
         <div className="mt-4 grid gap-3">
           <input
             className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
             name="comment"
             placeholder="Комментарий к исполнению"
           />
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className={approvalActionsClass}>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               onClick={() => onReject(request)}
               type="button"
             >
@@ -791,7 +827,7 @@ export function SupplyMoneyRequestCard({
               Отклонить
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               type="submit"
             >
               <Check size={16} />
@@ -842,9 +878,9 @@ export function SupplyTransportRequestCard({
           name="comment"
           placeholder="Комментарий снабжения"
         />
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -852,7 +888,7 @@ export function SupplyTransportRequestCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             type="submit"
           >
             <Check size={16} />
@@ -917,9 +953,9 @@ export function SupplyInProgressCard({
           name="comment"
           placeholder="Комментарий снабженца"
         />
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className={approvalActionsClass}>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             onClick={() => onReject(request)}
             type="button"
           >
@@ -927,7 +963,7 @@ export function SupplyInProgressCard({
             Отклонить
           </button>
           <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
             disabled={!storekeepers.length}
             type="submit"
           >
@@ -972,9 +1008,9 @@ export function StorekeeperRequestCard({
             name="comment"
             placeholder="Комментарий кладовщика"
           />
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className={approvalActionsClass}>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               onClick={() => onReject(request)}
               type="button"
             >
@@ -982,7 +1018,7 @@ export function StorekeeperRequestCard({
               Отклонить
             </button>
             <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+              className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
               type="submit"
             >
               <Check size={16} />
@@ -1037,9 +1073,9 @@ export function DirectorRequestCard({
         <RequestDetails request={request} />
       )}
       <InvoiceList request={request} />
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+      <div className={approvalActionsWithMarginClass}>
         <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-slate-300 bg-white px-1 py-1 text-[10px] font-medium leading-none text-slate-700 hover:bg-slate-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
           onClick={() => onArchive(request)}
           type="button"
         >
@@ -1047,7 +1083,7 @@ export function DirectorRequestCard({
           Удалить
         </button>
         <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+          className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
           onClick={() => onReject(request)}
           type="button"
         >
@@ -1055,7 +1091,7 @@ export function DirectorRequestCard({
           Отклонить
         </button>
         <button
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+          className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md bg-teal-700 px-1 py-1 text-[10px] font-medium leading-none text-white hover:bg-teal-800 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
           onClick={() => onApprove(request)}
           type="button"
         >
@@ -1206,6 +1242,9 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
   const shouldShowFulfillmentStatus = request.items.some(
     (item) => item.fulfillmentStatus !== "PENDING",
   );
+  const shouldShowCashPayment = request.items.some(
+    (item) => item.cashPaidAmount || item.cashPaymentComment,
+  );
 
   return (
     <div className="mt-4 overflow-x-auto">
@@ -1214,6 +1253,12 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
+            {shouldShowCashPayment ? (
+              <>
+                <th className="py-2 pr-3 font-medium">Оплачено наличными</th>
+                <th className="py-2 pr-3 font-medium">Комментарий</th>
+              </>
+            ) : null}
             {shouldShowFulfillmentStatus ? (
               <th className="py-2 pr-3 font-medium">Статус</th>
             ) : null}
@@ -1226,6 +1271,18 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
                 {item.materialNameSnapshot}
               </td>
               <MaterialQuantityCells item={item} />
+              {shouldShowCashPayment ? (
+                <>
+                  <td className="py-3 pr-3 text-slate-700">
+                    {item.cashPaidAmount
+                      ? formatMoney(toNumber(item.cashPaidAmount))
+                      : "-"}
+                  </td>
+                  <td className="max-w-xs py-3 pr-3 text-slate-700">
+                    {item.cashPaymentComment || "-"}
+                  </td>
+                </>
+              ) : null}
               {shouldShowFulfillmentStatus ? (
                 <td className="py-3 pr-3">
                   <span
@@ -1237,6 +1294,53 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
                   </span>
                 </td>
               ) : null}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SupplierMaterialItemsTable({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[980px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 text-left text-slate-500">
+            <th className="py-2 pr-3 font-medium">ТМЦ</th>
+            <MaterialQuantityHeaders />
+            <th className="py-2 pr-3 font-medium">Оплачено наличными</th>
+            <th className="py-2 pr-3 font-medium">Комментарий</th>
+          </tr>
+        </thead>
+        <tbody>
+          {request.items.map((item) => (
+            <tr className="border-b border-slate-100" key={item.id}>
+              <td className="py-3 pr-3 text-slate-950">
+                {item.materialNameSnapshot}
+              </td>
+              <MaterialQuantityCells item={item} />
+              <td className="py-3 pr-3">
+                <input
+                  className="h-10 w-40 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                  defaultValue={item.cashPaidAmount ?? ""}
+                  min="0"
+                  name={`cashPaidAmount:${item.id}`}
+                  placeholder="0"
+                  step="0.01"
+                  type="number"
+                />
+              </td>
+              <td className="py-3 pr-3">
+                <input
+                  className="h-10 w-64 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                  defaultValue={item.cashPaymentComment ?? ""}
+                  name={`cashPaymentComment:${item.id}`}
+                  placeholder="Описание оплаты"
+                  type="text"
+                />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1500,7 +1604,25 @@ function TransportDetails({ request }: { request: SupplyRequest }) {
   return (
     <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-2">
       <div>
-        <div className="text-slate-500">Вид транспорта</div>
+        <div className="text-slate-500">Объект</div>
+        <div className="mt-1 font-medium text-slate-950">
+          {request.transportObjectName ?? request.object?.name ?? "Не указан"}
+        </div>
+      </div>
+      <div>
+        <div className="text-slate-500">Дата</div>
+        <div className="mt-1 font-medium text-slate-950">
+          {request.transportDate ?? "Не указана"}
+        </div>
+      </div>
+      <div>
+        <div className="text-slate-500">Время</div>
+        <div className="mt-1 font-medium text-slate-950">
+          {request.transportTime ?? "Не указано"}
+        </div>
+      </div>
+      <div>
+        <div className="text-slate-500">Запрашиваемый транспорт</div>
         <div className="mt-1 font-medium text-slate-950">
           {request.transportType ?? "Не указан"}
         </div>
@@ -1614,7 +1736,22 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
     return <ProductionDetails request={request} />;
   }
 
+  if (request.type === "APPEAL") {
+    return <AppealDetails request={request} />;
+  }
+
   return <MoneyDetails request={request} />;
+}
+
+function AppealDetails({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm">
+      <div className="text-slate-500">Текст обращения</div>
+      <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
+        {request.purpose ?? "Не указано"}
+      </div>
+    </div>
+  );
 }
 
 function PlainItemRequestDetails({ request }: { request: SupplyRequest }) {
@@ -2158,7 +2295,7 @@ function formatFileSize(value: number) {
 }
 
 function normalizeDisplayedFileName(fileName: string) {
-  if (!/[ÃÂÐÑ]/.test(fileName)) {
+  if (!/[AA?N]/.test(fileName)) {
     return fileName;
   }
 
@@ -2167,5 +2304,5 @@ function normalizeDisplayedFileName(fileName: string) {
   );
   const decodedName = new TextDecoder("utf-8").decode(bytes);
 
-  return decodedName.includes("�") ? fileName : decodedName;
+  return decodedName.includes("?") ? fileName : decodedName;
 }

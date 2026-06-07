@@ -30,6 +30,8 @@ type RequestSummaryCardProps = {
   variant?: "default" | "approval";
 };
 
+const NEW_ROUTE_STARTED_AT = new Date("2026-06-07T00:00:00+03:00");
+
 const statusClasses: Record<SupplyRequestStatus, string> = {
   CREATED: "bg-slate-100 text-slate-700",
   PENDING_PTO: "bg-amber-50 text-amber-700",
@@ -64,6 +66,7 @@ const typeClasses: Record<SupplyRequestType, string> = {
   EXPRESS_MATERIAL: "bg-cyan-50 text-cyan-700",
   FUEL: "bg-yellow-50 text-yellow-700",
   BUSINESS_TRIP: "bg-fuchsia-50 text-fuchsia-700",
+  APPEAL: "bg-slate-100 text-slate-700",
 };
 
 export function RequestSummaryCard({
@@ -75,6 +78,7 @@ export function RequestSummaryCard({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const TypeIcon = getTypeIcon(request.type);
   const isApproval = variant === "approval";
+  const isLegacyRequest = isLegacyRouteRequest(request);
 
  function getRequestItemsLabel(request: SupplyRequest) {
   if (request.type === "MONEY") {
@@ -91,6 +95,10 @@ export function RequestSummaryCard({
 
   if (request.type === "BUSINESS_TRIP") {
     return request.paymentPurpose ?? "Командировочные";
+  }
+
+  if (request.type === "APPEAL") {
+    return request.purpose ?? "Обращение";
   }
 
   if (request.type === "PRODUCTION") {
@@ -134,6 +142,11 @@ export function RequestSummaryCard({
         </button>
 
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {isLegacyRequest ? (
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+              Старая цепочка
+            </span>
+          ) : null}
           <span
             className={`rounded-full px-3 py-1 text-xs font-medium ${statusClasses[request.status]}`}
           >
@@ -184,6 +197,9 @@ function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
   const authorRole = getAuthorObjectRole(request);
   const authorRoleLabel = authorRole ? userRoleLabels[authorRole] : "Роль не указана";
   const currentHolderLabel = getCurrentHolderLabel(request);
+  const workflowLabel = isLegacyRouteRequest(request)
+    ? "Старая цепочка"
+    : "Новая цепочка";
 
   return (
     <div className="mb-4 grid gap-2 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-3">
@@ -196,9 +212,14 @@ function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
       <MetaItem label="Автор" value={request.author?.name ?? "Не указан"} />
       <MetaItem label="Email автора" value={request.author?.email ?? "Не указан"} />
       <MetaItem label="Должность автора" value={authorRoleLabel} />
+      <MetaItem label="Цепочка" value={workflowLabel} />
       <MetaItem label="Сейчас у" value={currentHolderLabel} />
     </div>
   );
+}
+
+function isLegacyRouteRequest(request: SupplyRequest) {
+  return new Date(request.createdAt).getTime() < NEW_ROUTE_STARTED_AT.getTime();
 }
 
 function MetaItem({ label, value }: { label: string; value: string }) {

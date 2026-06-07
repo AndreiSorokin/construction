@@ -22,6 +22,7 @@ import { AuthenticatedUser } from "../auth/types/authenticated-user";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
+import { CreateAppealSupplyRequestDto } from "./dto/create-appeal-supply-request.dto";
 import { CreateBusinessTripSupplyRequestDto } from "./dto/create-business-trip-supply-request.dto";
 import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
 import { CreateFuelSupplyRequestDto } from "./dto/create-fuel-supply-request.dto";
@@ -118,6 +119,14 @@ export class SupplyRequestsController {
       files,
       user.id,
     );
+  }
+
+  @Post("appeal")
+  createAppealRequest(
+    @Body() dto: CreateAppealSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createAppealRequest(dto, user.id);
   }
 
   @Get()
@@ -397,6 +406,19 @@ export class SupplyRequestsController {
 
   @Patch(":id/money/send-to-director")
   sendMoneyToDirectorBySupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.sendMoneyToDirectorBySupply(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/supply/approve")
+  approveBySupply(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
     @CurrentUser() user: AuthenticatedUser,

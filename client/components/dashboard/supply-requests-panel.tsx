@@ -14,6 +14,7 @@ import {
   SimpleApprovalCard,
   SupplyInProgressCard,
   SupplyManagerRequestCard,
+  SupplyManagerReviewCard,
   SupplyManagerTransportRequestCard,
   SupplyMoneyRequestCard,
   StorekeeperRequestCard,
@@ -29,6 +30,7 @@ import {
   approveSupplyRequestByDeputyTransportDirector,
   approveSupplyRequestByDirector,
   approveSupplyRequestByPto,
+  approveSupplyRequestBySupply,
   approveSupplyRequestByWarehouseManager,
   approveSupplyRequestByWorkshopManager,
   approveSupplyRequestByAccountant,
@@ -50,7 +52,6 @@ import {
   getSupplyRequests,
   rejectSupplyRequestToPreviousStep,
   sendMaterialToDirectorBySupplyManager,
-  sendMoneyRequestToDirector,
   sendTransportToGarageManager,
   setPtoLimitPrices,
   updateSupplyRequestItem,
@@ -287,8 +288,8 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function sendToDirectorBySupplyManager(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий для директора");
+  async function approveBySupplyManagerReview(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий начальника снабжения");
 
     if (comment === null) {
       return;
@@ -296,7 +297,7 @@ export function SupplyRequestsPanel({
 
     try {
       await sendMaterialToDirectorBySupplyManager(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} отправлена директору`);
+      onSuccess(`Заявка ${request.requestNumber} согласована`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -419,6 +420,38 @@ export function SupplyRequestsPanel({
     );
 
     try {
+      if (request.type === "MATERIAL") {
+        await Promise.all(
+          request.items.map((item) => {
+            const cashPaidAmount = String(
+              form.get(`cashPaidAmount:${item.id}`) ?? "",
+            ).trim();
+            const cashPaymentComment = String(
+              form.get(`cashPaymentComment:${item.id}`) ?? "",
+            ).trim();
+
+            const currentCashPaidAmount = String(
+              item.cashPaidAmount ?? "",
+            ).trim();
+            const currentCashPaymentComment = String(
+              item.cashPaymentComment ?? "",
+            ).trim();
+
+            if (
+              cashPaidAmount === currentCashPaidAmount &&
+              cashPaymentComment === currentCashPaymentComment
+            ) {
+              return Promise.resolve();
+            }
+
+            return updateSupplyRequestItem(request.id, item.id, {
+              cashPaidAmount: cashPaidAmount || "0",
+              cashPaymentComment,
+            });
+          }),
+        );
+      }
+
       if (request.type === "QUARRY") {
         await approveQuarryBySupply(
           request.id,
@@ -499,7 +532,7 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function sendMoneyBySupply(
+  async function approveBySupplyWithoutInvoices(
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
   ) {
@@ -507,7 +540,7 @@ export function SupplyRequestsPanel({
     const form = new FormData(event.currentTarget);
 
     try {
-      await sendMoneyRequestToDirector(
+      await approveSupplyRequestBySupply(
         request.id,
         String(form.get("comment") ?? ""),
       );
@@ -852,10 +885,10 @@ export function SupplyRequestsPanel({
               if (objectRole === "SUPPLY_MANAGER") {
                 if (request.status === "PENDING_SUPPLY_MANAGER_REVIEW") {
                   return (
-                    <SimpleApprovalCard
+                    <SupplyManagerReviewCard
                       key={request.id}
                       request={request}
-                      onApprove={sendToDirectorBySupplyManager}
+                      onApprove={approveBySupplyManagerReview}
                       onReject={rejectToPreviousStep}
                     />
                   );
@@ -877,11 +910,6 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     supplyUsers={getSupplyUsersForRequest(objectAccesses, request)}
-                    onSendToDirector={
-                      request.type === "MATERIAL"
-                        ? sendToDirectorBySupplyManager
-                        : undefined
-                    }
                     onReject={rejectToPreviousStep}
                     onSubmit={assignBySupplyManager}
                   />
@@ -948,12 +976,16 @@ export function SupplyRequestsPanel({
                   );
                 }
 
-                return request.type === "MONEY" ? (
+                return request.type === "MONEY" ||
+                  request.type === "FUEL" ||
+                  request.type === "BUSINESS_TRIP" ||
+                  request.type === "PRODUCTION" ||
+                  request.type === "APPEAL" ? (
                   <SupplyMoneyRequestCard
                     key={request.id}
                     request={request}
                     onReject={rejectToPreviousStep}
-                    onSubmit={sendMoneyBySupply}
+                    onSubmit={approveBySupplyWithoutInvoices}
                   />
                 ) : (
                 <SupplyRequestCard
@@ -1045,10 +1077,7 @@ function getVisibleRequests(
     }
 
     if (objectRole === "PTO") {
-      return (
-        (request.type === "MATERIAL" || request.type === "PRODUCTION") &&
-        request.status === "PENDING_PTO"
-      );
+      return request.status === "PENDING_PTO";
     }
 
     if (objectRole === "CHIEF_ENGINEER") {
@@ -1056,10 +1085,7 @@ function getVisibleRequests(
     }
 
     if (objectRole === "WAREHOUSE_MANAGER") {
-      return (
-        request.type === "MATERIAL" &&
-        request.status === "PENDING_WAREHOUSE_MANAGER"
-      );
+      return request.status === "PENDING_WAREHOUSE_MANAGER";
     }
 
     if (objectRole === "DEPUTY_PRODUCTION_DIRECTOR") {
@@ -1079,32 +1105,18 @@ function getVisibleRequests(
     }
 
     if (objectRole === "GARAGE_MANAGER") {
-      return (
-        (request.type === "TRANSPORT" ||
-          request.type === "QUARRY" ||
-          request.type === "FUEL") &&
-        request.status === "PENDING_GARAGE_MANAGER"
-      );
+      return request.status === "PENDING_GARAGE_MANAGER";
     }
 
     if (objectRole === "SUPPLY_MANAGER") {
       return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "QUARRY") &&
         (request.status === "PENDING_SUPPLY_MANAGER" ||
           request.status === "PENDING_SUPPLY_MANAGER_REVIEW")
       );
     }
 
     if (objectRole === "ACCOUNTANT") {
-      return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "EXPRESS_MATERIAL" ||
-          request.type === "BUSINESS_TRIP") &&
-        request.status === "PENDING_ACCOUNTANT"
-      );
+      return request.status === "PENDING_ACCOUNTANT";
     }
 
     if (objectRole === "SUPPLY") {
@@ -1112,7 +1124,11 @@ function getVisibleRequests(
         (request.type === "MATERIAL" ||
           request.type === "MONEY" ||
           request.type === "QUARRY" ||
-          request.type === "EXPRESS_MATERIAL") &&
+          request.type === "EXPRESS_MATERIAL" ||
+          request.type === "FUEL" ||
+          request.type === "BUSINESS_TRIP" ||
+          request.type === "PRODUCTION" ||
+          request.type === "APPEAL") &&
         request.assignedSupplyUserId === userId &&
         (request.status === "PENDING_SUPPLY" ||
           request.status === "RETURNED_TO_SUPPLY" ||
@@ -1129,16 +1145,7 @@ function getVisibleRequests(
     }
 
     if (objectRole === "DIRECTOR") {
-      return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "PRODUCTION" ||
-          request.type === "QUARRY" ||
-          request.type === "FUEL" ||
-          request.type === "EXPRESS_MATERIAL" ||
-          request.type === "BUSINESS_TRIP") &&
-        request.status === "PENDING_DIRECTOR"
-      );
+      return request.status === "PENDING_DIRECTOR";
     }
 
     return false;

@@ -14,6 +14,14 @@ export class UpdateSupplyRequestItemDto {
   stockQuantity?: string;
 
   @IsOptional()
+  @IsNumberString()
+  cashPaidAmount?: string;
+
+  @IsOptional()
+  @IsString()
+  cashPaymentComment?: string;
+
+  @IsOptional()
   @IsString()
   comment?: string;
 }

@@ -13,6 +13,7 @@ export type UserRole =
   | "STOREKEEPER"
   | "ACCOUNTANT"
   | "SECRETARY"
+  | "MECHANIC"
   | "DIRECTOR";
 
 export type User = {
@@ -32,6 +33,8 @@ export type ObjectType =
   | "CONSTRUCTION_OBJECT"
   | "INTERNAL_DEPARTMENT"
   | "WORKSHOP";
+
+export type ObjectDirection = "TRANSPORT" | "CONSTRUCTION" | "PRODUCTION";
 
 export type ObjectLimitType = "MATERIAL" | "TRANSPORT" | "MONEY";
 
@@ -55,6 +58,7 @@ export type ObjectEntity = {
   id: string;
   name: string;
   type: ObjectType;
+  direction: ObjectDirection;
   owner?: User;
   limits?: ObjectLimit[];
   materials?: ObjectMaterial[];
@@ -93,7 +97,8 @@ export type SupplyRequestType =
   | "QUARRY"
   | "EXPRESS_MATERIAL"
   | "FUEL"
-  | "BUSINESS_TRIP";
+  | "BUSINESS_TRIP"
+  | "APPEAL";
 
 export type MoneyRequestPaymentType = "CASH" | "NON_CASH";
 
@@ -151,6 +156,8 @@ export type SupplyRequestItem = {
   stockQuantity: string;
   ptoLimitPrice?: string | null;
   supplierPurchasePrice?: string | null;
+  cashPaidAmount?: string | null;
+  cashPaymentComment?: string | null;
   fulfillmentStatus: SupplyRequestItemFulfillmentStatus;
 };
 
@@ -192,6 +199,9 @@ export type SupplyRequest = {
   assignedById?: string | null;
   assignedAt?: string | null;
   transportType?: string | null;
+  transportObjectName?: string | null;
+  transportDate?: string | null;
+  transportTime?: string | null;
   purpose?: string | null;
   amount?: string | null;
   paymentType?: MoneyRequestPaymentType | null;
