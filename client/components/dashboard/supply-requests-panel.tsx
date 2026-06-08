@@ -760,7 +760,7 @@ export function SupplyRequestsPanel({
               }
 
               if (objectRole === "PTO") {
-                if (request.type === "PRODUCTION") {
+                if (request.type !== "MATERIAL") {
                   return (
                     <SimpleApprovalCard
                       key={request.id}
@@ -861,17 +861,6 @@ export function SupplyRequestsPanel({
                   );
                 }
 
-                if (request.type === "TRANSPORT") {
-                  return (
-                    <SupplyManagerTransportRequestCard
-                      key={request.id}
-                      request={request}
-                      onSendToGarage={sendToGarageBySupplyManager}
-                      onReject={rejectToPreviousStep}
-                    />
-                  );
-                }
-
                 return (
                   <SupplyManagerRequestCard
                     key={request.id}
@@ -926,29 +915,11 @@ export function SupplyRequestsPanel({
                   );
                 }
 
-                if (request.type === "QUARRY") {
-                  return (
-                    <SimpleApprovalCard
-                      key={request.id}
-                      request={request}
-                      onApprove={approveQuarryBySupplyUser}
-                      onReject={rejectToPreviousStep}
-                    />
-                  );
-                }
-
-                if (request.type === "TRANSPORT") {
-                  return (
-                    <SupplyTransportRequestCard
-                      key={request.id}
-                      request={request}
-                      onReject={rejectToPreviousStep}
-                      onSubmit={submitInvoicesBySupply}
-                    />
-                  );
-                }
-
-                return request.type === "MONEY" ? (
+                return request.type === "MONEY" ||
+                  request.type === "TRANSPORT" ||
+                  request.type === "FUEL" ||
+                  request.type === "BUSINESS_TRIP" ||
+                  request.type === "APPEAL" ? (
                   <SupplyMoneyRequestCard
                     key={request.id}
                     request={request}
@@ -1045,10 +1016,7 @@ function getVisibleRequests(
     }
 
     if (objectRole === "PTO") {
-      return (
-        (request.type === "MATERIAL" || request.type === "PRODUCTION") &&
-        request.status === "PENDING_PTO"
-      );
+      return request.status === "PENDING_PTO";
     }
 
     if (objectRole === "CHIEF_ENGINEER") {
@@ -1056,10 +1024,7 @@ function getVisibleRequests(
     }
 
     if (objectRole === "WAREHOUSE_MANAGER") {
-      return (
-        request.type === "MATERIAL" &&
-        request.status === "PENDING_WAREHOUSE_MANAGER"
-      );
+      return request.status === "PENDING_WAREHOUSE_MANAGER";
     }
 
     if (objectRole === "DEPUTY_PRODUCTION_DIRECTOR") {
@@ -1079,40 +1044,22 @@ function getVisibleRequests(
     }
 
     if (objectRole === "GARAGE_MANAGER") {
-      return (
-        (request.type === "TRANSPORT" ||
-          request.type === "QUARRY" ||
-          request.type === "FUEL") &&
-        request.status === "PENDING_GARAGE_MANAGER"
-      );
+      return request.status === "PENDING_GARAGE_MANAGER";
     }
 
     if (objectRole === "SUPPLY_MANAGER") {
       return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "QUARRY") &&
         (request.status === "PENDING_SUPPLY_MANAGER" ||
           request.status === "PENDING_SUPPLY_MANAGER_REVIEW")
       );
     }
 
     if (objectRole === "ACCOUNTANT") {
-      return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "EXPRESS_MATERIAL" ||
-          request.type === "BUSINESS_TRIP") &&
-        request.status === "PENDING_ACCOUNTANT"
-      );
+      return request.status === "PENDING_ACCOUNTANT";
     }
 
     if (objectRole === "SUPPLY") {
       return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "QUARRY" ||
-          request.type === "EXPRESS_MATERIAL") &&
         request.assignedSupplyUserId === userId &&
         (request.status === "PENDING_SUPPLY" ||
           request.status === "RETURNED_TO_SUPPLY" ||
@@ -1129,16 +1076,7 @@ function getVisibleRequests(
     }
 
     if (objectRole === "DIRECTOR") {
-      return (
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "PRODUCTION" ||
-          request.type === "QUARRY" ||
-          request.type === "FUEL" ||
-          request.type === "EXPRESS_MATERIAL" ||
-          request.type === "BUSINESS_TRIP") &&
-        request.status === "PENDING_DIRECTOR"
-      );
+      return request.status === "PENDING_DIRECTOR";
     }
 
     return false;

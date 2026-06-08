@@ -13,6 +13,7 @@ export const requestTypeLabels: Record<SupplyRequestType, string> = {
   EXPRESS_MATERIAL: "Экспресс ТМЦ",
   FUEL: "Топливо",
   BUSINESS_TRIP: "Командировочные",
+  APPEAL: "Обращение",
 };
 
 export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
@@ -43,6 +44,7 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
 };
 
 export const userRoleLabels: Record<UserRole, string> = {
+  MECHANIC: "Механик",
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
   WORKSHOP_MANAGER: "Начальник цеха",

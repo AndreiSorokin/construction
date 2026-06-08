@@ -1614,7 +1614,22 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
     return <ProductionDetails request={request} />;
   }
 
+  if (request.type === "APPEAL") {
+    return <AppealDetails request={request} />;
+  }
+
   return <MoneyDetails request={request} />;
+}
+
+function AppealDetails({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 rounded-md bg-slate-50 p-3 text-sm">
+      <div className="text-slate-500">Текст обращения</div>
+      <div className="mt-1 whitespace-pre-wrap font-medium text-slate-950">
+        {request.purpose ?? "Не указано"}
+      </div>
+    </div>
+  );
 }
 
 function PlainItemRequestDetails({ request }: { request: SupplyRequest }) {

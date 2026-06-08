@@ -1,4 +1,5 @@
 export type UserRole =
+  | "MECHANIC"
   | "FOREMAN"
   | "SITE_MANAGER"
   | "WORKSHOP_MANAGER"
@@ -93,7 +94,8 @@ export type SupplyRequestType =
   | "QUARRY"
   | "EXPRESS_MATERIAL"
   | "FUEL"
-  | "BUSINESS_TRIP";
+  | "BUSINESS_TRIP"
+  | "APPEAL";
 
 export type MoneyRequestPaymentType = "CASH" | "NON_CASH";
 

@@ -64,6 +64,7 @@ const typeClasses: Record<SupplyRequestType, string> = {
   EXPRESS_MATERIAL: "bg-cyan-50 text-cyan-700",
   FUEL: "bg-yellow-50 text-yellow-700",
   BUSINESS_TRIP: "bg-fuchsia-50 text-fuchsia-700",
+  APPEAL: "bg-slate-100 text-slate-700",
 };
 
 export function RequestSummaryCard({
@@ -95,6 +96,10 @@ export function RequestSummaryCard({
 
   if (request.type === "PRODUCTION") {
     return request.purpose ?? "Производство";
+  }
+
+  if (request.type === "APPEAL") {
+    return request.purpose ?? "Обращение";
   }
 
   if (request.type === "QUARRY" || request.type === "EXPRESS_MATERIAL") {

@@ -23,6 +23,7 @@ import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
 import { CreateBusinessTripSupplyRequestDto } from "./dto/create-business-trip-supply-request.dto";
+import { CreateAppealSupplyRequestDto } from "./dto/create-appeal-supply-request.dto";
 import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
 import { CreateFuelSupplyRequestDto } from "./dto/create-fuel-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
@@ -54,67 +55,64 @@ function normalizeUploadedFileName(fileName: string) {
   return decodedName.includes("�") ? normalizedName : decodedName;
 }
 
-const MATERIAL_COMMON_ROUTE = [
-  SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-  SupplyRequestStatus.PENDING_PTO,
+const SUPPLY_FINAL_ROUTE = [
   SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
   SupplyRequestStatus.PENDING_SUPPLY,
   SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_ACCOUNTANT,
-  SupplyRequestStatus.IN_PROGRESS, //Back to supply
-  SupplyRequestStatus.PENDING_STOREKEEPER,
   SupplyRequestStatus.COMPLETED,
 ];
 
-const MATERIAL_COMMON_ROUTE_WITHOUT_PTO = MATERIAL_COMMON_ROUTE.filter(
-  (status) => status !== SupplyRequestStatus.PENDING_PTO,
-);
-
-const MONEY_COMMON_ROUTE = [
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_ACCOUNTANT,
-  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
-  SupplyRequestStatus.PENDING_SUPPLY,
-  SupplyRequestStatus.COMPLETED,
-]
-
-const TRANSPORT_COMMON_ROUTE = [
+const TRANSPORT_START_ROUTE = [
   SupplyRequestStatus.PENDING_GARAGE_MANAGER,
-  SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
-  SupplyRequestStatus.COMPLETED,
-]
-
-const FUEL_AFTER_DIRECTOR_ROUTE = [
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
-  SupplyRequestStatus.COMPLETED,
+  SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
 ];
 
-const BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE = [
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_ACCOUNTANT,
-  SupplyRequestStatus.PENDING_REQUEST_AUTHOR,
-  SupplyRequestStatus.COMPLETED,
+const CONSTRUCTION_START_ROUTE = [
+  SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
 ];
 
-const PRODUCTION_COMMON_ROUTE = [
+const CONSTRUCTION_WITH_PTO_START_ROUTE = [
   SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
   SupplyRequestStatus.PENDING_PTO,
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-  SupplyRequestStatus.PENDING_WORKSHOP_MANAGER,
-  SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR,
-  SupplyRequestStatus.COMPLETED,
 ];
 
-const QUARRY_COMMON_ROUTE = [
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
-  SupplyRequestStatus.PENDING_SUPPLY,
-  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
-  SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
-  SupplyRequestStatus.COMPLETED,
+const PRODUCTION_START_ROUTE = [
+  SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+];
+
+const MATERIAL_LIKE_WAREHOUSE_ROUTE = [
+  SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
+const CONSTRUCTION_MATERIAL_LIKE_ROUTE = [
+  ...CONSTRUCTION_WITH_PTO_START_ROUTE,
+  ...MATERIAL_LIKE_WAREHOUSE_ROUTE,
+];
+
+const TRANSPORT_MATERIAL_LIKE_ROUTE = [
+  ...TRANSPORT_START_ROUTE,
+  ...MATERIAL_LIKE_WAREHOUSE_ROUTE,
+];
+
+const PRODUCTION_MATERIAL_LIKE_ROUTE = [
+  ...PRODUCTION_START_ROUTE,
+  ...MATERIAL_LIKE_WAREHOUSE_ROUTE,
+];
+
+const CONSTRUCTION_SUPPLY_ROUTE = [
+  ...CONSTRUCTION_WITH_PTO_START_ROUTE,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
+const TRANSPORT_SUPPLY_ROUTE = [
+  ...TRANSPORT_START_ROUTE,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
+const PRODUCTION_SUPPLY_ROUTE = [
+  ...PRODUCTION_START_ROUTE,
+  ...SUPPLY_FINAL_ROUTE,
 ];
 
 const EXPRESS_MATERIAL_COMMON_ROUTE = [
@@ -126,160 +124,60 @@ const EXPRESS_MATERIAL_COMMON_ROUTE = [
 
 const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
   MATERIAL: {
-    FOREMAN: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...MATERIAL_COMMON_ROUTE,
-    ],
-    SITE_MANAGER: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...MATERIAL_COMMON_ROUTE,
-    ],
-    CHIEF_ENGINEER: MATERIAL_COMMON_ROUTE,
-    GARAGE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...MATERIAL_COMMON_ROUTE_WITHOUT_PTO,
-    ],
-    SECRETARY: MATERIAL_COMMON_ROUTE,
-    WORKSHOP_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      ...MATERIAL_COMMON_ROUTE,
-    ]
+    MECHANIC: TRANSPORT_MATERIAL_LIKE_ROUTE,
+    FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
   },
   MONEY: {
-    CHIEF_ENGINEER: MONEY_COMMON_ROUTE,
-    DEPUTY_PRODUCTION_DIRECTOR: MONEY_COMMON_ROUTE,
-    DEPUTY_TRANSPORT_DIRECTOR: MONEY_COMMON_ROUTE,
-    SUPPLY: MONEY_COMMON_ROUTE,
-    SECRETARY: MONEY_COMMON_ROUTE,
-    GARAGE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...MONEY_COMMON_ROUTE
-    ],
-    WAREHOUSE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...MONEY_COMMON_ROUTE,
-    ],
-    SUPPLY_MANAGER: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...MONEY_COMMON_ROUTE,
-    ],
-    PTO: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...MONEY_COMMON_ROUTE,
-    ],
-    SITE_MANAGER: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...MONEY_COMMON_ROUTE,
-    ],
-    FOREMAN: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...MONEY_COMMON_ROUTE,
-    ],
-    WORKSHOP_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      ...MONEY_COMMON_ROUTE,
-    ]
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   TRANSPORT: {
-    FOREMAN: TRANSPORT_COMMON_ROUTE,
-    CHIEF_ENGINEER: TRANSPORT_COMMON_ROUTE,
-    SITE_MANAGER: TRANSPORT_COMMON_ROUTE,
-    WORKSHOP_MANAGER: TRANSPORT_COMMON_ROUTE,
-    SUPPLY: TRANSPORT_COMMON_ROUTE,
+    FOREMAN: [
+      ...CONSTRUCTION_START_ROUTE,
+      ...SUPPLY_FINAL_ROUTE,
+    ],
+    SITE_MANAGER: [
+      ...CONSTRUCTION_START_ROUTE,
+      ...SUPPLY_FINAL_ROUTE,
+    ],
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   FUEL: {
-    FOREMAN: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    SITE_MANAGER: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    WORKSHOP_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    CHIEF_ENGINEER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    DEPUTY_PRODUCTION_DIRECTOR: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    DEPUTY_TRANSPORT_DIRECTOR: FUEL_AFTER_DIRECTOR_ROUTE,
-    SUPPLY_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    SUPPLY: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    PTO: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    GARAGE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    WAREHOUSE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    STOREKEEPER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    ACCOUNTANT: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
-    SECRETARY: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...FUEL_AFTER_DIRECTOR_ROUTE,
-    ],
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   BUSINESS_TRIP: {
-    FOREMAN: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
-    ],
-    SITE_MANAGER: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
-    ],
-    WORKSHOP_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
-    ],
-    GARAGE_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-      ...BUSINESS_TRIP_AFTER_DIRECTOR_ROUTE,
-    ],
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   PRODUCTION: {
-    FOREMAN: PRODUCTION_COMMON_ROUTE,
-    SITE_MANAGER: PRODUCTION_COMMON_ROUTE,
+    MECHANIC: TRANSPORT_MATERIAL_LIKE_ROUTE,
+    FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
   },
   QUARRY: {
-    WORKSHOP_MANAGER: [
-      SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      ...QUARRY_COMMON_ROUTE,
-    ],
-    SITE_MANAGER: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...QUARRY_COMMON_ROUTE,
-    ],
-    FOREMAN: [
-      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      ...QUARRY_COMMON_ROUTE,
-    ],
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   EXPRESS_MATERIAL: {
     SUPPLY: EXPRESS_MATERIAL_COMMON_ROUTE,
+  },
+  APPEAL: {
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
 };
 
@@ -623,6 +521,44 @@ export class SupplyRequestsService {
           authorId,
           amount: new Prisma.Decimal(dto.amount),
           paymentPurpose: dto.purpose.trim(),
+          status: route.status,
+          approvalHistory: {
+            create: {
+              actorId: authorId,
+              action: ApprovalAction.CREATED,
+              fromStatus: null,
+              toStatus: route.status,
+              comment: route.comment,
+            },
+          },
+        },
+        include: this.requestInclude,
+      }),
+    );
+  }
+
+  async createAppealRequest(
+    dto: CreateAppealSupplyRequestDto,
+    authorId: string,
+  ) {
+    if (!dto.text.trim()) {
+      throw new BadRequestException("Appeal request must contain text");
+    }
+
+    const route = await this.getInitialRequestRoute(
+      authorId,
+      dto.objectId,
+      SupplyRequestType.APPEAL,
+    );
+
+    return this.prisma.$transaction(async (tx) =>
+      tx.supplyRequest.create({
+        data: {
+          requestNumber: await this.createRequestNumber(tx, "APL"),
+          type: SupplyRequestType.APPEAL,
+          objectId: dto.objectId,
+          authorId,
+          purpose: dto.text.trim(),
           status: route.status,
           approvalHistory: {
             create: {
@@ -1319,12 +1255,9 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_PTO,
     ]);
 
-    if (
-      request.type !== SupplyRequestType.PRODUCTION &&
-      request.type !== SupplyRequestType.QUARRY
-    ) {
+    if (request.type === SupplyRequestType.MATERIAL) {
       throw new BadRequestException(
-        "Only production and quarry requests can be approved without PTO prices",
+        "Material requests must be approved with PTO prices",
       );
     }
 
@@ -1361,7 +1294,8 @@ export class SupplyRequestsService {
       request.type !== SupplyRequestType.FUEL &&
       request.type !== SupplyRequestType.BUSINESS_TRIP &&
       request.type !== SupplyRequestType.MONEY &&
-      request.type !== SupplyRequestType.PRODUCTION
+      request.type !== SupplyRequestType.PRODUCTION &&
+      request.type !== SupplyRequestType.APPEAL
     ) {
       throw new BadRequestException("Unsupported request type");
     }
@@ -1394,9 +1328,12 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
     ]);
 
-    if (request.type !== SupplyRequestType.MATERIAL) {
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.PRODUCTION
+    ) {
       throw new BadRequestException(
-        "Only material requests can be sent from warehouse manager to PTO",
+        "Only material and production requests can be processed by warehouse manager",
       );
     }
 
@@ -1731,12 +1668,6 @@ export class SupplyRequestsService {
       UserRole.SUPPLY_MANAGER,
     ]);
 
-    if (request.type === SupplyRequestType.TRANSPORT) {
-      throw new BadRequestException(
-        "Transport requests must be sent to garage manager",
-      );
-    }
-
     await this.ensureUserObjectRole(dto.supplyUserId, request.objectId, [
       UserRole.SUPPLY,
     ]);
@@ -1744,10 +1675,15 @@ export class SupplyRequestsService {
     if (
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.QUARRY &&
-      request.type !== SupplyRequestType.MONEY
+      request.type !== SupplyRequestType.MONEY &&
+      request.type !== SupplyRequestType.TRANSPORT &&
+      request.type !== SupplyRequestType.FUEL &&
+      request.type !== SupplyRequestType.BUSINESS_TRIP &&
+      request.type !== SupplyRequestType.PRODUCTION &&
+      request.type !== SupplyRequestType.APPEAL
     ) {
       throw new BadRequestException(
-        "Only material, quarry and money requests can be assigned to supply",
+        "This request type cannot be assigned to supply",
       );
     }
 
@@ -1826,7 +1762,16 @@ export class SupplyRequestsService {
         SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
         SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
       ],
-      SupplyRequestType.MATERIAL,
+      [
+        SupplyRequestType.MATERIAL,
+        SupplyRequestType.QUARRY,
+        SupplyRequestType.MONEY,
+        SupplyRequestType.TRANSPORT,
+        SupplyRequestType.FUEL,
+        SupplyRequestType.BUSINESS_TRIP,
+        SupplyRequestType.PRODUCTION,
+        SupplyRequestType.APPEAL,
+      ],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY_MANAGER,
@@ -1834,10 +1779,7 @@ export class SupplyRequestsService {
 
     this.ensureMaterialRequestHasActiveItems(request);
 
-    const nextStatus =
-      request.status === SupplyRequestStatus.PENDING_SUPPLY_MANAGER
-        ? SupplyRequestStatus.PENDING_DIRECTOR
-        : this.getNextRouteStatus(request);
+    const nextStatus = this.getNextRouteStatus(request);
 
     return this.prisma.$transaction((tx) =>
       this.moveRequest(
@@ -1860,7 +1802,16 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(
       id,
       [SupplyRequestStatus.PENDING_GARAGE_MANAGER],
-      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY, SupplyRequestType.FUEL],
+      [
+        SupplyRequestType.TRANSPORT,
+        SupplyRequestType.QUARRY,
+        SupplyRequestType.FUEL,
+        SupplyRequestType.MATERIAL,
+        SupplyRequestType.MONEY,
+        SupplyRequestType.BUSINESS_TRIP,
+        SupplyRequestType.PRODUCTION,
+        SupplyRequestType.APPEAL,
+      ],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.GARAGE_MANAGER,
@@ -2063,10 +2014,13 @@ export class SupplyRequestsService {
       request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.TRANSPORT &&
       request.type !== SupplyRequestType.FUEL &&
-      request.type !== SupplyRequestType.BUSINESS_TRIP
+      request.type !== SupplyRequestType.BUSINESS_TRIP &&
+      request.type !== SupplyRequestType.MONEY &&
+      request.type !== SupplyRequestType.PRODUCTION &&
+      request.type !== SupplyRequestType.APPEAL
     ) {
       throw new BadRequestException(
-          "Only material, quarry, transport, fuel and business trip requests can be rejected by chief engineer",
+          "This request type cannot be rejected by chief engineer",
       );
     }
 
@@ -2101,9 +2055,13 @@ export class SupplyRequestsService {
       ],
     );
 
-    if (request.type !== SupplyRequestType.MATERIAL) {
+    if (
+      request.type !== SupplyRequestType.MATERIAL &&
+      request.type !== SupplyRequestType.QUARRY &&
+      request.type !== SupplyRequestType.PRODUCTION
+    ) {
       throw new BadRequestException(
-        "Only material requests can be sent with invoices",
+        "Only item requests can be sent with invoices",
       );
     }
 
@@ -2164,7 +2122,13 @@ export class SupplyRequestsService {
         SupplyRequestStatus.PENDING_SUPPLY,
         SupplyRequestStatus.RETURNED_TO_SUPPLY,
       ],
-      SupplyRequestType.MONEY,
+      [
+        SupplyRequestType.MONEY,
+        SupplyRequestType.TRANSPORT,
+        SupplyRequestType.FUEL,
+        SupplyRequestType.BUSINESS_TRIP,
+        SupplyRequestType.APPEAL,
+      ],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY,
@@ -2197,7 +2161,13 @@ export class SupplyRequestsService {
         SupplyRequestStatus.PENDING_SUPPLY,
         SupplyRequestStatus.RETURNED_TO_SUPPLY,
       ],
-      [SupplyRequestType.TRANSPORT, SupplyRequestType.QUARRY],
+      [
+        SupplyRequestType.TRANSPORT,
+        SupplyRequestType.QUARRY,
+        SupplyRequestType.FUEL,
+        SupplyRequestType.BUSINESS_TRIP,
+        SupplyRequestType.APPEAL,
+      ],
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY,
@@ -2805,6 +2775,7 @@ export class SupplyRequestsService {
       EXPRESS_MATERIAL: "Экспресс заявка ТМЦ",
       FUEL: "Заявка на топливо",
       BUSINESS_TRIP: "Заявка на командировочные",
+      APPEAL: "Обращение",
     };
 
     const statusLabel: Partial<Record<SupplyRequestStatus, string>> = {
