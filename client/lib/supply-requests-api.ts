@@ -62,6 +62,9 @@ export function createExpressMaterialSupplyRequest(
 
 export type CreateTransportSupplyRequestPayload = {
   objectId: string;
+  transportObjectName: string;
+  transportDate: string;
+  transportTime: string;
   transportType: string;
   purpose: string;
 };
@@ -154,6 +157,20 @@ export function createProductionSupplyRequest(
   return apiClient<SupplyRequest>("/supply-requests/production", {
     method: "POST",
     body: form,
+  });
+}
+
+export type CreateAppealSupplyRequestPayload = {
+  objectId: string;
+  text: string;
+};
+
+export function createAppealSupplyRequest(
+  payload: CreateAppealSupplyRequestPayload,
+) {
+  return apiClient<SupplyRequest>("/supply-requests/appeal", {
+    method: "POST",
+    body: payload,
   });
 }
 
@@ -275,6 +292,8 @@ export function updateSupplyRequestItem(
     quantity?: string;
     orderQuantity?: string;
     stockQuantity?: string;
+    cashPaidAmount?: string;
+    cashPaymentComment?: string;
     comment?: string;
   },
 ) {
@@ -484,6 +503,16 @@ export function sendMoneyRequestToDirector(
       body: { comment },
     },
   );
+}
+
+export function approveSupplyRequestBySupply(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(`/supply-requests/${requestId}/supply/approve`, {
+    method: "PATCH",
+    body: { comment },
+  });
 }
 
 export function assignSupplyRequest(

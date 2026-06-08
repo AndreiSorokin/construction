@@ -5,7 +5,13 @@
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "crypto";
-import { ObjectLimitType, ObjectType, Prisma, UserRole } from "@prisma/client";
+import {
+  ObjectDirection,
+  ObjectLimitType,
+  ObjectType,
+  Prisma,
+  UserRole,
+} from "@prisma/client";
 import { MailService } from "../mail/mail.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AddObjectAccessDto } from "./dto/add-object-access.dto";
@@ -42,6 +48,7 @@ export class ObjectsService {
         data: {
           name: dto.name,
           type: dto.type,
+          direction: dto.direction ?? ObjectDirection.CONSTRUCTION,
           ownerId,
           limits:
             dto.type === ObjectType.CONSTRUCTION_OBJECT

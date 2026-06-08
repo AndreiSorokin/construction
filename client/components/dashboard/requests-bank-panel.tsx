@@ -185,6 +185,16 @@ function RequestDetails({ request }: { request: SupplyRequest }) {
         {(request.type === "TRANSPORT" || request.type === "FUEL") ? (
           <Info label="Назначение техники" value={request.purpose ?? "-"} />
         ) : null}
+        {request.type === "TRANSPORT" ? (
+          <>
+            <Info
+              label="Объект транспорта"
+              value={request.transportObjectName ?? "-"}
+            />
+            <Info label="Дата" value={request.transportDate ?? "-"} />
+            <Info label="Время" value={request.transportTime ?? "-"} />
+          </>
+        ) : null}
         {request.type === "PRODUCTION" ? (
           <Info label="Задача на производство" value={request.purpose ?? "-"} />
         ) : null}

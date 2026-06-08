@@ -25,7 +25,8 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
   PENDING_DEPUTY_TRANSPORT_DIRECTOR:
     "У зам. директора по транспорту",
   PENDING_SUPPLY_MANAGER: "У начальника снабжения",
-  PENDING_SUPPLY_MANAGER_REVIEW: "У начальника снабжения на проверке",
+  PENDING_SUPPLY_MANAGER_REVIEW:
+    "У начальника снабжения на проверке",
   PENDING_SUPPLY: "У снабженца",
   PENDING_DIRECTOR: "У директора",
   PENDING_GARAGE_MANAGER: "У заведующего гаражом",
@@ -59,5 +60,6 @@ export const userRoleLabels: Record<UserRole, string> = {
   STOREKEEPER: "Кладовщик",
   ACCOUNTANT: "Бухгалтер",
   SECRETARY: "Секретарь",
+  MECHANIC: "Механик",
   DIRECTOR: "Директор",
 };

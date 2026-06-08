@@ -129,6 +129,14 @@ export class SupplyRequestsController {
     );
   }
 
+  @Post("appeal")
+  createAppealRequest(
+    @Body() dto: CreateAppealSupplyRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.createAppealRequest(dto, user.id);
+  }
+
   @Get()
   findAll(@Query() query: FindSupplyRequestsDto) {
     return this.supplyRequestsService.findAll(query);
@@ -406,6 +414,19 @@ export class SupplyRequestsController {
 
   @Patch(":id/money/send-to-director")
   sendMoneyToDirectorBySupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.sendMoneyToDirectorBySupply(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/supply/approve")
+  approveBySupply(
     @Param("id") id: string,
     @Body() dto: RequestActionDto,
     @CurrentUser() user: AuthenticatedUser,

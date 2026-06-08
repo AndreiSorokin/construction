@@ -1,0 +1,4 @@
+CREATE TYPE "ObjectDirection" AS ENUM ('TRANSPORT', 'CONSTRUCTION', 'PRODUCTION');
+
+ALTER TABLE "ObjectEntity"
+ADD COLUMN "direction" "ObjectDirection" NOT NULL DEFAULT 'CONSTRUCTION';
