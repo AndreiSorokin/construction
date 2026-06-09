@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Check, X } from "lucide-react";
+import { Check, Printer, X } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
 import { requestStatusLabels } from "@/lib/domain-labels";
@@ -28,6 +28,16 @@ const approvalActionsClass =
   "grid grid-cols-2 gap-1.5 sm:flex sm:flex-row sm:justify-end sm:gap-2 [&>button]:h-7 [&>button]:w-full [&>button]:min-w-0 [&>button]:gap-1 [&>button]:px-1 [&>button]:text-[10px] [&>button]:leading-none sm:[&>button]:h-10 sm:[&>button]:w-auto sm:[&>button]:gap-2 sm:[&>button]:px-3 sm:[&>button]:text-sm [&>button>svg]:size-3 sm:[&>button>svg]:size-4";
 
 const approvalActionsWithMarginClass = `mt-4 ${approvalActionsClass}`;
+const approvalCardClass =
+  "min-w-0 max-w-full overflow-hidden rounded-md border border-slate-200 p-2 sm:p-4";
+const limeApprovalCardClass =
+  "min-w-0 max-w-full overflow-hidden rounded-md border border-lime-200 bg-lime-50/40 p-2 sm:p-4";
+const emeraldApprovalCardClass =
+  "min-w-0 max-w-full overflow-hidden rounded-md border border-emerald-200 bg-emerald-50/40 p-2 sm:p-4";
+const stoneApprovalCardClass =
+  "min-w-0 max-w-full overflow-hidden rounded-md border border-stone-200 bg-stone-50/50 p-2 sm:p-4";
+const skyApprovalCardClass =
+  "min-w-0 max-w-full overflow-hidden rounded-md border border-sky-200 bg-sky-50/30 p-2 sm:p-4";
 
 export function ObjectApprovalGroup({
   children,
@@ -43,9 +53,9 @@ export function ObjectApprovalGroup({
     .sort((firstDate, secondDate) => secondDate - firstDate)[0];
 
   return (
-    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <article className="min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <button
-        className="grid w-full gap-3 px-4 py-3 text-left sm:grid-cols-[1fr_auto] sm:items-center"
+        className="grid w-full min-w-0 gap-3 px-3 py-3 text-left sm:grid-cols-[1fr_auto] sm:items-center sm:px-4"
         onClick={() => setIsOpen((current) => !current)}
         type="button"
       >
@@ -61,7 +71,7 @@ export function ObjectApprovalGroup({
       </button>
 
       {isOpen ? (
-        <div className="grid gap-3 border-t border-slate-100 bg-slate-50/60 p-3">
+        <div className="grid min-w-0 gap-3 overflow-x-auto border-t border-slate-100 bg-slate-50/60 p-2 sm:p-3">
           {children}
         </div>
       ) : null}
@@ -70,30 +80,55 @@ export function ObjectApprovalGroup({
 }
 
 export function SupplyManagerRequestCard({
+  onAttachInvoices,
   onSendToDirector,
+  onUpdateSupplyManagerComment,
   onReject,
   onSubmit,
   request,
+  checklistStorageScope,
   supplyUsers,
 }: {
+  onAttachInvoices?: (
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) => void;
   onSendToDirector?: (request: SupplyRequest) => void;
+  onUpdateSupplyManagerComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
   onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
   ) => void;
   request: SupplyRequest;
+  checklistStorageScope: string;
   supplyUsers: User[];
 }) {
   return (
-    <form
-      className="rounded-md border border-slate-200 p-4"
-      onSubmit={(event) => onSubmit(request, event)}
-    >
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
 
       <RequestDetails request={request} />
-      <div className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3">
+      <SupplyItemWorkTable
+        checklistStorageScope={checklistStorageScope}
+        commentField="supplyManagerComment"
+        commentLabel="Комментарий начальника снабжения"
+        request={request}
+        onUpdateComment={onUpdateSupplyManagerComment}
+      />
+      <InvoiceList request={request} />
+      {onAttachInvoices ? (
+        <InvoiceUploadForm request={request} onSubmit={onAttachInvoices} />
+      ) : null}
+      <PrintRequestAction request={request} />
+      <form
+        className="mt-4 grid gap-3 rounded-md bg-slate-50 p-3"
+        onSubmit={(event) => onSubmit(request, event)}
+      >
         <label className="grid gap-1.5">
           <span className="text-sm font-medium text-slate-700">
             Назначенный снабженец
@@ -149,9 +184,9 @@ export function SupplyManagerRequestCard({
             На этом объекте пока нет пользователя с ролью снабженца.
           </div>
         ) : null}
-      </div>
+      </form>
       </RequestSummaryCard>
-    </form>
+    </div>
   );
 }
 
@@ -165,7 +200,7 @@ export function SupplyManagerTransportRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         <TransportDetails request={request} />
         <div className={approvalActionsWithMarginClass}>
@@ -183,7 +218,7 @@ export function SupplyManagerTransportRequestCard({
             type="button"
           >
             <Check size={16} />
-            Согласовать
+            Отправить в архив
           </button>
         </div>
       </RequestSummaryCard>
@@ -201,7 +236,7 @@ export function SimpleApprovalCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         <RequestDetails request={request} />
         <div className={approvalActionsWithMarginClass}>
@@ -228,19 +263,43 @@ export function SimpleApprovalCard({
 }
 
 export function SupplyManagerReviewCard({
+  onAttachInvoices,
   onApprove,
+  onUpdateSupplyManagerComment,
   onReject,
   request,
+  checklistStorageScope,
 }: {
+  onAttachInvoices?: (
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) => void;
   onApprove: (request: SupplyRequest) => void;
+  onUpdateSupplyManagerComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
   onReject: (request: SupplyRequest) => void;
   request: SupplyRequest;
+  checklistStorageScope: string;
 }) {
   return (
-    <div className="rounded-md border border-sky-200 bg-sky-50/30 p-4">
+    <div className={skyApprovalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         <RequestDetails request={request} />
+        <SupplyItemWorkTable
+          checklistStorageScope={checklistStorageScope}
+          commentField="supplyManagerComment"
+          commentLabel="Комментарий начальника снабжения"
+          request={request}
+          onUpdateComment={onUpdateSupplyManagerComment}
+        />
         <InvoiceList request={request} />
+        {onAttachInvoices ? (
+          <InvoiceUploadForm request={request} onSubmit={onAttachInvoices} />
+        ) : null}
+        <PrintRequestAction request={request} />
         <div className={approvalActionsWithMarginClass}>
           <button
             className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
@@ -280,7 +339,7 @@ export function DeputyProductionAssignmentCard({
 }) {
   return (
     <form
-      className="rounded-md border border-slate-200 p-4"
+      className={approvalCardClass}
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
@@ -347,7 +406,7 @@ export function GarageManagerTransportRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-lime-200 bg-lime-50/40 p-4">
+    <div className={limeApprovalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         <RequestDetails request={request} />
         <div className={approvalActionsWithMarginClass}>
@@ -383,7 +442,7 @@ export function TransportAuthorCompletionCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-lime-200 bg-lime-50/40 p-4">
+    <div className={limeApprovalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         <TransportDetails request={request} />
         <div className={approvalActionsWithMarginClass}>
@@ -414,6 +473,7 @@ export function PtoRequestCard({
   onReject,
   onSubmit,
   onUpdateItem,
+  onUpdatePtoComment,
   request,
 }: {
   onDeleteItem: (
@@ -430,11 +490,16 @@ export function PtoRequestCard({
     item: SupplyRequest["items"][number],
     field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
+  onUpdatePtoComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
     <form
-      className="rounded-md border border-slate-200 p-4"
+      className={approvalCardClass}
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
@@ -453,7 +518,15 @@ export function PtoRequestCard({
             {request.items.map((item) => (
               <tr className="border-b border-slate-100" key={item.id}>
                 <td className="py-3 pr-3 text-slate-950">
-                  {item.materialNameSnapshot}
+                  <ItemNameWithComments item={item} />
+                  <RoleItemCommentInput
+                    fieldName="ptoComment"
+                    item={item}
+                    label="Комментарий ПТО"
+                    onSave={(comment) =>
+                      onUpdatePtoComment(request, item, comment)
+                    }
+                  />
                 </td>
                 <EditableMaterialQuantityCells
                   item={item}
@@ -516,6 +589,7 @@ export function ChiefEngineerRequestCard({
   onApprove,
   onDeleteItem,
   onReturn,
+  onUpdateChiefEngineerComment,
   onUpdateItem,
   request,
 }: {
@@ -525,6 +599,11 @@ export function ChiefEngineerRequestCard({
     item: SupplyRequest["items"][number],
   ) => void;
   onReturn: (request: SupplyRequest) => void;
+  onUpdateChiefEngineerComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
   onUpdateItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -533,7 +612,7 @@ export function ChiefEngineerRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
 
         {isItemRequest(request) ? (
@@ -541,6 +620,7 @@ export function ChiefEngineerRequestCard({
             <EditableMaterialItemsTable
               request={request}
               onDeleteItem={onDeleteItem}
+              onUpdateChiefEngineerComment={onUpdateChiefEngineerComment}
               onUpdateItem={onUpdateItem}
             />
           </>
@@ -590,7 +670,7 @@ export function WarehouseManagerRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         <WarehouseStockItemsTable request={request} onUpdateItem={onUpdateItem} />
         <div className={approvalActionsWithMarginClass}>
@@ -642,7 +722,7 @@ export function DeputyProductionDirectorRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         {isItemRequest(request) ? (
           <>
@@ -690,7 +770,7 @@ export function AccountantRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
         {shouldShowPlainItemDetails(request) ? (
           <PlainItemRequestDetails request={request} />
@@ -728,26 +808,38 @@ export function AccountantRequestCard({
 
 export function SupplyRequestCard({
   onDeleteInvoice,
+  onUpdateSupplierComment,
   onReject,
   onSubmit,
   request,
+  checklistStorageScope,
 }: {
   onDeleteInvoice?: (request: SupplyRequest, invoiceId: string) => void;
+  onUpdateSupplierComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
   onReject: (request: SupplyRequest) => void;
   onSubmit: (
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
   ) => void;
   request: SupplyRequest;
+  checklistStorageScope: string;
 }) {
   return (
     <form
-      className="rounded-md border border-slate-200 p-4"
+      className={approvalCardClass}
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
 
-      <SupplierMaterialItemsTable request={request} />
+      <SupplierMaterialItemsTable
+        checklistStorageScope={checklistStorageScope}
+        request={request}
+        onUpdateSupplierComment={onUpdateSupplierComment}
+      />
       <InvoiceList request={request} onDeleteInvoice={onDeleteInvoice} />
       <div className="mt-4 grid gap-3">
         <label className="grid gap-1.5">
@@ -806,7 +898,7 @@ export function SupplyMoneyRequestCard({
 }) {
   return (
     <form
-      className="rounded-md border border-slate-200 p-4"
+      className={approvalCardClass}
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
@@ -854,7 +946,7 @@ export function SupplyTransportRequestCard({
 }) {
   return (
     <form
-      className="rounded-md border border-slate-200 p-4"
+      className={approvalCardClass}
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
@@ -917,7 +1009,7 @@ export function SupplyInProgressCard({
 }) {
   return (
     <form
-      className="rounded-md border border-emerald-200 bg-emerald-50/40 p-4"
+      className={emeraldApprovalCardClass}
       onSubmit={(event) => onComplete(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
@@ -996,7 +1088,7 @@ export function StorekeeperRequestCard({
 }) {
   return (
     <form
-      className="rounded-md border border-stone-200 bg-stone-50/50 p-4"
+      className={stoneApprovalCardClass}
       onSubmit={(event) => onComplete(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
@@ -1054,7 +1146,7 @@ export function DirectorRequestCard({
   request: SupplyRequest;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-4">
+    <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
 
       {shouldShowPlainItemDetails(request) ? (
@@ -1238,6 +1330,105 @@ function RequestItemDeleteAction({
   );
 }
 
+function ItemNameWithComments({
+  item,
+}: {
+  item: SupplyRequest["items"][number];
+}) {
+  return (
+    <div className="grid gap-2">
+      <div className="font-medium text-slate-950">
+        {item.materialNameSnapshot}
+      </div>
+      <ItemCommentList item={item} />
+    </div>
+  );
+}
+
+function ItemCommentList({ item }: { item: SupplyRequest["items"][number] }) {
+  const comments = [
+    {
+      label: "Главный инженер",
+      value: item.chiefEngineerComment,
+    },
+    {
+      label: "Снабжение",
+      value: item.supplierComment,
+    },
+    {
+      label: "Начальник снабжения",
+      value: item.supplyManagerComment,
+    },
+    {
+      label: "ПТО",
+      value: item.ptoComment,
+    },
+    {
+      label: "Снабжение (старый комментарий)",
+      value: item.supplyComment,
+    },
+  ].filter((comment) => comment.value?.trim());
+
+  if (!comments.length) {
+    return null;
+  }
+
+  return (
+    <div className="grid gap-1">
+      {comments.map((comment) => (
+        <div
+          className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-600"
+          key={comment.label}
+        >
+          <span className="font-medium text-slate-700">{comment.label}: </span>
+          <span className="whitespace-pre-wrap">{comment.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RoleItemCommentInput({
+  fieldName,
+  item,
+  label,
+  onSave,
+}: {
+  fieldName: "chiefEngineerComment" | "ptoComment";
+  item: SupplyRequest["items"][number];
+  label: string;
+  onSave: (comment: string) => void;
+}) {
+  const inputId = `${fieldName}:${item.id}`;
+  const defaultValue =
+    fieldName === "chiefEngineerComment"
+      ? item.chiefEngineerComment
+      : item.ptoComment;
+
+  return (
+    <div className="mt-3 flex min-w-[320px] gap-2">
+      <input
+        className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-700"
+        defaultValue={defaultValue ?? ""}
+        id={inputId}
+        placeholder={label}
+        type="text"
+      />
+      <button
+        className="inline-flex h-9 items-center justify-center rounded-md border border-teal-200 bg-white px-3 text-xs font-medium text-teal-700 hover:bg-teal-50"
+        onClick={() => {
+          const input = document.getElementById(inputId) as HTMLInputElement | null;
+
+          onSave(input?.value ?? "");
+        }}
+        type="button"
+      >
+        Сохранить
+      </button>
+    </div>
+  );
+}
+
 function MaterialItemsTable({ request }: { request: SupplyRequest }) {
   const shouldShowFulfillmentStatus = request.items.some(
     (item) => item.fulfillmentStatus !== "PENDING",
@@ -1268,7 +1459,7 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
           {request.items.map((item) => (
             <tr className="border-b border-slate-100" key={item.id}>
               <td className="py-3 pr-3 text-slate-950">
-                {item.materialNameSnapshot}
+                <ItemNameWithComments item={item} />
               </td>
               <MaterialQuantityCells item={item} />
               {shouldShowCashPayment ? (
@@ -1302,44 +1493,166 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
   );
 }
 
-function SupplierMaterialItemsTable({ request }: { request: SupplyRequest }) {
+function SupplierMaterialItemsTable({
+  checklistStorageScope,
+  onUpdateSupplierComment,
+  request,
+}: {
+  checklistStorageScope: string;
+  onUpdateSupplierComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <SupplyItemWorkTable
+      checklistStorageScope={checklistStorageScope}
+      commentField="supplierComment"
+      commentLabel="Комментарий снабженца"
+      request={request}
+      showCashPayment
+      onUpdateComment={onUpdateSupplierComment}
+    />
+  );
+}
+
+function SupplyItemWorkTable({
+  checklistStorageScope,
+  commentField,
+  commentLabel,
+  onUpdateComment,
+  request,
+  showCashPayment = false,
+}: {
+  checklistStorageScope: string;
+  commentField: "supplyManagerComment" | "supplierComment";
+  commentLabel: string;
+  onUpdateComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
+  ) => void;
+  request: SupplyRequest;
+  showCashPayment?: boolean;
+}) {
+  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextCheckedItems: Record<string, boolean> = {};
+
+    for (const item of request.items) {
+      nextCheckedItems[item.id] =
+        localStorage.getItem(
+          getSupplyChecklistStorageKey(checklistStorageScope, request.id, item.id),
+        ) === "true";
+    }
+
+    setCheckedItems(nextCheckedItems);
+  }, [checklistStorageScope, request.id, request.items]);
+
+  function toggleItem(itemId: string, isChecked: boolean) {
+    setCheckedItems((current) => ({
+      ...current,
+      [itemId]: isChecked,
+    }));
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        getSupplyChecklistStorageKey(checklistStorageScope, request.id, itemId),
+        String(isChecked),
+      );
+    }
+  }
+
+  if (!request.items.length) {
+    return null;
+  }
+
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[980px] border-collapse text-sm">
+      <table className="w-full min-w-[1180px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
+            <th className="py-2 pr-3 font-medium">Отмечено</th>
             <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
-            <th className="py-2 pr-3 font-medium">Оплачено наличными</th>
-            <th className="py-2 pr-3 font-medium">Комментарий</th>
+            {showCashPayment ? (
+              <>
+                <th className="py-2 pr-3 font-medium">Оплачено наличными</th>
+                <th className="py-2 pr-3 font-medium">Комментарий</th>
+              </>
+            ) : null}
+            <th className="py-2 pr-3 font-medium">{commentLabel}</th>
           </tr>
         </thead>
         <tbody>
           {request.items.map((item) => (
             <tr className="border-b border-slate-100" key={item.id}>
+              <td className="py-3 pr-3">
+                <input
+                  checked={Boolean(checkedItems[item.id])}
+                  className="h-5 w-5 rounded border-slate-300 text-teal-700 focus:ring-teal-700"
+                  onChange={(event) => toggleItem(item.id, event.target.checked)}
+                  type="checkbox"
+                />
+              </td>
               <td className="py-3 pr-3 text-slate-950">
-                {item.materialNameSnapshot}
+                <ItemNameWithComments item={item} />
               </td>
               <MaterialQuantityCells item={item} />
+              {showCashPayment ? (
+                <>
+                  <td className="py-3 pr-3">
+                    <input
+                      className="h-10 w-40 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                      defaultValue={item.cashPaidAmount ?? ""}
+                      min="0"
+                      name={`cashPaidAmount:${item.id}`}
+                      placeholder="0"
+                      step="0.01"
+                      type="number"
+                    />
+                  </td>
+                  <td className="py-3 pr-3">
+                    <input
+                      className="h-10 w-64 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                      defaultValue={item.cashPaymentComment ?? ""}
+                      name={`cashPaymentComment:${item.id}`}
+                      placeholder="Описание оплаты"
+                      type="text"
+                    />
+                  </td>
+                </>
+              ) : null}
               <td className="py-3 pr-3">
-                <input
-                  className="h-10 w-40 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                  defaultValue={item.cashPaidAmount ?? ""}
-                  min="0"
-                  name={`cashPaidAmount:${item.id}`}
-                  placeholder="0"
-                  step="0.01"
-                  type="number"
-                />
-              </td>
-              <td className="py-3 pr-3">
-                <input
-                  className="h-10 w-64 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                  defaultValue={item.cashPaymentComment ?? ""}
-                  name={`cashPaymentComment:${item.id}`}
-                  placeholder="Описание оплаты"
-                  type="text"
-                />
+                <div className="flex min-w-[320px] gap-2">
+                  <input
+                    className="h-10 min-w-0 flex-1 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+                    defaultValue={item[commentField] ?? ""}
+                    id={`${commentField}:${item.id}`}
+                    placeholder={commentLabel}
+                    type="text"
+                  />
+                  <button
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-teal-200 bg-white px-3 text-xs font-medium text-teal-700 hover:bg-teal-50"
+                    onClick={() => {
+                      const input = document.getElementById(
+                        `${commentField}:${item.id}`,
+                      ) as HTMLInputElement | null;
+
+                      onUpdateComment(request, item, input?.value ?? "");
+                    }}
+                    type="button"
+                  >
+                    Сохранить
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -1418,12 +1731,18 @@ function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
 
 function EditableMaterialItemsTable({
   onDeleteItem,
+  onUpdateChiefEngineerComment,
   onUpdateItem,
   request,
 }: {
   onDeleteItem: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
+  ) => void;
+  onUpdateChiefEngineerComment: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    comment: string,
   ) => void;
   onUpdateItem: (
     request: SupplyRequest,
@@ -1446,7 +1765,15 @@ function EditableMaterialItemsTable({
           {request.items.map((item) => (
             <tr className="border-b border-slate-100" key={item.id}>
               <td className="py-3 pr-3 text-slate-950">
-                {item.materialNameSnapshot}
+                <ItemNameWithComments item={item} />
+                <RoleItemCommentInput
+                  fieldName="chiefEngineerComment"
+                  item={item}
+                  label="Комментарий главного инженера"
+                  onSave={(comment) =>
+                    onUpdateChiefEngineerComment(request, item, comment)
+                  }
+                />
               </td>
               <EditableMaterialQuantityCells
                 item={item}
@@ -2134,6 +2461,77 @@ function InvoiceList({
         />
       ) : null}
     </>
+  );
+}
+
+function getSupplyChecklistStorageKey(
+  scope: string,
+  requestId: string,
+  itemId: string,
+) {
+  return `supply-item-checklist:${scope}:${requestId}:${itemId}`;
+}
+
+function InvoiceUploadForm({
+  onSubmit,
+  request,
+}: {
+  onSubmit: (request: SupplyRequest, event: FormEvent<HTMLFormElement>) => void;
+  request: SupplyRequest;
+}) {
+  if (request.type === "MONEY") {
+    return null;
+  }
+
+  return (
+    <form
+      className="mt-4 grid gap-3 rounded-md border border-dashed border-teal-200 bg-teal-50/40 p-3"
+      onSubmit={(event) => onSubmit(request, event)}
+    >
+      <div>
+        <div className="text-sm font-medium text-slate-950">
+          Прикрепить счета
+        </div>
+        <div className="mt-1 text-xs text-slate-500">
+          Файлы добавятся к заявке без изменения этапа согласования.
+        </div>
+      </div>
+      <input
+        className="block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-teal-700 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+        multiple
+        name="files"
+        type="file"
+      />
+      <input
+        className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-700"
+        name="comment"
+        placeholder="Комментарий к счетам"
+      />
+      <div className="flex justify-end">
+        <button
+          className="inline-flex h-9 items-center justify-center rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+          type="submit"
+        >
+          Прикрепить счета
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PrintRequestAction({ request }: { request: SupplyRequest }) {
+  return (
+    <div className="mt-4 flex justify-end">
+      <a
+        className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        href={`/dashboard/requests/${request.id}/print`}
+        rel="noreferrer"
+        target="_blank"
+      >
+        <Printer size={16} />
+        Печать
+      </a>
+    </div>
   );
 }
 

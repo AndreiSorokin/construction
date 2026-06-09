@@ -404,6 +404,22 @@ export class SupplyRequestsController {
     );
   }
 
+  @Patch(":id/supply-manager/invoices")
+  @UseInterceptors(FilesInterceptor("files", 10))
+  attachInvoicesBySupplyManager(
+    @Param("id") id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.attachInvoicesBySupplyManager(
+      id,
+      files,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/money/send-to-director")
   sendMoneyToDirectorBySupply(
     @Param("id") id: string,

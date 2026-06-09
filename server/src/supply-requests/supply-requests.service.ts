@@ -963,13 +963,15 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
       SupplyRequestStatus.PENDING_DIRECTOR,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
       SupplyRequestStatus.PENDING_SUPPLY,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
     ]);
 
-    if (request.type !== SupplyRequestType.MATERIAL) {
+    if (!request.items.length) {
       throw new BadRequestException(
-        "Only material request items can be edited",
+        "Only requests with items can be edited",
       );
     }
 
@@ -980,8 +982,21 @@ export class SupplyRequestsService {
     const hasCashPaymentUpdates =
       dto.cashPaidAmount !== undefined ||
       dto.cashPaymentComment !== undefined;
+    const hasPtoCommentUpdates = dto.ptoComment !== undefined;
+    const hasChiefEngineerCommentUpdates =
+      dto.chiefEngineerComment !== undefined;
+    const hasSupplyManagerCommentUpdates =
+      dto.supplyManagerComment !== undefined;
+    const hasSupplierCommentUpdates = dto.supplierComment !== undefined;
 
-    if (!hasQuantityUpdates && !hasCashPaymentUpdates) {
+    if (
+      !hasQuantityUpdates &&
+      !hasCashPaymentUpdates &&
+      !hasPtoCommentUpdates &&
+      !hasChiefEngineerCommentUpdates &&
+      !hasSupplyManagerCommentUpdates &&
+      !hasSupplierCommentUpdates
+    ) {
       throw new BadRequestException("At least one item field is required");
     }
 
@@ -993,12 +1008,45 @@ export class SupplyRequestsService {
         request.objectId,
         request.status,
       );
-    } else {
+    } else if (hasCashPaymentUpdates) {
       await this.ensureUserObjectRole(actorId, request.objectId, [
         UserRole.SUPPLY,
       ]);
       this.ensureAssignedSupplyUser(request, actorId);
       actorRole = UserRole.SUPPLY;
+    } else {
+      const objectAccess = await this.ensureUserObjectRole(actorId, request.objectId, [
+        UserRole.PTO,
+        UserRole.CHIEF_ENGINEER,
+        UserRole.SUPPLY,
+        UserRole.SUPPLY_MANAGER,
+      ]);
+
+      if (objectAccess.role === UserRole.SUPPLY) {
+        this.ensureAssignedSupplyUser(request, actorId);
+      }
+
+      actorRole = objectAccess.role;
+    }
+
+    if (
+      hasPtoCommentUpdates &&
+      (actorRole !== UserRole.PTO ||
+        request.status !== SupplyRequestStatus.PENDING_PTO)
+    ) {
+      throw new BadRequestException(
+        "PTO comments can be edited only by PTO at the PTO stage",
+      );
+    }
+
+    if (
+      hasChiefEngineerCommentUpdates &&
+      (actorRole !== UserRole.CHIEF_ENGINEER ||
+        request.status !== SupplyRequestStatus.PENDING_CHIEF_ENGINEER)
+    ) {
+      throw new BadRequestException(
+        "Chief engineer comments can be edited only by chief engineer at the chief engineer stage",
+      );
     }
 
     if (
@@ -1008,6 +1056,28 @@ export class SupplyRequestsService {
     ) {
       throw new BadRequestException(
         "Cash payment fields can be edited only by supply at the supply stage",
+      );
+    }
+
+    if (
+      hasSupplyManagerCommentUpdates &&
+      (actorRole !== UserRole.SUPPLY_MANAGER ||
+        (request.status !== SupplyRequestStatus.PENDING_SUPPLY_MANAGER &&
+          request.status !== SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW))
+    ) {
+      throw new BadRequestException(
+        "Supply manager comments can be edited only by supply manager at supply manager stages",
+      );
+    }
+
+    if (
+      hasSupplierCommentUpdates &&
+      (actorRole !== UserRole.SUPPLY ||
+        (request.status !== SupplyRequestStatus.PENDING_SUPPLY &&
+          request.status !== SupplyRequestStatus.RETURNED_TO_SUPPLY))
+    ) {
+      throw new BadRequestException(
+        "Supplier comments can be edited only by assigned supply user at supply stage",
       );
     }
 
@@ -1086,6 +1156,22 @@ export class SupplyRequestsService {
             dto.cashPaymentComment === undefined
               ? undefined
               : dto.cashPaymentComment.trim() || null,
+          ptoComment:
+            dto.ptoComment === undefined
+              ? undefined
+              : dto.ptoComment.trim() || null,
+          chiefEngineerComment:
+            dto.chiefEngineerComment === undefined
+              ? undefined
+              : dto.chiefEngineerComment.trim() || null,
+          supplyManagerComment:
+            dto.supplyManagerComment === undefined
+              ? undefined
+              : dto.supplyManagerComment.trim() || null,
+          supplierComment:
+            dto.supplierComment === undefined
+              ? undefined
+              : dto.supplierComment.trim() || null,
         },
       });
 
@@ -1111,6 +1197,14 @@ export class SupplyRequestsService {
             newCashPaidAmount: newCashPaidAmount?.toString(),
             oldCashPaymentComment: requestItem.cashPaymentComment,
             newCashPaymentComment: dto.cashPaymentComment,
+            oldPtoComment: requestItem.ptoComment,
+            newPtoComment: dto.ptoComment,
+            oldChiefEngineerComment: requestItem.chiefEngineerComment,
+            newChiefEngineerComment: dto.chiefEngineerComment,
+            oldSupplyManagerComment: requestItem.supplyManagerComment,
+            newSupplyManagerComment: dto.supplyManagerComment,
+            oldSupplierComment: requestItem.supplierComment,
+            newSupplierComment: dto.supplierComment,
           },
         },
       });
@@ -2189,6 +2283,77 @@ export class SupplyRequestsService {
     });
   }
 
+  async attachInvoicesBySupplyManager(
+    id: string,
+    files: Express.Multer.File[] | undefined,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+      SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    ]);
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.SUPPLY_MANAGER,
+    ]);
+
+    if (!files?.length) {
+      throw new BadRequestException("At least one invoice file is required");
+    }
+
+    await mkdir(this.invoiceUploadsDir, { recursive: true });
+
+    return this.prisma.$transaction(async (tx) => {
+      const uploadedInvoices: Array<{ id: string; originalName: string }> = [];
+
+      for (const file of files) {
+        const originalName = normalizeUploadedFileName(file.originalname);
+        const storedName = `${randomUUID()}${extname(originalName)}`;
+        const filePath = join(this.invoiceUploadsDir, storedName);
+
+        await writeFile(filePath, file.buffer);
+
+        const invoice = await tx.supplyRequestInvoice.create({
+          data: {
+            requestId: id,
+            uploadedById: actorId,
+            originalName,
+            storedName,
+            mimeType: file.mimetype,
+            size: file.size,
+            path: filePath,
+          },
+        });
+
+        uploadedInvoices.push({
+          id: invoice.id,
+          originalName: invoice.originalName,
+        });
+      }
+
+      await tx.approvalHistory.create({
+        data: {
+          requestId: id,
+          actorId,
+          action: ApprovalAction.COMMENTED,
+          fromStatus: request.status,
+          toStatus: request.status,
+          comment:
+            dto.comment?.trim() || "Начальник снабжения прикрепил счета",
+          changesJson: {
+            uploadedInvoices,
+          },
+        },
+      });
+
+      return tx.supplyRequest.findUnique({
+        where: { id },
+        include: this.requestInclude,
+      });
+    });
+  }
+
   async sendMoneyToDirectorBySupply(
     id: string,
     dto: RequestActionDto,
@@ -2760,6 +2925,8 @@ export class SupplyRequestsService {
         "User role is not allowed for this object",
       );
     }
+
+    return objectAccess;
   }
 
   private async getInitialRequestRoute(

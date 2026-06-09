@@ -23,5 +23,21 @@ export class UpdateSupplyRequestItemDto {
 
   @IsOptional()
   @IsString()
+  ptoComment?: string;
+
+  @IsOptional()
+  @IsString()
+  chiefEngineerComment?: string;
+
+  @IsOptional()
+  @IsString()
+  supplyManagerComment?: string;
+
+  @IsOptional()
+  @IsString()
+  supplierComment?: string;
+
+  @IsOptional()
+  @IsString()
   comment?: string;
 }

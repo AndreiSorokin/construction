@@ -39,6 +39,7 @@ import {
   assignWorkshopManager,
   assignSupplyRequest,
   attachInvoicesAndSendToDirector,
+  attachInvoicesBySupplyManager,
   completeTransportByAuthor,
   completeQuarryByAuthor,
   completeBusinessTripByAuthor,
@@ -387,6 +388,70 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function updateSupplyManagerItemComment(
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    supplyManagerComment: string,
+  ) {
+    try {
+      await updateSupplyRequestItem(request.id, item.id, {
+        supplyManagerComment,
+      });
+      onSuccess("Комментарий начальника снабжения к позиции сохранен");
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function updateSupplierItemComment(
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    supplierComment: string,
+  ) {
+    try {
+      await updateSupplyRequestItem(request.id, item.id, {
+        supplierComment,
+      });
+      onSuccess("Комментарий снабженца к позиции сохранен");
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function updatePtoItemComment(
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    ptoComment: string,
+  ) {
+    try {
+      await updateSupplyRequestItem(request.id, item.id, {
+        ptoComment,
+      });
+      onSuccess("Комментарий ПТО к позиции сохранен");
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function updateChiefEngineerItemComment(
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    chiefEngineerComment: string,
+  ) {
+    try {
+      await updateSupplyRequestItem(request.id, item.id, {
+        chiefEngineerComment,
+      });
+      onSuccess("Комментарий главного инженера к позиции сохранен");
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function deleteInvoiceFromRequest(
     request: SupplyRequest,
     invoiceId: string,
@@ -469,6 +534,37 @@ export function SupplyRequestsPanel({
           ? `Заявка ${request.requestNumber} отправлена заведующему гаражом`
           : `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
       );
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function submitInvoicesBySupplyManager(
+    request: SupplyRequest,
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const filesInput = formElement.elements.namedItem(
+      "files",
+    ) as HTMLInputElement | null;
+    const files = Array.from(filesInput?.files ?? []);
+
+    if (!files.length) {
+      onError("Прикрепите хотя бы один счет");
+      return;
+    }
+
+    try {
+      await attachInvoicesBySupplyManager(request.id, {
+        comment: String(form.get("comment") ?? ""),
+        files,
+      });
+      formElement.reset();
+      onSuccess(`Счета прикреплены к заявке ${request.requestNumber}`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -810,6 +906,7 @@ export function SupplyRequestsPanel({
                     request={request}
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectToPreviousStep}
+                    onUpdatePtoComment={updatePtoItemComment}
                     onUpdateItem={updateRequestItemQuantity}
                     onSubmit={submitPtoPrices}
                   />
@@ -824,6 +921,7 @@ export function SupplyRequestsPanel({
                     onApprove={approveByChiefEngineer}
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReturn={rejectToPreviousStep}
+                    onUpdateChiefEngineerComment={updateChiefEngineerItemComment}
                     onUpdateItem={updateRequestItemQuantity}
                   />
                 );
@@ -888,8 +986,11 @@ export function SupplyRequestsPanel({
                     <SupplyManagerReviewCard
                       key={request.id}
                       request={request}
+                      checklistStorageScope={user.id}
+                      onAttachInvoices={submitInvoicesBySupplyManager}
                       onApprove={approveBySupplyManagerReview}
                       onReject={rejectToPreviousStep}
+                      onUpdateSupplyManagerComment={updateSupplyManagerItemComment}
                     />
                   );
                 }
@@ -898,9 +999,12 @@ export function SupplyRequestsPanel({
                   <SupplyManagerRequestCard
                     key={request.id}
                     request={request}
+                    checklistStorageScope={user.id}
                     supplyUsers={getSupplyUsersForRequest(objectAccesses, request)}
+                    onAttachInvoices={submitInvoicesBySupplyManager}
                     onReject={rejectToPreviousStep}
                     onSubmit={assignBySupplyManager}
+                    onUpdateSupplyManagerComment={updateSupplyManagerItemComment}
                   />
                 );
               }
@@ -959,9 +1063,11 @@ export function SupplyRequestsPanel({
                 <SupplyRequestCard
                   key={request.id}
                   request={request}
+                  checklistStorageScope={user.id}
                   onDeleteInvoice={deleteInvoiceFromRequest}
                   onReject={rejectToPreviousStep}
                   onSubmit={submitInvoicesBySupply}
+                  onUpdateSupplierComment={updateSupplierItemComment}
                 />
                 );
               }

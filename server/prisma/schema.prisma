@@ -282,6 +282,11 @@ model SupplyRequestItem {
   supplierPurchasePrice   Decimal?                           @db.Decimal(18, 2)
   cashPaidAmount          Decimal?                           @db.Decimal(18, 2)
   cashPaymentComment      String?
+  ptoComment              String?
+  chiefEngineerComment    String?
+  supplyComment           String?
+  supplyManagerComment    String?
+  supplierComment         String?
   fulfillmentStatus       SupplyRequestItemFulfillmentStatus @default(PENDING)
   createdAt               DateTime                           @default(now())
   updatedAt               DateTime                           @updatedAt

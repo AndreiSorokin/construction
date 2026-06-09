@@ -159,6 +159,11 @@ export type SupplyRequestItem = {
   supplierPurchasePrice?: string | null;
   cashPaidAmount?: string | null;
   cashPaymentComment?: string | null;
+  ptoComment?: string | null;
+  chiefEngineerComment?: string | null;
+  supplyComment?: string | null;
+  supplyManagerComment?: string | null;
+  supplierComment?: string | null;
   fulfillmentStatus: SupplyRequestItemFulfillmentStatus;
 };
 

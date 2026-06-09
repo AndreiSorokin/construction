@@ -280,6 +280,10 @@ export function updateSupplyRequestItem(
     stockQuantity?: string;
     cashPaidAmount?: string;
     cashPaymentComment?: string;
+    ptoComment?: string;
+    chiefEngineerComment?: string;
+    supplyManagerComment?: string;
+    supplierComment?: string;
     comment?: string;
   },
 ) {
@@ -471,6 +475,32 @@ export function attachInvoicesAndSendToDirector(
 
   return apiClient<SupplyRequest>(
     `/supply-requests/${requestId}/invoices/send-to-director`,
+    {
+      method: "PATCH",
+      body: form,
+    },
+  );
+}
+
+export function attachInvoicesBySupplyManager(
+  requestId: string,
+  payload: {
+    files: File[];
+    comment?: string;
+  },
+) {
+  const form = new FormData();
+
+  for (const file of payload.files) {
+    form.append("files", file);
+  }
+
+  if (payload.comment) {
+    form.append("comment", payload.comment);
+  }
+
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/supply-manager/invoices`,
     {
       method: "PATCH",
       body: form,

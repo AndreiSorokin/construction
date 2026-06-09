@@ -118,10 +118,10 @@ export function RequestSummaryCard({
   
 
   return (
-    <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="grid gap-3 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+    <article className="min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="grid min-w-0 gap-3 px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center sm:px-4">
         <button
-          className="grid min-w-0 grid-cols-[2rem_1fr] gap-3 text-left"
+          className="grid min-w-0 grid-cols-[2rem_minmax(0,1fr)] gap-3 text-left"
           onClick={() => setIsOpen((current) => !current)}
           type="button"
         >
@@ -141,7 +141,7 @@ export function RequestSummaryCard({
           </span>
         </button>
 
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        <div className="grid grid-cols-2 gap-2 min-[420px]:flex min-[420px]:flex-wrap sm:justify-end">
           {isLegacyRequest ? (
             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
               Старая цепочка
@@ -153,7 +153,7 @@ export function RequestSummaryCard({
             {requestStatusLabels[request.status]}
           </span>
           <Link
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-300 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             href={`/dashboard/requests/${request.id}/history`}
           >
             <History size={14} />
@@ -176,7 +176,13 @@ export function RequestSummaryCard({
       </div>
 
       {isOpen && children ? (
-        <div className="border-t border-slate-100 p-4">
+        <div
+          className={`min-w-0 border-t border-slate-100 p-3 sm:p-4 ${
+            isApproval
+              ? "max-h-[72vh] overflow-y-auto overflow-x-auto overscroll-contain"
+              : "overflow-x-auto"
+          }`}
+        >
           {isApproval ? <ExpandedRequestMeta request={request} /> : null}
           {children}
         </div>
