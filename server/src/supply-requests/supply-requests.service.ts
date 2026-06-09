@@ -10,7 +10,6 @@ import { access, mkdir, unlink, writeFile } from "fs/promises";
 import { extname, join } from "path";
 import {
   ApprovalAction,
-  ObjectDirection,
   ObjectType,
   PriceField,
   Prisma,
@@ -25,7 +24,6 @@ import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
 import { CreateAppealSupplyRequestDto } from "./dto/create-appeal-supply-request.dto";
 import { CreateBusinessTripSupplyRequestDto } from "./dto/create-business-trip-supply-request.dto";
-import { CreateAppealSupplyRequestDto } from "./dto/create-appeal-supply-request.dto";
 import { CreateExpressMaterialSupplyRequestDto } from "./dto/create-express-material-supply-request.dto";
 import { CreateFuelSupplyRequestDto } from "./dto/create-fuel-supply-request.dto";
 import { CreateMaterialSupplyRequestDto } from "./dto/create-material-supply-request.dto";
@@ -45,13 +43,6 @@ type RequestRouteMap = Partial<
   Record<SupplyRequestType, Partial<Record<UserRole, SupplyRequestStatus[]>>>
 >;
 
-type DirectionRequestRouteMap = Partial<
-  Record<
-    SupplyRequestType,
-    Partial<Record<ObjectDirection, Partial<Record<UserRole, SupplyRequestStatus[]>>>>
-  >
->;
-
 function normalizeUploadedFileName(fileName: string) {
   const normalizedName = fileName.trim() || "file";
 
@@ -64,22 +55,6 @@ function normalizeUploadedFileName(fileName: string) {
   return decodedName.includes("�") ? normalizedName : decodedName;
 }
 
-<<<<<<< HEAD
-const SUPPLY_FINAL_ROUTE = [
-=======
-const START_TRANSPORT_ROUTE = [
-  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
-  SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-];
-
-const START_CONSTRUCTION_ROUTE = [
-  SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-];
-
-const START_PRODUCTION_ROUTE = [
-  SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-];
-
 const SUPPLY_FINAL_ROUTE = [
   SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
   SupplyRequestStatus.PENDING_SUPPLY,
@@ -87,151 +62,7 @@ const SUPPLY_FINAL_ROUTE = [
   SupplyRequestStatus.COMPLETED,
 ];
 
-const ROUTE_CONFIG: DirectionRequestRouteMap = {
-  MATERIAL: {
-    TRANSPORT: {
-      MECHANIC: [
-        ...START_TRANSPORT_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-    },
-    CONSTRUCTION: {
-      FOREMAN: [
-        ...START_CONSTRUCTION_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        SupplyRequestStatus.PENDING_PTO,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-      SITE_MANAGER: [
-        ...START_CONSTRUCTION_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        SupplyRequestStatus.PENDING_PTO,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [
-        ...START_PRODUCTION_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-    },
-  },
-  MONEY: {
-    TRANSPORT: {
-      MECHANIC: [...START_TRANSPORT_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    CONSTRUCTION: {
-      FOREMAN: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-      SITE_MANAGER: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [...START_PRODUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-  },
-  FUEL: {
-    TRANSPORT: {
-      MECHANIC: [...START_TRANSPORT_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    CONSTRUCTION: {
-      FOREMAN: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-      SITE_MANAGER: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [...START_PRODUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-  },
-  BUSINESS_TRIP: {
-    TRANSPORT: {
-      MECHANIC: [...START_TRANSPORT_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    CONSTRUCTION: {
-      FOREMAN: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-      SITE_MANAGER: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [...START_PRODUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-  },
-  QUARRY: {
-    CONSTRUCTION: {
-      FOREMAN: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-      SITE_MANAGER: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [...START_PRODUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-  },
-  PRODUCTION: {
-    TRANSPORT: {
-      MECHANIC: [
-        ...START_TRANSPORT_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-    },
-    CONSTRUCTION: {
-      FOREMAN: [
-        ...START_CONSTRUCTION_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        SupplyRequestStatus.PENDING_PTO,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-      SITE_MANAGER: [
-        ...START_CONSTRUCTION_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        SupplyRequestStatus.PENDING_PTO,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [
-        ...START_PRODUCTION_ROUTE,
-        SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-        ...SUPPLY_FINAL_ROUTE,
-      ],
-    },
-  },
-  APPEAL: {
-    TRANSPORT: {
-      MECHANIC: [...START_TRANSPORT_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    CONSTRUCTION: {
-      FOREMAN: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-      SITE_MANAGER: [...START_CONSTRUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-    PRODUCTION: {
-      WORKSHOP_MANAGER: [...START_PRODUCTION_ROUTE, ...SUPPLY_FINAL_ROUTE],
-    },
-  },
-};
-
-const MATERIAL_COMMON_ROUTE = [
-  SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-  SupplyRequestStatus.PENDING_PTO,
->>>>>>> origin/master
-  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
-  SupplyRequestStatus.PENDING_SUPPLY,
-  SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-  SupplyRequestStatus.COMPLETED,
-];
-
-<<<<<<< HEAD
 const TRANSPORT_START_ROUTE = [
-=======
-const MATERIAL_COMMON_ROUTE_WITHOUT_PTO = MATERIAL_COMMON_ROUTE;
-
-const MONEY_COMMON_ROUTE = [
-  SupplyRequestStatus.PENDING_DIRECTOR,
-  SupplyRequestStatus.PENDING_ACCOUNTANT,
-  SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
-  SupplyRequestStatus.PENDING_SUPPLY,
-  SupplyRequestStatus.COMPLETED,
-]
-
-const TRANSPORT_COMMON_ROUTE = [
->>>>>>> origin/master
   SupplyRequestStatus.PENDING_GARAGE_MANAGER,
   SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
 ];
@@ -873,44 +704,6 @@ export class SupplyRequestsService {
         include: this.requestInclude,
       });
     });
-  }
-
-  async createAppealRequest(
-    dto: CreateAppealSupplyRequestDto,
-    authorId: string,
-  ) {
-    if (!dto.text.trim()) {
-      throw new BadRequestException("Appeal text is required");
-    }
-
-    const route = await this.getInitialRequestRoute(
-      authorId,
-      dto.objectId,
-      SupplyRequestType.APPEAL,
-    );
-
-    return this.prisma.$transaction(async (tx) =>
-      tx.supplyRequest.create({
-        data: {
-          requestNumber: await this.createRequestNumber(tx, "APL"),
-          type: SupplyRequestType.APPEAL,
-          objectId: dto.objectId,
-          authorId,
-          purpose: dto.text.trim(),
-          status: route.status,
-          approvalHistory: {
-            create: {
-              actorId: authorId,
-              action: ApprovalAction.CREATED,
-              fromStatus: null,
-              toStatus: route.status,
-              comment: route.comment,
-            },
-          },
-        },
-        include: this.requestInclude,
-      }),
-    );
   }
 
   async findAll(query: FindSupplyRequestsDto = {}) {
@@ -1607,11 +1400,7 @@ export class SupplyRequestsService {
       request.type !== SupplyRequestType.PRODUCTION
     ) {
       throw new BadRequestException(
-<<<<<<< HEAD
         "Only material and production requests can be processed by warehouse manager",
-=======
-        "Only material and production requests can be approved by warehouse manager",
->>>>>>> origin/master
       );
     }
 
@@ -1954,10 +1743,7 @@ export class SupplyRequestsService {
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.QUARRY &&
       request.type !== SupplyRequestType.MONEY &&
-<<<<<<< HEAD
       request.type !== SupplyRequestType.TRANSPORT &&
-=======
->>>>>>> origin/master
       request.type !== SupplyRequestType.FUEL &&
       request.type !== SupplyRequestType.BUSINESS_TRIP &&
       request.type !== SupplyRequestType.PRODUCTION &&
@@ -2043,7 +1829,6 @@ export class SupplyRequestsService {
         SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
         SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
       ],
-<<<<<<< HEAD
       [
         SupplyRequestType.MATERIAL,
         SupplyRequestType.QUARRY,
@@ -2054,8 +1839,6 @@ export class SupplyRequestsService {
         SupplyRequestType.PRODUCTION,
         SupplyRequestType.APPEAL,
       ],
-=======
->>>>>>> origin/master
     );
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.SUPPLY_MANAGER,
@@ -2419,15 +2202,10 @@ export class SupplyRequestsService {
       ],
       [
         SupplyRequestType.MONEY,
-<<<<<<< HEAD
         SupplyRequestType.TRANSPORT,
         SupplyRequestType.FUEL,
         SupplyRequestType.BUSINESS_TRIP,
-=======
-        SupplyRequestType.FUEL,
-        SupplyRequestType.BUSINESS_TRIP,
         SupplyRequestType.PRODUCTION,
->>>>>>> origin/master
         SupplyRequestType.APPEAL,
       ],
     );
@@ -2998,7 +2776,7 @@ export class SupplyRequestsService {
       },
       include: {
         object: {
-          select: { direction: true, type: true },
+          select: { type: true },
         },
       },
     });
@@ -3010,7 +2788,6 @@ export class SupplyRequestsService {
     const route = this.getRequestRoute(
       requestType,
       objectAccess.role,
-      objectAccess.object.direction,
       objectAccess.object.type,
     );
 
@@ -3031,15 +2808,9 @@ export class SupplyRequestsService {
   private getRequestRoute(
     requestType: SupplyRequestType,
     authorRole: UserRole,
-    objectDirection: ObjectDirection,
     objectType: ObjectType,
   ) {
-    const directionRoutes = ROUTE_CONFIG[requestType]?.[objectDirection];
-    const directionRoute =
-      directionRoutes?.[authorRole] ??
-      this.getRouteStartingAfterAuthorRole(directionRoutes, authorRole);
-    const legacyRoute = REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
-    const route = directionRoute ?? legacyRoute;
+    const route = REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
 
     if (
       requestType === SupplyRequestType.MATERIAL &&
@@ -3179,13 +2950,12 @@ export class SupplyRequestsService {
     const route = this.getRequestRoute(
       request.type,
       authorRole,
-      request.object.direction,
       request.object.type,
     );
 
     if (!route?.length) {
       throw new BadRequestException(
-        `Approval route is not configured for type ${request.type}, author role ${authorRole}, object direction ${request.object.direction}, object type ${request.object.type}`,
+        `Approval route is not configured for type ${request.type}, author role ${authorRole}, object type ${request.object.type}`,
       );
     }
 
@@ -3233,13 +3003,12 @@ export class SupplyRequestsService {
     const route = this.getRequestRoute(
       request.type,
       authorRole,
-      request.object.direction,
       request.object.type,
     );
 
     if (!route?.length) {
       throw new BadRequestException(
-        `Approval route is not configured for type ${request.type}, author role ${authorRole}, object direction ${request.object.direction}, object type ${request.object.type}`,
+        `Approval route is not configured for type ${request.type}, author role ${authorRole}, object type ${request.object.type}`,
       );
     }
 

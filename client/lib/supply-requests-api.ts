@@ -160,20 +160,6 @@ export function createProductionSupplyRequest(
   });
 }
 
-export type CreateAppealSupplyRequestPayload = {
-  objectId: string;
-  text: string;
-};
-
-export function createAppealSupplyRequest(
-  payload: CreateAppealSupplyRequestPayload,
-) {
-  return apiClient<SupplyRequest>("/supply-requests/appeal", {
-    method: "POST",
-    body: payload,
-  });
-}
-
 export function getSupplyRequests() {
   return apiClient<SupplyRequest[]>("/supply-requests");
 }

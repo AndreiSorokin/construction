@@ -65,7 +65,6 @@ const inviteRoleLabels: Record<UserRole, string> = {
   STOREKEEPER: "Кладовщик",
   ACCOUNTANT: "Бухгалтер",
   SECRETARY: "Секретарь",
-  MECHANIC: "Механик",
   DIRECTOR: "Директор",
 };
 
@@ -105,51 +104,37 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const currentObjectRole = object?.userAccesses?.find(
     (access) => access.userId === user?.id,
   )?.role;
-  const currentObjectDirection = object?.direction;
   const canCreateMaterialRequest = canCreateRequestType(
     currentObjectRole,
     "MATERIAL",
-    currentObjectDirection,
   );
   const canCreateQuarryRequest = canCreateRequestType(
     currentObjectRole,
     "QUARRY",
-    currentObjectDirection,
   );
   const canCreateExpressMaterialRequest = canCreateRequestType(
     currentObjectRole,
     "EXPRESS_MATERIAL",
-    currentObjectDirection,
   );
   const canCreateTransportRequest = canCreateRequestType(
     currentObjectRole,
     "TRANSPORT",
-    currentObjectDirection,
   );
   const canCreateMoneyRequest = canCreateRequestType(
     currentObjectRole,
     "MONEY",
-    currentObjectDirection,
   );
   const canCreateFuelRequest = canCreateRequestType(
     currentObjectRole,
     "FUEL",
-    currentObjectDirection,
   );
   const canCreateBusinessTripRequest = canCreateRequestType(
     currentObjectRole,
     "BUSINESS_TRIP",
-    currentObjectDirection,
   );
   const canCreateProductionRequest = canCreateRequestType(
     currentObjectRole,
     "PRODUCTION",
-    currentObjectDirection,
-  );
-  const canCreateAppealRequest = canCreateRequestType(
-    currentObjectRole,
-    "APPEAL",
-    currentObjectDirection,
   );
   const canCreateAppealRequest = canCreateRequestType(
     currentObjectRole,

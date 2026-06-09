@@ -943,39 +943,11 @@ export function SupplyRequestsPanel({
                   );
                 }
 
-<<<<<<< HEAD
                 return request.type === "MONEY" ||
                   request.type === "TRANSPORT" ||
                   request.type === "FUEL" ||
                   request.type === "BUSINESS_TRIP" ||
-=======
-                if (request.type === "QUARRY") {
-                  return (
-                    <SimpleApprovalCard
-                      key={request.id}
-                      request={request}
-                      onApprove={approveQuarryBySupplyUser}
-                      onReject={rejectToPreviousStep}
-                    />
-                  );
-                }
-
-                if (request.type === "TRANSPORT") {
-                  return (
-                    <SupplyTransportRequestCard
-                      key={request.id}
-                      request={request}
-                      onReject={rejectToPreviousStep}
-                      onSubmit={submitInvoicesBySupply}
-                    />
-                  );
-                }
-
-                return request.type === "MONEY" ||
-                  request.type === "FUEL" ||
-                  request.type === "BUSINESS_TRIP" ||
                   request.type === "PRODUCTION" ||
->>>>>>> origin/master
                   request.type === "APPEAL" ? (
                   <SupplyMoneyRequestCard
                     key={request.id}
@@ -1117,17 +1089,6 @@ function getVisibleRequests(
 
     if (objectRole === "SUPPLY") {
       return (
-<<<<<<< HEAD
-=======
-        (request.type === "MATERIAL" ||
-          request.type === "MONEY" ||
-          request.type === "QUARRY" ||
-          request.type === "EXPRESS_MATERIAL" ||
-          request.type === "FUEL" ||
-          request.type === "BUSINESS_TRIP" ||
-          request.type === "PRODUCTION" ||
-          request.type === "APPEAL") &&
->>>>>>> origin/master
         request.assignedSupplyUserId === userId &&
         (request.status === "PENDING_SUPPLY" ||
           request.status === "RETURNED_TO_SUPPLY" ||

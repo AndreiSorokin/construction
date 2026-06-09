@@ -105,10 +105,6 @@ export function RequestSummaryCard({
     return request.purpose ?? "Производство";
   }
 
-  if (request.type === "APPEAL") {
-    return request.purpose ?? "Обращение";
-  }
-
   if (request.type === "QUARRY" || request.type === "EXPRESS_MATERIAL") {
     return request.items.map((item) => item.materialNameSnapshot).join(", ");
   }

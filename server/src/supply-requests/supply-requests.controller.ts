@@ -129,14 +129,6 @@ export class SupplyRequestsController {
     );
   }
 
-  @Post("appeal")
-  createAppealRequest(
-    @Body() dto: CreateAppealSupplyRequestDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.supplyRequestsService.createAppealRequest(dto, user.id);
-  }
-
   @Get()
   findAll(@Query() query: FindSupplyRequestsDto) {
     return this.supplyRequestsService.findAll(query);
