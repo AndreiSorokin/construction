@@ -48,12 +48,6 @@ const objectTypeLabels = {
   WORKSHOP: "Цех",
 };
 
-const objectDirectionLabels = {
-  CONSTRUCTION: "Строительный отдел",
-  TRANSPORT: "Транспортный отдел",
-  PRODUCTION: "Производственный отдел",
-};
-
 export function DashboardClient() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -131,7 +125,6 @@ export function DashboardClient() {
         body: {
           name: String(form.get("name")),
           type: String(form.get("type")),
-          direction: String(form.get("direction")),
         },
       });
 
@@ -426,8 +419,7 @@ export function DashboardClient() {
                           {access.object.name}
                         </div>
                         <div className="text-sm text-slate-600">
-                          {objectTypeLabels[access.object.type]} ·{" "}
-                          {objectDirectionLabels[access.object.direction]}
+                          {objectTypeLabels[access.object.type]}
                         </div>
                       </div>
                     </div>
@@ -499,20 +491,6 @@ export function DashboardClient() {
                       Внутренний отдел
                     </option>
                     <option value="WORKSHOP">Цех</option>
-                  </select>
-                </label>
-                <label className="grid gap-1.5">
-                  <span className="text-sm font-medium text-slate-700">
-                    Направление
-                  </span>
-                  <select
-                    className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                    name="direction"
-                    required
-                  >
-                    <option value="CONSTRUCTION">Строительный отдел</option>
-                    <option value="TRANSPORT">Транспортный отдел</option>
-                    <option value="PRODUCTION">Производственный отдел</option>
                   </select>
                 </label>
                 <button

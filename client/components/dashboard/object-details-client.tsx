@@ -43,12 +43,6 @@ const objectTypeLabels = {
   WORKSHOP: "Цех",
 };
 
-const objectDirectionLabels = {
-  CONSTRUCTION: "Строительный отдел",
-  TRANSPORT: "Транспортный отдел",
-  PRODUCTION: "Производственный отдел",
-};
-
 const inviteRoleLabels: Record<UserRole, string> = {
   MECHANIC: "Механик",
   FOREMAN: "Прораб",
@@ -434,8 +428,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                       </div>
                     )}
                     <p className="mt-1 text-sm text-slate-600">
-                      {objectTypeLabels[object.type]} ·{" "}
-                      {objectDirectionLabels[object.direction]}
+                      {objectTypeLabels[object.type]}
                     </p>
                   </div>
                 </div>
