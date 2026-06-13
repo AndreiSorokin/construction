@@ -5,61 +5,65 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "MECHANIC",
     "FOREMAN",
     "SITE_MANAGER",
+    "GARAGE_MANAGER",
+    "DEPUTY_TRANSPORT_DIRECTOR",
     "CHIEF_ENGINEER",
     "PTO",
+    "WAREHOUSE_MANAGER",
+    "SUPPLY_MANAGER",
+    "SUPPLY",
     "WORKSHOP_MANAGER",
+    "DEPUTY_PRODUCTION_DIRECTOR",
   ],
-  TRANSPORT: [
-    "FOREMAN",
-    "SITE_MANAGER",
-    "CHIEF_ENGINEER",
-    "WORKSHOP_MANAGER",
-  ],
-  MONEY: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "CHIEF_ENGINEER",
-    "WORKSHOP_MANAGER",
-  ],
+  TRANSPORT: getTransportRequestCreatorRoles(),
+  MONEY: getSupplyOnlyRequestCreatorRoles(),
   PRODUCTION: [
     "MECHANIC",
     "FOREMAN",
     "SITE_MANAGER",
+    "GARAGE_MANAGER",
+    "DEPUTY_TRANSPORT_DIRECTOR",
     "CHIEF_ENGINEER",
     "PTO",
+    "WAREHOUSE_MANAGER",
+    "SUPPLY_MANAGER",
+    "SUPPLY",
     "WORKSHOP_MANAGER",
+    "DEPUTY_PRODUCTION_DIRECTOR",
   ],
-  QUARRY: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "CHIEF_ENGINEER",
-    "WORKSHOP_MANAGER",
-  ],
+  QUARRY: getSupplyOnlyRequestCreatorRoles(),
   EXPRESS_MATERIAL: ["SUPPLY"],
-  FUEL: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "CHIEF_ENGINEER",
-    "WORKSHOP_MANAGER",
-  ],
-  BUSINESS_TRIP: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "CHIEF_ENGINEER",
-    "WORKSHOP_MANAGER",
-  ],
-  APPEAL: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "CHIEF_ENGINEER",
-    "WORKSHOP_MANAGER",
-  ],
+  FUEL: getSupplyOnlyRequestCreatorRoles(),
+  BUSINESS_TRIP: getSupplyOnlyRequestCreatorRoles(),
+  APPEAL: getSupplyOnlyRequestCreatorRoles(),
 };
+
+function getSupplyOnlyRequestCreatorRoles(): UserRole[] {
+  return [
+    "MECHANIC",
+    "GARAGE_MANAGER",
+    "DEPUTY_TRANSPORT_DIRECTOR",
+    "FOREMAN",
+    "SITE_MANAGER",
+    "CHIEF_ENGINEER",
+    "WORKSHOP_MANAGER",
+    "DEPUTY_PRODUCTION_DIRECTOR",
+    "SUPPLY_MANAGER",
+    "SUPPLY",
+  ];
+}
+
+function getTransportRequestCreatorRoles(): UserRole[] {
+  return [
+    "FOREMAN",
+    "SITE_MANAGER",
+    "CHIEF_ENGINEER",
+    "WORKSHOP_MANAGER",
+    "DEPUTY_PRODUCTION_DIRECTOR",
+    "SUPPLY_MANAGER",
+    "SUPPLY",
+  ];
+}
 
 export function canCreateRequestType(
   role: UserRole | null | undefined,

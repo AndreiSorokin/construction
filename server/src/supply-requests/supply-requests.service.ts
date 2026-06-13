@@ -43,6 +43,11 @@ type RequestRouteMap = Partial<
   Record<SupplyRequestType, Partial<Record<UserRole, SupplyRequestStatus[]>>>
 >;
 
+type RouteChainStep = {
+  roles: UserRole[];
+  status: SupplyRequestStatus | null;
+};
+
 function normalizeUploadedFileName(fileName: string) {
   const normalizedName = fileName.trim() || "file";
 
@@ -130,6 +135,22 @@ const PRODUCTION_SUPPLY_ROUTE = [
   ...SUPPLY_FINAL_ROUTE,
 ];
 
+const FUEL_MECHANIC_ROUTE = [
+  SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
+const FUEL_CONSTRUCTION_ROUTE = [
+  SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+  SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
+const FUEL_CHIEF_ENGINEER_ROUTE = [
+  SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
 const EXPRESS_MATERIAL_COMMON_ROUTE = [
   SupplyRequestStatus.PENDING_DIRECTOR,
   SupplyRequestStatus.PENDING_ACCOUNTANT,
@@ -137,11 +158,158 @@ const EXPRESS_MATERIAL_COMMON_ROUTE = [
   SupplyRequestStatus.COMPLETED,
 ];
 
+const MATERIAL_AND_PRODUCTION_ROUTE_CHAINS: RouteChainStep[][] = [
+  [
+    { roles: [UserRole.MECHANIC], status: null },
+    {
+      roles: [UserRole.GARAGE_MANAGER],
+      status: SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+    },
+    {
+      roles: [UserRole.DEPUTY_TRANSPORT_DIRECTOR],
+      status: SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+    },
+    {
+      roles: [UserRole.WAREHOUSE_MANAGER],
+      status: SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+    },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    },
+    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    },
+    { roles: [], status: SupplyRequestStatus.COMPLETED },
+  ],
+  [
+    { roles: [UserRole.FOREMAN, UserRole.SITE_MANAGER], status: null },
+    {
+      roles: [UserRole.CHIEF_ENGINEER],
+      status: SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+    },
+    { roles: [UserRole.PTO], status: SupplyRequestStatus.PENDING_PTO },
+    {
+      roles: [UserRole.WAREHOUSE_MANAGER],
+      status: SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+    },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    },
+    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    },
+    { roles: [], status: SupplyRequestStatus.COMPLETED },
+  ],
+  [
+    { roles: [UserRole.WORKSHOP_MANAGER], status: null },
+    {
+      roles: [UserRole.DEPUTY_PRODUCTION_DIRECTOR],
+      status: SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+    },
+    {
+      roles: [UserRole.WAREHOUSE_MANAGER],
+      status: SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+    },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    },
+    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    },
+    { roles: [], status: SupplyRequestStatus.COMPLETED },
+  ],
+];
+
+const SUPPLY_ONLY_ROUTE_CHAINS: RouteChainStep[][] = [
+  [
+    { roles: [UserRole.MECHANIC], status: null },
+    {
+      roles: [UserRole.GARAGE_MANAGER],
+      status: SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+    },
+    {
+      roles: [UserRole.DEPUTY_TRANSPORT_DIRECTOR],
+      status: SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+    },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    },
+    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    },
+    { roles: [], status: SupplyRequestStatus.COMPLETED },
+  ],
+  [
+    { roles: [UserRole.FOREMAN, UserRole.SITE_MANAGER], status: null },
+    {
+      roles: [UserRole.CHIEF_ENGINEER],
+      status: SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+    },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    },
+    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    },
+    { roles: [], status: SupplyRequestStatus.COMPLETED },
+  ],
+  [
+    { roles: [UserRole.WORKSHOP_MANAGER], status: null },
+    {
+      roles: [UserRole.DEPUTY_PRODUCTION_DIRECTOR],
+      status: SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
+    },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+    },
+    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
+    {
+      roles: [UserRole.SUPPLY_MANAGER],
+      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+    },
+    { roles: [], status: SupplyRequestStatus.COMPLETED },
+  ],
+];
+
+const TRANSPORT_ROUTE_CHAINS = SUPPLY_ONLY_ROUTE_CHAINS.slice(1);
+
 const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
   MATERIAL: {
     MECHANIC: TRANSPORT_MATERIAL_LIKE_ROUTE,
     FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
     SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    GARAGE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...MATERIAL_LIKE_WAREHOUSE_ROUTE,
+    ],
+    CHIEF_ENGINEER: CHIEF_ENGINEER_MATERIAL_LIKE_ROUTE,
+    PTO: MATERIAL_LIKE_WAREHOUSE_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
+  },
+  PRODUCTION: {
+    MECHANIC: TRANSPORT_MATERIAL_LIKE_ROUTE,
+    FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
+    GARAGE_MANAGER: [
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      ...MATERIAL_LIKE_WAREHOUSE_ROUTE,
+    ],
     CHIEF_ENGINEER: CHIEF_ENGINEER_MATERIAL_LIKE_ROUTE,
     PTO: MATERIAL_LIKE_WAREHOUSE_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
@@ -151,6 +319,34 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
     SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
     CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
+  },
+  FUEL: {
+    MECHANIC: FUEL_MECHANIC_ROUTE,
+    FOREMAN: FUEL_CONSTRUCTION_ROUTE,
+    SITE_MANAGER: FUEL_CONSTRUCTION_ROUTE,
+    CHIEF_ENGINEER: FUEL_CHIEF_ENGINEER_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
+  },
+  BUSINESS_TRIP: {
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
+  },
+  APPEAL: {
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
+    CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
+    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
+  },
+  QUARRY: {
+    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE,
+    CHIEF_ENGINEER: SUPPLY_FINAL_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   TRANSPORT: {
@@ -164,45 +360,10 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     ],
     CHIEF_ENGINEER: SUPPLY_FINAL_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
-  },
-  FUEL: {
-    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
-    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
-    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
-    CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
-    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
-  },
-  BUSINESS_TRIP: {
-    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
-    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
-    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
-    CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
-    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
-  },
-  PRODUCTION: {
-    MECHANIC: TRANSPORT_MATERIAL_LIKE_ROUTE,
-    FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
-    SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
-    CHIEF_ENGINEER: CHIEF_ENGINEER_MATERIAL_LIKE_ROUTE,
-    PTO: MATERIAL_LIKE_WAREHOUSE_ROUTE,
-    WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
-  },
-  QUARRY: {
-    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
-    FOREMAN: CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE,
-    SITE_MANAGER: CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE,
-    CHIEF_ENGINEER: SUPPLY_FINAL_ROUTE,
-    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
+    DEPUTY_PRODUCTION_DIRECTOR: SUPPLY_FINAL_ROUTE,
   },
   EXPRESS_MATERIAL: {
     SUPPLY: EXPRESS_MATERIAL_COMMON_ROUTE,
-  },
-  APPEAL: {
-    MECHANIC: TRANSPORT_SUPPLY_ROUTE,
-    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
-    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
-    CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
-    WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
 };
 
@@ -3196,6 +3357,45 @@ export class SupplyRequestsService {
     authorRole: UserRole,
     objectType: ObjectType,
   ) {
+    if (
+      requestType === SupplyRequestType.MATERIAL ||
+      requestType === SupplyRequestType.PRODUCTION
+    ) {
+      const indexedRoute =
+        this.getRouteStartingAfterAuthorRoleFromChains(
+          MATERIAL_AND_PRODUCTION_ROUTE_CHAINS,
+          authorRole,
+        );
+
+      if (indexedRoute?.length) {
+        return indexedRoute;
+      }
+    }
+
+    if (requestType === SupplyRequestType.TRANSPORT) {
+      const indexedRoute =
+        this.getRouteStartingAfterAuthorRoleFromChains(
+          TRANSPORT_ROUTE_CHAINS,
+          authorRole,
+        );
+
+      if (indexedRoute?.length) {
+        return indexedRoute;
+      }
+    }
+
+    if (this.isSupplyOnlyIndexedRouteType(requestType)) {
+      const indexedRoute =
+        this.getRouteStartingAfterAuthorRoleFromChains(
+          SUPPLY_ONLY_ROUTE_CHAINS,
+          authorRole,
+        );
+
+      if (indexedRoute?.length) {
+        return indexedRoute;
+      }
+    }
+
     const route = REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
 
     if (
@@ -3238,6 +3438,49 @@ export class SupplyRequestsService {
     }
 
     return null;
+  }
+
+  private getRouteStartingAfterAuthorRoleFromChains(
+    chains: RouteChainStep[][],
+    authorRole: UserRole,
+  ) {
+    for (const chain of chains) {
+      const authorStepIndex = chain.findIndex((step) =>
+        step.roles.includes(authorRole),
+      );
+
+      if (authorStepIndex < 0) {
+        continue;
+      }
+
+      if (
+        authorRole === UserRole.SUPPLY_MANAGER &&
+        chain[authorStepIndex]?.status ===
+          SupplyRequestStatus.PENDING_SUPPLY_MANAGER
+      ) {
+        return chain
+          .slice(authorStepIndex)
+          .map((step) => step.status)
+          .filter((status): status is SupplyRequestStatus => Boolean(status));
+      }
+
+      return chain
+        .slice(authorStepIndex + 1)
+        .map((step) => step.status)
+        .filter((status): status is SupplyRequestStatus => Boolean(status));
+    }
+
+    return null;
+  }
+
+  private isSupplyOnlyIndexedRouteType(requestType: SupplyRequestType) {
+    return (
+      requestType === SupplyRequestType.MONEY ||
+      requestType === SupplyRequestType.QUARRY ||
+      requestType === SupplyRequestType.FUEL ||
+      requestType === SupplyRequestType.BUSINESS_TRIP ||
+      requestType === SupplyRequestType.APPEAL
+    );
   }
 
   private getRouteStatusesForRole(role: UserRole) {

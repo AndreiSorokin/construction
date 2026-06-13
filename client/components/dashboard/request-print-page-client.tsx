@@ -175,7 +175,6 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
         <Info label="Объект" value={request.object?.name ?? request.objectId} />
         <Info label="Автор" value={formatUser(request.author, request.authorId)} />
         <Info label="Дата создания" value={formatDateTime(request.createdAt)} />
-        <Info label="Текущий статус" value={requestStatusLabels[request.status]} />
         <Info
           label="Назначенный снабженец"
           value={
@@ -184,7 +183,7 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
               : "Не назначен"
           }
         />
-        <Info label="Итого по цене ПТО" value={formatMoney(ptoTotal)} />
+        <Info label="По цене" value={formatMoney(ptoTotal)} />
       </section>
 
       <section>
