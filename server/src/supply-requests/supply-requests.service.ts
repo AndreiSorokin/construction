@@ -105,6 +105,11 @@ const CONSTRUCTION_SUPPLY_ROUTE = [
   ...SUPPLY_FINAL_ROUTE,
 ];
 
+const CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE = [
+  ...CONSTRUCTION_START_ROUTE,
+  ...SUPPLY_FINAL_ROUTE,
+];
+
 const CHIEF_ENGINEER_MATERIAL_LIKE_ROUTE = [
   SupplyRequestStatus.PENDING_PTO,
   ...MATERIAL_LIKE_WAREHOUSE_ROUTE,
@@ -138,6 +143,7 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
     SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
     CHIEF_ENGINEER: CHIEF_ENGINEER_MATERIAL_LIKE_ROUTE,
+    PTO: MATERIAL_LIKE_WAREHOUSE_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
   },
   MONEY: {
@@ -178,13 +184,14 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     FOREMAN: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
     SITE_MANAGER: CONSTRUCTION_MATERIAL_LIKE_ROUTE,
     CHIEF_ENGINEER: CHIEF_ENGINEER_MATERIAL_LIKE_ROUTE,
+    PTO: MATERIAL_LIKE_WAREHOUSE_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_MATERIAL_LIKE_ROUTE,
   },
   QUARRY: {
     MECHANIC: TRANSPORT_SUPPLY_ROUTE,
-    FOREMAN: CONSTRUCTION_SUPPLY_ROUTE,
-    SITE_MANAGER: CONSTRUCTION_SUPPLY_ROUTE,
-    CHIEF_ENGINEER: CHIEF_ENGINEER_SUPPLY_ROUTE,
+    FOREMAN: CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE,
+    SITE_MANAGER: CONSTRUCTION_SUPPLY_WITHOUT_PTO_ROUTE,
+    CHIEF_ENGINEER: SUPPLY_FINAL_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   EXPRESS_MATERIAL: {
@@ -767,6 +774,51 @@ export class SupplyRequestsService {
     };
   }
 
+  async getPendingCountForUser(userId: string) {
+    const objectAccesses = await this.prisma.userObjectAccess.findMany({
+      where: { userId },
+      select: {
+        objectId: true,
+        role: true,
+      },
+    });
+
+    if (!objectAccesses.length) {
+      return { count: 0 };
+    }
+
+    const requests = await this.prisma.supplyRequest.findMany({
+      where: {
+        status: {
+          notIn: [
+            SupplyRequestStatus.COMPLETED,
+            SupplyRequestStatus.REJECTED,
+            SupplyRequestStatus.ARCHIVED,
+          ],
+        },
+      },
+      select: {
+        assignedStorekeeperId: true,
+        assignedSupplyUserId: true,
+        assignedWorkshopManagerId: true,
+        authorId: true,
+        objectId: true,
+        status: true,
+        type: true,
+      },
+    });
+
+    const roleByObjectId = new Map(
+      objectAccesses.map((access) => [access.objectId, access.role]),
+    );
+
+    return {
+      count: requests.filter((request) =>
+        this.isRequestPendingForUser(request, roleByObjectId, userId),
+      ).length,
+    };
+  }
+
   private buildFindAllWhere(query: FindSupplyRequestsDto) {
     const where: Prisma.SupplyRequestWhereInput = {};
 
@@ -800,6 +852,118 @@ export class SupplyRequestsService {
     }
 
     return where;
+  }
+
+  private isRequestPendingForUser(
+    request: {
+      assignedStorekeeperId: string | null;
+      assignedSupplyUserId: string | null;
+      assignedWorkshopManagerId: string | null;
+      authorId: string;
+      objectId: string;
+      status: SupplyRequestStatus;
+      type: SupplyRequestType;
+    },
+    roleByObjectId: Map<string, UserRole>,
+    userId: string,
+  ) {
+    const objectRole = roleByObjectId.get(request.objectId);
+
+    if (
+      (request.type === SupplyRequestType.TRANSPORT ||
+        request.type === SupplyRequestType.QUARRY) &&
+      request.status === SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR &&
+      request.authorId === userId
+    ) {
+      return true;
+    }
+
+    if (
+      request.type === SupplyRequestType.PRODUCTION &&
+      request.status === SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR &&
+      request.authorId === userId
+    ) {
+      return true;
+    }
+
+    if (
+      (request.type === SupplyRequestType.EXPRESS_MATERIAL ||
+        request.type === SupplyRequestType.BUSINESS_TRIP) &&
+      request.status === SupplyRequestStatus.PENDING_REQUEST_AUTHOR &&
+      request.authorId === userId
+    ) {
+      return true;
+    }
+
+    if (objectRole === UserRole.PTO) {
+      return request.status === SupplyRequestStatus.PENDING_PTO;
+    }
+
+    if (objectRole === UserRole.CHIEF_ENGINEER) {
+      return request.status === SupplyRequestStatus.PENDING_CHIEF_ENGINEER;
+    }
+
+    if (objectRole === UserRole.WAREHOUSE_MANAGER) {
+      return request.status === SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER;
+    }
+
+    if (objectRole === UserRole.DEPUTY_PRODUCTION_DIRECTOR) {
+      return (
+        request.status === SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR
+      );
+    }
+
+    if (objectRole === UserRole.WORKSHOP_MANAGER) {
+      return (
+        request.type === SupplyRequestType.PRODUCTION &&
+        request.status === SupplyRequestStatus.PENDING_WORKSHOP_MANAGER &&
+        request.assignedWorkshopManagerId === userId
+      );
+    }
+
+    if (objectRole === UserRole.DEPUTY_TRANSPORT_DIRECTOR) {
+      return (
+        request.status === SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR
+      );
+    }
+
+    if (objectRole === UserRole.GARAGE_MANAGER) {
+      return request.status === SupplyRequestStatus.PENDING_GARAGE_MANAGER;
+    }
+
+    if (objectRole === UserRole.SUPPLY_MANAGER) {
+      return (
+        request.status === SupplyRequestStatus.PENDING_SUPPLY_MANAGER ||
+        request.status === SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW
+      );
+    }
+
+    if (objectRole === UserRole.ACCOUNTANT) {
+      return request.status === SupplyRequestStatus.PENDING_ACCOUNTANT;
+    }
+
+    if (objectRole === UserRole.SUPPLY) {
+      return (
+        request.assignedSupplyUserId === userId &&
+        (request.status === SupplyRequestStatus.PENDING_SUPPLY ||
+          request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY ||
+          request.status === SupplyRequestStatus.IN_PROGRESS)
+      );
+    }
+
+    if (objectRole === UserRole.STOREKEEPER) {
+      return (
+        request.type === SupplyRequestType.MATERIAL &&
+        request.status === SupplyRequestStatus.PENDING_STOREKEEPER &&
+        request.assignedStorekeeperId === userId
+      );
+    }
+
+    if (objectRole === UserRole.DIRECTOR) {
+      return request.status === SupplyRequestStatus.PENDING_DIRECTOR;
+    }
+
+    return false;
   }
 
   private parsePositiveInteger(value: string | undefined, fallback: number) {
@@ -997,6 +1161,8 @@ export class SupplyRequestsService {
       dto.quantity !== undefined ||
       dto.orderQuantity !== undefined ||
       dto.stockQuantity !== undefined;
+    const hasTextUpdates =
+      dto.materialName !== undefined || dto.measurementUnit !== undefined;
     const hasCashPaymentUpdates =
       dto.cashPaidAmount !== undefined ||
       dto.cashPaymentComment !== undefined;
@@ -1008,6 +1174,7 @@ export class SupplyRequestsService {
     const hasSupplierCommentUpdates = dto.supplierComment !== undefined;
 
     if (
+      !hasTextUpdates &&
       !hasQuantityUpdates &&
       !hasCashPaymentUpdates &&
       !hasPtoCommentUpdates &&
@@ -1045,6 +1212,20 @@ export class SupplyRequestsService {
       }
 
       actorRole = objectAccess.role;
+    }
+
+    if (
+      hasTextUpdates &&
+      !(
+        (actorRole === UserRole.PTO &&
+          request.status === SupplyRequestStatus.PENDING_PTO) ||
+        (actorRole === UserRole.CHIEF_ENGINEER &&
+          request.status === SupplyRequestStatus.PENDING_CHIEF_ENGINEER)
+      )
+    ) {
+      throw new BadRequestException(
+        "Item name and measurement unit can be edited only by PTO or chief engineer at their stages",
+      );
     }
 
     if (
@@ -1121,6 +1302,20 @@ export class SupplyRequestsService {
       dto.cashPaidAmount === undefined
         ? undefined
         : new Prisma.Decimal(dto.cashPaidAmount);
+    const newMaterialName =
+      dto.materialName === undefined ? undefined : dto.materialName.trim();
+    const newMeasurementUnit =
+      dto.measurementUnit === undefined
+        ? undefined
+        : dto.measurementUnit.trim();
+
+    if (newMaterialName !== undefined && !newMaterialName) {
+      throw new BadRequestException("Material name cannot be empty");
+    }
+
+    if (newMeasurementUnit !== undefined && !newMeasurementUnit) {
+      throw new BadRequestException("Measurement unit cannot be empty");
+    }
 
     if (
       request.status === SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER &&
@@ -1166,6 +1361,8 @@ export class SupplyRequestsService {
       await tx.supplyRequestItem.update({
         where: { id: itemId },
         data: {
+          materialNameSnapshot: newMaterialName,
+          measurementUnitSnapshot: newMeasurementUnit,
           quantity: newQuantity,
           orderQuantity: newOrderQuantity,
           stockQuantity: newStockQuantity,
@@ -1205,6 +1402,10 @@ export class SupplyRequestsService {
             actorRole,
             itemId,
             materialName: requestItem.materialNameSnapshot,
+            oldMaterialName: requestItem.materialNameSnapshot,
+            newMaterialName,
+            oldMeasurementUnit: requestItem.measurementUnitSnapshot,
+            newMeasurementUnit,
             oldQuantity: requestItem.quantity.toString(),
             newQuantity: newQuantity?.toString(),
             oldOrderQuantity: requestItem.orderQuantity.toString(),

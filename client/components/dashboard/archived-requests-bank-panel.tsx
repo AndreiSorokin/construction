@@ -4,6 +4,10 @@ import { RefreshCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MaterialItemsStatusList } from "@/components/dashboard/material-items-status-list";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
+import {
+  ObjectApprovalGroup,
+  type ObjectRequestGroup,
+} from "@/components/dashboard/supply-request-approval-cards";
 import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getSupplyRequests } from "@/lib/supply-requests-api";
@@ -13,25 +17,19 @@ type ArchivedRequestsBankPanelProps = {
   onError?: (error: unknown) => void;
 };
 
-type ObjectRequestGroup = {
-  objectId: string;
-  objectName: string;
-  positionsCount: number;
-  requests: SupplyRequest[];
-};
-
 export function ArchivedRequestsBankPanel({
   onError,
 }: ArchivedRequestsBankPanelProps) {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { errorMessage, showError, clearError } = useErrorMessage();
-  const [isOpen, setIsOpen] = useState(false);
 
   const completedRequests = useMemo(() => {
     return requests.filter(
       (request) =>
-        request.status === "COMPLETED" || request.status === "ARCHIVED",
+        request.status === "COMPLETED" ||
+        request.status === "REJECTED" ||
+        request.status === "ARCHIVED",
     );
   }, [requests]);
 
@@ -84,9 +82,23 @@ export function ArchivedRequestsBankPanel({
 
       <div className="mt-4 grid gap-4">
         {requestGroups.map((group) => (
+          <ObjectApprovalGroup
+            countLabel="Заявок в архиве"
+            group={group}
+            key={`collapsed-${group.objectId}`}
+          >
+            {group.requests.map((request) => (
+              <RequestSummaryCard key={request.id} request={request}>
+                <RequestDetails request={request} />
+              </RequestSummaryCard>
+            ))}
+          </ObjectApprovalGroup>
+        ))}
+
+        {requestGroups.map((group) => (
   <div
     key={group.objectId}
-    className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+    className="hidden"
   >
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div>

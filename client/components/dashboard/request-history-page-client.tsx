@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ApprovalHistoryList } from "@/components/dashboard/approval-history-list";
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { RequestSummaryCard } from "@/components/dashboard/request-summary-card";
 import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
@@ -48,8 +49,11 @@ export function RequestHistoryPageClient({ requestId }: { requestId: string }) {
         errorMessage={errorMessage}
         onClearError={clearError}
       />
-      <header className="relative z-[200] border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
+      <DashboardNav
+        subtitle={`История согласования ${request?.requestNumber ?? ""}`.trim()}
+      />
+      <header className="hidden">
+        <div className="mx-auto flex w-full max-w-none items-center justify-between gap-3 px-3 py-4 sm:px-4 lg:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-700 text-white">
               <Factory size={20} />
@@ -73,7 +77,7 @@ export function RequestHistoryPageClient({ requestId }: { requestId: string }) {
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-5xl gap-4 px-4 py-6">
+      <section className="mx-auto grid w-full max-w-none gap-4 px-3 py-5 sm:px-4 lg:px-6 lg:py-6">
         {isLoading ? (
           <div className="rounded-md border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
             Загружаем историю...

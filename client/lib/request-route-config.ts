@@ -6,6 +6,7 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "FOREMAN",
     "SITE_MANAGER",
     "CHIEF_ENGINEER",
+    "PTO",
     "WORKSHOP_MANAGER",
   ],
   TRANSPORT: [
@@ -26,6 +27,7 @@ const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
     "FOREMAN",
     "SITE_MANAGER",
     "CHIEF_ENGINEER",
+    "PTO",
     "WORKSHOP_MANAGER",
   ],
   QUARRY: [

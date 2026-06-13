@@ -134,6 +134,11 @@ export class SupplyRequestsController {
     return this.supplyRequestsService.findAll(query);
   }
 
+  @Get("pending-count")
+  getPendingCount(@CurrentUser() user: AuthenticatedUser) {
+    return this.supplyRequestsService.getPendingCountForUser(user.id);
+  }
+
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.supplyRequestsService.findOne(id);

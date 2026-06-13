@@ -4,6 +4,7 @@ import { ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { NotificationToasts } from "@/components/ui/notification-toasts";
 import { useErrorMessage } from "@/hooks/use-error-message";
 import { getStoredUser } from "@/lib/auth-storage";
@@ -112,10 +113,14 @@ export function RequestPrintPageClient({ requestId }: { requestId: string }) {
     <main className="min-h-screen bg-slate-100 text-slate-950 print:bg-white">
       <NotificationToasts errorMessage={errorMessage} onClearError={clearError} />
 
+      <div className="print:hidden">
+        <DashboardNav subtitle="Печать заявки" />
+      </div>
+
       <header className="border-b border-slate-200 bg-white print:hidden">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
+        <div className="mx-auto flex w-full max-w-none items-center justify-end gap-3 px-3 py-3 sm:px-4 lg:px-6">
           <Link
-            className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="hidden"
             href="/dashboard"
           >
             <ArrowLeft size={16} />
@@ -132,7 +137,7 @@ export function RequestPrintPageClient({ requestId }: { requestId: string }) {
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-4 py-6 print:max-w-none print:px-0 print:py-0">
+      <section className="mx-auto w-full max-w-none px-3 py-5 sm:px-4 lg:px-6 lg:py-6 print:max-w-none print:px-0 print:py-0">
         {isLoading ? (
           <div className="rounded-md border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
             Загружаем заявку...

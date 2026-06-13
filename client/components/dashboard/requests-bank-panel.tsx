@@ -30,7 +30,9 @@ export function RequestsBankPanel({ onError }: RequestsBankPanelProps) {
   const { successMessage, showSuccess, clearSuccess } = useSuccessMessage();
   const activeRequests = requests.filter(
     (request) =>
-      request.status !== "COMPLETED" && request.status !== "ARCHIVED",
+      request.status !== "COMPLETED" &&
+      request.status !== "REJECTED" &&
+      request.status !== "ARCHIVED",
   );
   const requestGroups = groupRequestsByObject(activeRequests);
 

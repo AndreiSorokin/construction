@@ -2,6 +2,14 @@ import { IsNumberString, IsOptional, IsString } from "class-validator";
 
 export class UpdateSupplyRequestItemDto {
   @IsOptional()
+  @IsString()
+  materialName?: string;
+
+  @IsOptional()
+  @IsString()
+  measurementUnit?: string;
+
+  @IsOptional()
   @IsNumberString()
   quantity?: string;
 

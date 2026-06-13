@@ -25,7 +25,7 @@ export function AuthShell({
             <Factory size={20} />
           </span>
           <div>
-            <div className="font-semibold text-slate-950">{"Стройконтроль"}</div>
+            <div className="font-semibold text-slate-950">{"Интерстиль"}</div>
             <div className="text-sm text-slate-500"></div>
           </div>
         </div>

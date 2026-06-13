@@ -21,7 +21,7 @@ export function NotificationToasts({
   }
 
   return (
-    <div className="fixed right-4 top-20 z-[100] grid w-[calc(100vw-2rem)] max-w-sm gap-3 sm:right-6 sm:top-6">
+    <div className="fixed right-4 top-20 z-[1000] grid w-[calc(100vw-2rem)] max-w-sm gap-3 sm:right-6 sm:top-6">
       {errorMessage ? (
         <Toast
           icon={<XCircle size={20} />}

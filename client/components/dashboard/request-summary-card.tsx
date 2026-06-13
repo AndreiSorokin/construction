@@ -79,6 +79,7 @@ export function RequestSummaryCard({
   const TypeIcon = getTypeIcon(request.type);
   const isApproval = variant === "approval";
   const isLegacyRequest = isLegacyRouteRequest(request);
+  const returnComment = getLatestReturnComment(request);
 
  function getRequestItemsLabel(request: SupplyRequest) {
   if (request.type === "MONEY") {
@@ -132,8 +133,20 @@ export function RequestSummaryCard({
           </span>
 
           <span className="min-w-0">
-            <span className="block truncate font-medium text-slate-950">
-              {getRequestItemsLabel(request)}
+            <span className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="min-w-0 truncate font-medium text-slate-950">
+                {getRequestItemsLabel(request)}
+              </span>
+              {returnComment ? (
+                <span
+                  className="inline-flex max-w-full rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 ring-1 ring-orange-200"
+                  title={returnComment}
+                >
+                  <span className="truncate">
+                    Комментарий: {returnComment}
+                  </span>
+                </span>
+              ) : null}
             </span>
             <span className="mt-1 block truncate text-xs text-slate-500">
               {getCurrentHolderLabel(request)}
@@ -167,7 +180,7 @@ export function RequestSummaryCard({
               type="button"
             >
               <ChevronDown
-                className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
                 size={16}
               />
             </button>
@@ -175,16 +188,24 @@ export function RequestSummaryCard({
         </div>
       </div>
 
-      {isOpen && children ? (
+      {children ? (
         <div
-          className={`min-w-0 border-t border-slate-100 p-3 sm:p-4 ${
-            isApproval
-              ? "max-h-[72vh] overflow-y-auto overflow-x-auto overscroll-contain"
-              : "overflow-x-auto"
+          className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+            isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
           }`}
         >
-          {isApproval ? <ExpandedRequestMeta request={request} /> : null}
-          {children}
+          <div className="min-h-0 overflow-hidden">
+            <div
+              className={`min-w-0 border-t border-slate-100 p-3 sm:p-4 ${
+                isApproval
+                  ? "max-h-[72vh] overflow-y-auto overflow-x-auto overscroll-contain"
+                  : "overflow-x-auto"
+              }`}
+            >
+              {isApproval ? <ExpandedRequestMeta request={request} /> : null}
+              {children}
+            </div>
+          </div>
         </div>
       ) : null}
     </article>
@@ -323,6 +344,23 @@ function getCurrentHolderLabel(request: SupplyRequest) {
   }
 
   return formatRoleHolders(request, role);
+}
+
+function getLatestReturnComment(request: SupplyRequest) {
+  const history = request.approvalHistory ?? [];
+
+  return [...history]
+    .sort(
+      (first, second) =>
+        new Date(second.createdAt).getTime() -
+        new Date(first.createdAt).getTime(),
+    )
+    .find(
+      (entry) =>
+        (entry.action === "RETURNED" || entry.action === "REJECTED") &&
+        entry.comment?.trim(),
+    )
+    ?.comment?.trim();
 }
 
 const holderRoleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {

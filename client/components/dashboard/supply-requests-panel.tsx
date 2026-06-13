@@ -66,6 +66,23 @@ type SupplyRequestsPanelProps = {
   onSuccess: (message: string) => void;
 };
 
+const measurementUnitOptions = [
+  "шт.",
+  "уп.",
+  "м",
+  "м²",
+  "м³",
+  "пог. м",
+  "лит.",
+  "кг",
+  "т",
+];
+
+type PendingMeasurementUnitEdit = {
+  item: SupplyRequest["items"][number];
+  request: SupplyRequest;
+};
+
 export function SupplyRequestsPanel({
   objectAccesses,
   user,
@@ -74,6 +91,8 @@ export function SupplyRequestsPanel({
 }: SupplyRequestsPanelProps) {
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingMeasurementUnitEdit, setPendingMeasurementUnitEdit] =
+    useState<PendingMeasurementUnitEdit | null>(null);
 
   const canSeePanel = objectAccesses.length > 0;
   const visibleRequests = getVisibleRequests(objectAccesses, requests, user.id);
@@ -128,7 +147,7 @@ export function SupplyRequestsPanel({
       });
 
       onSuccess(
-        `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
+        `Заявка ${request.requestNumber} отправлена`,
       );
       await loadRequests();
     } catch (error) {
@@ -156,7 +175,7 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByChiefEngineer(request.id);
       onSuccess(
-        `Заявка ${request.requestNumber} отправлена начальнику складского хозяйства`,
+        `Заявка ${request.requestNumber} отправлена`,
       );
       await loadRequests();
     } catch (error) {
@@ -169,8 +188,8 @@ export function SupplyRequestsPanel({
       await approveSupplyRequestByWarehouseManager(request.id);
       onSuccess(
         request.object?.type === "WORKSHOP"
-          ? `Заявка ${request.requestNumber} отправлена начальнику снабжения`
-          : `Заявка ${request.requestNumber} отправлена в ПТО`,
+          ? `Заявка ${request.requestNumber} отправлена`
+          : `Заявка ${request.requestNumber} отправлена`,
       );
       await loadRequests();
     } catch (error) {
@@ -203,7 +222,7 @@ export function SupplyRequestsPanel({
     try {
       await approveSupplyRequestByDeputyProductionDirector(request.id);
       onSuccess(
-        `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
+        `Заявка ${request.requestNumber} отправлена`,
       );
       await loadRequests();
     } catch (error) {
@@ -359,6 +378,89 @@ export function SupplyRequestsPanel({
         comment,
       });
       onSuccess(`Позиция в заявке ${request.requestNumber} изменена`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function updateRequestItemTextField(
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) {
+    if (field === "measurementUnit") {
+      setPendingMeasurementUnitEdit({ item, request });
+      return;
+    }
+
+    const fieldLabel =
+      field === "materialName" ? "наименование" : "единицу измерения";
+    const currentValue =
+      field === "materialName"
+        ? item.materialNameSnapshot
+        : item.measurementUnitSnapshot;
+    const nextValue = window.prompt(
+      `Введите новое ${fieldLabel} для "${item.materialNameSnapshot}"`,
+      currentValue,
+    );
+
+    if (nextValue === null) {
+      return;
+    }
+
+    if (!nextValue.trim()) {
+      onError(
+        field === "materialName"
+          ? "Наименование не может быть пустым"
+          : "Единица измерения не может быть пустой",
+      );
+      return;
+    }
+
+    try {
+      await updateSupplyRequestItem(request.id, item.id, {
+        [field]: nextValue.trim(),
+        comment:
+          field === "materialName"
+            ? "Изменено наименование позиции"
+            : "Изменена единица измерения позиции",
+      });
+      onSuccess(`Позиция в заявке ${request.requestNumber} изменена`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function submitMeasurementUnitEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!pendingMeasurementUnitEdit) {
+      return;
+    }
+
+    const form = new FormData(event.currentTarget);
+    const measurementUnit = String(form.get("measurementUnit") ?? "").trim();
+
+    if (!measurementUnit) {
+      onError("Выберите единицу измерения");
+      return;
+    }
+
+    try {
+      await updateSupplyRequestItem(
+        pendingMeasurementUnitEdit.request.id,
+        pendingMeasurementUnitEdit.item.id,
+        {
+          measurementUnit,
+          comment: "Изменена единица измерения позиции",
+        },
+      );
+      onSuccess(
+        `Позиция в заявке ${pendingMeasurementUnitEdit.request.requestNumber} изменена`,
+      );
+      setPendingMeasurementUnitEdit(null);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -531,8 +633,8 @@ export function SupplyRequestsPanel({
 
       onSuccess(
         request.type === "QUARRY"
-          ? `Заявка ${request.requestNumber} отправлена заведующему гаражом`
-          : `Заявка ${request.requestNumber} отправлена начальнику снабжения`,
+          ? `Заявка ${request.requestNumber} отправлена`
+          : `Заявка ${request.requestNumber} отправлена`,
       );
       await loadRequests();
     } catch (error) {
@@ -799,6 +901,7 @@ export function SupplyRequestsPanel({
   }
 
   return (
+    <>
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -908,6 +1011,7 @@ export function SupplyRequestsPanel({
                     onReject={rejectToPreviousStep}
                     onUpdatePtoComment={updatePtoItemComment}
                     onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                     onSubmit={submitPtoPrices}
                   />
                 );
@@ -923,6 +1027,7 @@ export function SupplyRequestsPanel({
                     onReturn={rejectToPreviousStep}
                     onUpdateChiefEngineerComment={updateChiefEngineerItemComment}
                     onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1114,6 +1219,86 @@ export function SupplyRequestsPanel({
         ))}
       </div>
     </section>
+    {pendingMeasurementUnitEdit ? (
+      <MeasurementUnitEditModal
+        item={pendingMeasurementUnitEdit.item}
+        onClose={() => setPendingMeasurementUnitEdit(null)}
+        onSubmit={submitMeasurementUnitEdit}
+      />
+    ) : null}
+    </>
+  );
+}
+
+function MeasurementUnitEditModal({
+  item,
+  onClose,
+  onSubmit,
+}: {
+  item: SupplyRequest["items"][number];
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const defaultValue = measurementUnitOptions.includes(
+    item.measurementUnitSnapshot,
+  )
+    ? item.measurementUnitSnapshot
+    : measurementUnitOptions[0];
+
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4"
+      role="dialog"
+    >
+      <form
+        className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl"
+        onSubmit={onSubmit}
+      >
+        <div>
+          <h3 className="font-semibold text-slate-950">
+            Изменить единицу измерения
+          </h3>
+          <p className="mt-1 text-sm text-slate-600">
+            {item.materialNameSnapshot}
+          </p>
+        </div>
+
+        <label className="mt-4 grid gap-1.5">
+          <span className="text-sm font-medium text-slate-700">
+            Единица измерения
+          </span>
+          <select
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            defaultValue={defaultValue}
+            name="measurementUnit"
+            required
+          >
+            {measurementUnitOptions.map((unit) => (
+              <option key={unit} value={unit}>
+                {unit}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={onClose}
+            type="button"
+          >
+            Отмена
+          </button>
+          <button
+            className="inline-flex h-10 items-center justify-center rounded-md bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800"
+            type="submit"
+          >
+            Сохранить
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

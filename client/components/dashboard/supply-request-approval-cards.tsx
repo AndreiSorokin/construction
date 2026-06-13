@@ -41,9 +41,11 @@ const skyApprovalCardClass =
 
 export function ObjectApprovalGroup({
   children,
+  countLabel = "Заявок на согласование",
   group,
 }: {
   children: ReactNode;
+  countLabel?: string;
   group: ObjectRequestGroup;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -64,17 +66,28 @@ export function ObjectApprovalGroup({
             {group.objectName}
           </span>
           <span className="mt-1 block text-sm text-slate-500">
-            Заявок на согласование: {group.requests.length}
+            {countLabel}: {group.requests.length}
           </span>
         </span>
-        <div style={{cursor: 'pointer'}}>{isOpen ? "Свернуть" : "Развернуть"}</div>
+        <div
+          className="text-sm font-medium text-slate-600 transition-colors hover:text-teal-700"
+          style={{ cursor: "pointer" }}
+        >
+          {isOpen ? "Свернуть" : "Развернуть"}
+        </div>
       </button>
 
-      {isOpen ? (
-        <div className="grid min-w-0 gap-3 overflow-x-auto border-t border-slate-100 bg-slate-50/60 p-2 sm:p-3">
-          {children}
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="grid min-w-0 gap-3 overflow-x-auto border-t border-slate-100 bg-slate-50/60 p-2 sm:p-3">
+            {children}
+          </div>
         </div>
-      ) : null}
+      </div>
     </article>
   );
 }
@@ -111,8 +124,6 @@ export function SupplyManagerRequestCard({
   return (
     <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
-
-      <RequestDetails request={request} />
       <SupplyItemWorkTable
         checklistStorageScope={checklistStorageScope}
         commentField="supplyManagerComment"
@@ -287,7 +298,6 @@ export function SupplyManagerReviewCard({
   return (
     <div className={skyApprovalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
-        <RequestDetails request={request} />
         <SupplyItemWorkTable
           checklistStorageScope={checklistStorageScope}
           commentField="supplyManagerComment"
@@ -474,6 +484,7 @@ export function PtoRequestCard({
   onSubmit,
   onUpdateItem,
   onUpdatePtoComment,
+  onUpdateTextField,
   request,
 }: {
   onDeleteItem: (
@@ -494,6 +505,11 @@ export function PtoRequestCard({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
     comment: string,
+  ) => void;
+  onUpdateTextField: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -519,6 +535,11 @@ export function PtoRequestCard({
               <tr className="border-b border-slate-100" key={item.id}>
                 <td className="py-3 pr-3 text-slate-950">
                   <ItemNameWithComments item={item} />
+                  <TextItemEditActions
+                    item={item}
+                    request={request}
+                    onUpdate={onUpdateTextField}
+                  />
                   <RoleItemCommentInput
                     fieldName="ptoComment"
                     item={item}
@@ -591,6 +612,7 @@ export function ChiefEngineerRequestCard({
   onReturn,
   onUpdateChiefEngineerComment,
   onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
@@ -609,6 +631,11 @@ export function ChiefEngineerRequestCard({
     item: SupplyRequest["items"][number],
     field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
+  onUpdateTextField: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -622,6 +649,7 @@ export function ChiefEngineerRequestCard({
               onDeleteItem={onDeleteItem}
               onUpdateChiefEngineerComment={onUpdateChiefEngineerComment}
               onUpdateItem={onUpdateItem}
+              onUpdateTextField={onUpdateTextField}
             />
           </>
         ) : (
@@ -1429,6 +1457,39 @@ function RoleItemCommentInput({
   );
 }
 
+function TextItemEditActions({
+  item,
+  onUpdate,
+  request,
+}: {
+  item: SupplyRequest["items"][number];
+  onUpdate: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
+  request: SupplyRequest;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <button
+        className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        onClick={() => onUpdate(request, item, "materialName")}
+        type="button"
+      >
+        Изм. название
+      </button>
+      <button
+        className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        onClick={() => onUpdate(request, item, "measurementUnit")}
+        type="button"
+      >
+        Изм. ед.
+      </button>
+    </div>
+  );
+}
+
 function MaterialItemsTable({ request }: { request: SupplyRequest }) {
   const shouldShowFulfillmentStatus = request.items.some(
     (item) => item.fulfillmentStatus !== "PENDING",
@@ -1733,6 +1794,7 @@ function EditableMaterialItemsTable({
   onDeleteItem,
   onUpdateChiefEngineerComment,
   onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onDeleteItem: (
@@ -1748,6 +1810,11 @@ function EditableMaterialItemsTable({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
     field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -1766,6 +1833,11 @@ function EditableMaterialItemsTable({
             <tr className="border-b border-slate-100" key={item.id}>
               <td className="py-3 pr-3 text-slate-950">
                 <ItemNameWithComments item={item} />
+                <TextItemEditActions
+                  item={item}
+                  request={request}
+                  onUpdate={onUpdateTextField}
+                />
                 <RoleItemCommentInput
                   fieldName="chiefEngineerComment"
                   item={item}

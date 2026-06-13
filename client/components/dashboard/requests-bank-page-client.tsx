@@ -1,9 +1,8 @@
 ﻿"use client";
 
-import { ArrowLeft, Factory } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { RequestsBankPanel } from "@/components/dashboard/requests-bank-panel";
 import { getStoredUser } from "@/lib/auth-storage";
 import { User } from "@/lib/types";
@@ -33,30 +32,9 @@ export function RequestsBankPageClient() {
 
   return (
     <main className="min-h-screen bg-slate-100">
-      <header className="relative z-[200] border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-700 text-white">
-              <Factory size={20} />
-            </span>
-            <div className="min-w-0">
-              <div className="truncate font-semibold text-slate-950">
-                {"Стройконтроль"}
-              </div>
-              <div className="text-sm text-slate-500">Банк заявок</div>
-            </div>
-          </div>
-          <Link
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            href="/dashboard"
-          >
-            <ArrowLeft size={16} />
-            Dashboard
-          </Link>
-        </div>
-      </header>
+      <DashboardNav subtitle="Банк заявок" />
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 py-6">
+      <section className="mx-auto grid w-full max-w-none gap-4 px-3 py-5 sm:px-4 lg:px-6 lg:py-6">
         <RequestsBankPanel />
       </section>
     </main>

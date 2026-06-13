@@ -164,6 +164,10 @@ export function getSupplyRequests() {
   return apiClient<SupplyRequest[]>("/supply-requests");
 }
 
+export function getPendingSupplyRequestsCount() {
+  return apiClient<{ count: number }>("/supply-requests/pending-count");
+}
+
 export function getSupplyRequest(id: string) {
   return apiClient<SupplyRequest>(`/supply-requests/${id}`);
 }
@@ -275,6 +279,8 @@ export function updateSupplyRequestItem(
   requestId: string,
   itemId: string,
   payload: {
+    materialName?: string;
+    measurementUnit?: string;
     quantity?: string;
     orderQuantity?: string;
     stockQuantity?: string;
