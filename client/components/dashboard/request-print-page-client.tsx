@@ -79,6 +79,13 @@ const actionLabels: Record<ApprovalAction, string> = {
   REQUEST_ITEM_DELETED: "Удаление позиции",
 };
 
+const itemBackedRequestTypes = new Set<SupplyRequestType>([
+  "MATERIAL",
+  "PRODUCTION",
+  "QUARRY",
+  "EXPRESS_MATERIAL",
+]);
+
 export function RequestPrintPageClient({ requestId }: { requestId: string }) {
   const router = useRouter();
   const [request, setRequest] = useState<SupplyRequest | null>(null);
@@ -119,10 +126,7 @@ export function RequestPrintPageClient({ requestId }: { requestId: string }) {
 
       <header className="border-b border-slate-200 bg-white print:hidden">
         <div className="mx-auto flex w-full max-w-none items-center justify-end gap-3 px-3 py-3 sm:px-4 lg:px-6">
-          <Link
-            className="hidden"
-            href="/dashboard"
-          >
+          <Link className="hidden" href="/dashboard">
             <ArrowLeft size={16} />
             Назад
           </Link>
@@ -159,6 +163,8 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
       ),
     [request.items],
   );
+  const requestDetails = getRequestDetails(request);
+  const shouldShowItems = request.items.length > 0 || itemBackedRequestTypes.has(request.type);
 
   return (
     <article className="grid gap-5 rounded-md bg-white p-6 shadow-sm print:gap-4 print:p-0 print:shadow-none">
@@ -174,7 +180,7 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
       <section className="grid gap-3 text-sm sm:grid-cols-3 print:grid-cols-3">
         <Info label="Объект" value={request.object?.name ?? request.objectId} />
         <Info label="Автор" value={formatUser(request.author, request.authorId)} />
-        <Info label="Дата создания" value={formatDateTime(request.createdAt)} />
+        <Info label="Дата создания" value={formatDate(request.createdAt)} />
         <Info
           label="Назначенный снабженец"
           value={
@@ -183,60 +189,70 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
               : "Не назначен"
           }
         />
-        <Info label="По цене" value={formatMoney(ptoTotal)} />
       </section>
 
-      <section>
-        <SectionTitle>Позиции заявки</SectionTitle>
-        {request.items.length ? (
-          <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="bg-slate-100 text-left print:bg-white">
-                  <PrintTh>ТМЦ</PrintTh>
-                  <PrintTh>Кол-во</PrintTh>
-                  <PrintTh>Ед.</PrintTh>
-                  <PrintTh>Остаток на складе</PrintTh>
-                  <PrintTh>Цена ПТО</PrintTh>
-                  <PrintTh>Комментарии</PrintTh>
-                </tr>
-              </thead>
-              <tbody>
-                {request.items.map((item) => (
-                  <tr className="break-inside-avoid border-b border-slate-200" key={item.id}>
-                    <PrintTd>
-                      <div className="font-medium">{item.materialNameSnapshot}</div>
-                    </PrintTd>
-                    <PrintTd>{formatQuantity(item.quantity)}</PrintTd>
-                    <PrintTd>{item.measurementUnitSnapshot}</PrintTd>
-                    <PrintTd>{formatQuantity(item.stockQuantity ?? "0")}</PrintTd>
-                    <PrintTd>
-                      {item.ptoLimitPrice
-                        ? formatMoney(toNumber(item.ptoLimitPrice))
-                        : "-"}
-                    </PrintTd>
-                    <PrintTd>
-                      <ItemComments
-                        chiefEngineerComment={item.chiefEngineerComment}
-                        ptoComment={item.ptoComment}
-                        supplyComment={item.supplyComment}
-                        supplyManagerComment={item.supplyManagerComment}
-                        supplierComment={item.supplierComment}
-                      />
-                    </PrintTd>
+      {requestDetails.length ? (
+        <section>
+          <SectionTitle>Данные заявки</SectionTitle>
+          <div className="grid gap-3 text-sm sm:grid-cols-2 print:grid-cols-2">
+            {requestDetails.map((detail) => (
+              <Info key={detail.label} label={detail.label} value={detail.value} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {shouldShowItems ? (
+        <section>
+          <SectionTitle>Позиции заявки</SectionTitle>
+          {request.items.length ? (
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-100 text-left print:bg-white">
+                    <PrintTh>ТМЦ</PrintTh>
+                    <PrintTh>Кол-во</PrintTh>
+                    <PrintTh>Ед.</PrintTh>
+                    <PrintTh>Остаток на складе</PrintTh>
+                    <PrintTh>Цена ПТО</PrintTh>
+                    <PrintTh>Комментарии</PrintTh>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="rounded-md border border-slate-200 p-3 text-sm text-slate-600">
-            В заявке нет позиций.
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {request.items.map((item) => (
+                    <tr className="break-inside-avoid border-b border-slate-200" key={item.id}>
+                      <PrintTd>
+                        <div className="font-medium">{item.materialNameSnapshot}</div>
+                      </PrintTd>
+                      <PrintTd>{formatQuantity(item.quantity)}</PrintTd>
+                      <PrintTd>{item.measurementUnitSnapshot}</PrintTd>
+                      <PrintTd>{formatQuantity(item.stockQuantity ?? "0")}</PrintTd>
+                      <PrintTd>
+                        {item.ptoLimitPrice ? formatMoney(toNumber(item.ptoLimitPrice)) : "-"}
+                      </PrintTd>
+                      <PrintTd>
+                        <ItemComments
+                          chiefEngineerComment={item.chiefEngineerComment}
+                          ptoComment={item.ptoComment}
+                          supplyComment={item.supplyComment}
+                          supplyManagerComment={item.supplyManagerComment}
+                          supplierComment={item.supplierComment}
+                        />
+                      </PrintTd>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="rounded-md border border-slate-200 p-3 text-sm text-slate-600">
+              В заявке нет позиций.
+            </div>
+          )}
+        </section>
+      ) : null}
 
-      <section>
+      <section className="mx-auto w-full max-w-4xl print:max-w-[180mm]">
         <SectionTitle>Путь согласования</SectionTitle>
         {request.approvalHistory?.length ? (
           <div className="grid gap-2">
@@ -275,11 +291,57 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
   );
 }
 
+function getRequestDetails(request: SupplyRequest) {
+  const details: Array<{ label: string; value: string }> = [];
+
+  if (request.type === "MONEY") {
+    details.push(
+      { label: "Сумма", value: formatMoney(toNumber(request.amount)) },
+      { label: "Тип оплаты", value: formatPaymentType(request.paymentType) },
+      { label: "Назначение", value: request.paymentPurpose ?? "-" },
+    );
+  }
+
+  if (request.type === "BUSINESS_TRIP") {
+    details.push(
+      { label: "Сумма", value: formatMoney(toNumber(request.amount)) },
+      { label: "Назначение", value: request.paymentPurpose ?? request.purpose ?? "-" },
+    );
+  }
+
+  if (request.type === "FUEL") {
+    details.push(
+      { label: "Вид топлива", value: request.transportType ?? "-" },
+      { label: "Назначение", value: request.purpose ?? "-" },
+    );
+  }
+
+  if (request.type === "APPEAL") {
+    details.push({ label: "Текст обращения", value: request.purpose ?? "-" });
+  }
+
+  if (request.type === "TRANSPORT") {
+    details.push(
+      { label: "Объект", value: request.transportObjectName ?? request.object?.name ?? "-" },
+      { label: "Дата", value: request.transportDate ?? "-" },
+      { label: "Время", value: request.transportTime ?? "-" },
+      { label: "Запрашиваемый транспорт", value: request.transportType ?? "-" },
+      { label: "Назначение техники", value: request.purpose ?? "-" },
+    );
+  }
+
+  if (request.type === "PRODUCTION" && request.purpose) {
+    details.push({ label: "Задача на производство", value: request.purpose });
+  }
+
+  return details;
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-slate-200 p-3 print:border-slate-300">
       <div className="text-xs uppercase text-slate-500">{label}</div>
-      <div className="mt-1 break-words font-medium">{value}</div>
+      <div className="mt-1 break-words whitespace-pre-wrap font-medium">{value}</div>
     </div>
   );
 }
@@ -319,7 +381,7 @@ function ItemComments({
     ["Снабжение", supplyComment],
     ["Начальник снабжения", supplyManagerComment],
     ["Снабженец", supplierComment],
-  ].filter(([, value]) => value?.trim());
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]?.trim()));
 
   if (!comments.length) {
     return <span>-</span>;
@@ -329,16 +391,7 @@ function ItemComments({
     <div className="grid gap-1">
       {comments.map(([label, value]) => (
         <div key={label}>
-          <span className="font-medium">
-            {getItemCommentLabel(value, {
-              chiefEngineerComment,
-              ptoComment,
-              supplyComment,
-              supplyManagerComment,
-              supplierComment,
-            })}
-            :{" "}
-          </span>
+          <span className="font-medium">{label}: </span>
           <span className="whitespace-pre-wrap">{value}</span>
         </div>
       ))}
@@ -346,33 +399,16 @@ function ItemComments({
   );
 }
 
-function getItemCommentLabel(
-  value: string | null | undefined,
-  comments: {
-    chiefEngineerComment?: string | null;
-    ptoComment?: string | null;
-    supplyComment?: string | null;
-    supplyManagerComment?: string | null;
-    supplierComment?: string | null;
-  },
-) {
-  if (value === comments.chiefEngineerComment) {
-    return "Главный инженер";
+function formatPaymentType(type: SupplyRequest["paymentType"]) {
+  if (type === "CASH") {
+    return "Наличные";
   }
 
-  if (value === comments.supplierComment) {
-    return "Снабжение";
+  if (type === "NON_CASH") {
+    return "Безналичные";
   }
 
-  if (value === comments.supplyManagerComment) {
-    return "Начальник снабжения";
-  }
-
-  if (value === comments.ptoComment) {
-    return "ПТО";
-  }
-
-  return "Снабжение (старый комментарий)";
+  return "-";
 }
 
 function formatStatusTransition(
@@ -407,6 +443,10 @@ function formatUser(
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("ru-KZ");
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("ru-KZ");
 }
 
 function formatQuantity(value?: string | null) {
