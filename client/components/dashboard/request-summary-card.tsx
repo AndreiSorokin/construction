@@ -224,9 +224,6 @@ function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
   const authorRole = getAuthorObjectRole(request);
   const authorRoleLabel = authorRole ? userRoleLabels[authorRole] : "Роль не указана";
   const currentHolderLabel = getCurrentHolderLabel(request);
-  const workflowLabel = isLegacyRouteRequest(request)
-    ? "Старая цепочка"
-    : "Новая цепочка";
 
   return (
     <div className="mb-4 grid gap-2 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-3">
@@ -239,7 +236,6 @@ function ExpandedRequestMeta({ request }: { request: SupplyRequest }) {
       <MetaItem label="Автор" value={request.author?.name ?? "Не указан"} />
       <MetaItem label="Email автора" value={request.author?.email ?? "Не указан"} />
       <MetaItem label="Должность автора" value={authorRoleLabel} />
-      <MetaItem label="Цепочка" value={workflowLabel} />
       <MetaItem label="Сейчас у" value={currentHolderLabel} />
     </div>
   );

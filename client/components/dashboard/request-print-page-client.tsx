@@ -14,6 +14,7 @@ import {
   SupplyRequest,
   SupplyRequestStatus,
   SupplyRequestType,
+  UserRole,
 } from "@/lib/types";
 
 const requestTypeLabels: Record<SupplyRequestType, string> = {
@@ -121,7 +122,7 @@ export function RequestPrintPageClient({ requestId }: { requestId: string }) {
       <NotificationToasts errorMessage={errorMessage} onClearError={clearError} />
 
       <div className="print:hidden">
-        <DashboardNav subtitle="Печать заявки" />
+        <DashboardNav />
       </div>
 
       <header className="border-b border-slate-200 bg-white print:hidden">
@@ -155,14 +156,6 @@ export function RequestPrintPageClient({ requestId }: { requestId: string }) {
 }
 
 function PrintDocument({ request }: { request: SupplyRequest }) {
-  const ptoTotal = useMemo(
-    () =>
-      request.items.reduce(
-        (total, item) => total + toNumber(item.ptoLimitPrice ?? "0"),
-        0,
-      ),
-    [request.items],
-  );
   const requestDetails = getRequestDetails(request);
   const shouldShowItems = request.items.length > 0 || itemBackedRequestTypes.has(request.type);
 
@@ -214,7 +207,6 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
                     <PrintTh>Кол-во</PrintTh>
                     <PrintTh>Ед.</PrintTh>
                     <PrintTh>Остаток на складе</PrintTh>
-                    <PrintTh>Цена ПТО</PrintTh>
                     <PrintTh>Комментарии</PrintTh>
                   </tr>
                 </thead>
@@ -227,9 +219,6 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
                       <PrintTd>{formatQuantity(item.quantity)}</PrintTd>
                       <PrintTd>{item.measurementUnitSnapshot}</PrintTd>
                       <PrintTd>{formatQuantity(item.stockQuantity ?? "0")}</PrintTd>
-                      <PrintTd>
-                        {item.ptoLimitPrice ? formatMoney(toNumber(item.ptoLimitPrice)) : "-"}
-                      </PrintTd>
                       <PrintTd>
                         <ItemComments
                           chiefEngineerComment={item.chiefEngineerComment}
@@ -265,10 +254,10 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
                   <div className="font-medium">
                     {index + 1}. {actionLabels[entry.action]}
                   </div>
-                  <div className="text-slate-500">{formatDateTime(entry.createdAt)}</div>
+                  <div className="text-slate-500">{formatDate(entry.createdAt)}</div>
                 </div>
                 <div className="mt-1 text-slate-700">
-                  {formatUser(entry.actor, entry.actorId)}
+                  {formatApprovalHistoryUser(request, entry)}
                 </div>
                 <div className="mt-1 text-slate-600">
                   {formatStatusTransition(entry.fromStatus, entry.toStatus)}
@@ -411,6 +400,76 @@ function formatPaymentType(type: SupplyRequest["paymentType"]) {
   return "-";
 }
 
+function formatApprovalHistoryUser(
+  request: SupplyRequest,
+  entry: NonNullable<SupplyRequest["approvalHistory"]>[number],
+) {
+  if (entry.action === "CREATED" || !entry.toStatus) {
+    return formatUser(entry.actor, entry.actorId);
+  }
+
+  const recipient = getApprovalHistoryRecipient(request, entry.toStatus);
+
+  return recipient ?? formatUser(entry.actor, entry.actorId);
+}
+
+function getApprovalHistoryRecipient(
+  request: SupplyRequest,
+  status: SupplyRequestStatus,
+) {
+  if (
+    status === "PENDING_TRANSPORT_AUTHOR" ||
+    status === "PENDING_PRODUCTION_AUTHOR" ||
+    status === "PENDING_REQUEST_AUTHOR"
+  ) {
+    return formatUser(request.author, request.authorId);
+  }
+
+  if (status === "PENDING_SUPPLY" && request.assignedSupplyUser) {
+    return formatUser(request.assignedSupplyUser, request.assignedSupplyUserId);
+  }
+
+  if (status === "PENDING_STOREKEEPER" && request.assignedStorekeeper) {
+    return formatUser(request.assignedStorekeeper, request.assignedStorekeeperId);
+  }
+
+  if (status === "PENDING_WORKSHOP_MANAGER" && request.assignedWorkshopManager) {
+    return formatUser(
+      request.assignedWorkshopManager,
+      request.assignedWorkshopManagerId,
+    );
+  }
+
+  const role = getRoleForStatus(status);
+
+  if (!role) {
+    return null;
+  }
+
+  const access = request.object?.userAccesses?.find(
+    (objectAccess) => objectAccess.role === role,
+  );
+
+  return access ? formatUser(access.user, access.userId) : null;
+}
+
+function getRoleForStatus(status: SupplyRequestStatus): UserRole | null {
+  const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
+    PENDING_ACCOUNTANT: "ACCOUNTANT",
+    PENDING_CHIEF_ENGINEER: "CHIEF_ENGINEER",
+    PENDING_DEPUTY_PRODUCTION_DIRECTOR: "DEPUTY_PRODUCTION_DIRECTOR",
+    PENDING_DEPUTY_TRANSPORT_DIRECTOR: "DEPUTY_TRANSPORT_DIRECTOR",
+    PENDING_DIRECTOR: "DIRECTOR",
+    PENDING_GARAGE_MANAGER: "GARAGE_MANAGER",
+    PENDING_PTO: "PTO",
+    PENDING_SUPPLY_MANAGER: "SUPPLY_MANAGER",
+    PENDING_SUPPLY_MANAGER_REVIEW: "SUPPLY_MANAGER",
+    PENDING_WAREHOUSE_MANAGER: "WAREHOUSE_MANAGER",
+  };
+
+  return roleByStatus[status] ?? null;
+}
+
 function formatStatusTransition(
   fromStatus?: SupplyRequestStatus | null,
   toStatus?: SupplyRequestStatus | null,
@@ -438,11 +497,7 @@ function formatUser(
     return fallback ?? "Не указан";
   }
 
-  return `${user.name ?? "Без имени"}${user.email ? ` · ${user.email}` : ""}`;
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("ru-KZ");
+  return `${user.name ?? "Без имени"}`;
 }
 
 function formatDate(value: string) {
