@@ -80,6 +80,51 @@ const actionLabels: Record<ApprovalAction, string> = {
   REQUEST_ITEM_DELETED: "Удаление позиции",
 };
 
+const compactActionLabels: Record<ApprovalAction, string> = {
+  CREATED: "Создано",
+  APPROVED: "Согласовано",
+  REJECTED: "Отклонено",
+  RETURNED: "Возвращено",
+  SENT_TO_PTO: "Согласовано",
+  SENT_TO_CHIEF_ENGINEER: "Согласовано",
+  SENT_TO_SUPPLY_MANAGER: "Согласовано",
+  SENT_TO_SUPPLY: "Назначен снабженец",
+  SENT_TO_GARAGE_MANAGER: "Согласовано",
+  SENT_TO_WAREHOUSE_MANAGER: "Согласовано",
+  SENT_TO_STOREKEEPER: "Передано кладовщику",
+  SENT_TO_ACCOUNTANT: "Передано бухгалтеру",
+  SENT_TO_WORKSHOP_MANAGER: "Назначен начальник цеха",
+  SENT_TO_AUTHOR: "Возвращено автору",
+  ASSIGNED_TO_SUPPLY: "Назначен снабженец",
+  SENT_TO_DIRECTOR: "Согласовано",
+  MARKED_IN_PROGRESS: "Взято в работу",
+  COMPLETED: "Исполнено",
+  ARCHIVED: "Отправлено в архив",
+  COMMENTED: "Комментарий",
+  PRICE_UPDATED: "Изменена цена",
+  REQUEST_ITEM_UPDATED: "Изменена позиция",
+  REQUEST_ITEM_DELETED: "Удалена позиция",
+};
+
+const userRoleLabels: Record<UserRole, string> = {
+  MECHANIC: "Механик",
+  FOREMAN: "Прораб",
+  SITE_MANAGER: "Начальник участка",
+  WORKSHOP_MANAGER: "Начальник цеха",
+  DEPUTY_PRODUCTION_DIRECTOR: "Зам. директора по производству",
+  DEPUTY_TRANSPORT_DIRECTOR: "Зам. директора по транспорту",
+  SUPPLY_MANAGER: "Начальник снабжения",
+  SUPPLY: "Снабженец",
+  PTO: "ПТО",
+  CHIEF_ENGINEER: "Главный инженер",
+  GARAGE_MANAGER: "Заведующий гаражом",
+  WAREHOUSE_MANAGER: "Начальник складского хозяйства",
+  STOREKEEPER: "Кладовщик",
+  ACCOUNTANT: "Бухгалтер",
+  SECRETARY: "Секретарь",
+  DIRECTOR: "Директор",
+};
+
 const itemBackedRequestTypes = new Set<SupplyRequestType>([
   "MATERIAL",
   "PRODUCTION",
@@ -244,21 +289,14 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
       <section className="mx-auto w-full max-w-4xl px-2 sm:px-6 print:w-[170mm] print:max-w-[170mm] print:px-0">
         <SectionTitle>Путь согласования</SectionTitle>
         {request.approvalHistory?.length ? (
-          <div className="grid gap-2">
+          <div className="grid gap-1 text-left text-sm">
             {request.approvalHistory.map((entry, index) => (
-              <div
-                className="break-inside-avoid rounded-md border border-slate-200 p-3 text-sm"
-                key={entry.id}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="font-medium">
-                    {index + 1}. {actionLabels[entry.action]}
-                  </div>
-                  <div className="text-slate-500">{formatDate(entry.createdAt)}</div>
-                </div>
-                <div className="mt-1 text-slate-700">
-                  {formatApprovalHistoryUser(request, entry)}
-                </div>
+              <div className="break-inside-avoid" key={entry.id}>
+                <ApprovalHistoryPrintRow
+                  entry={entry}
+                  index={index}
+                  request={request}
+                />
               </div>
             ))}
           </div>
@@ -392,6 +430,44 @@ function formatPaymentType(type: SupplyRequest["paymentType"]) {
   return "-";
 }
 
+function ApprovalHistoryPrintRow({
+  entry,
+  index,
+  request,
+}: {
+  entry: NonNullable<SupplyRequest["approvalHistory"]>[number];
+  index: number;
+  request: SupplyRequest;
+}) {
+  const row = getCompactApprovalHistoryEntryParts(request, entry);
+
+  return (
+    <div className="grid grid-cols-[24px_minmax(82px,0.85fr)_minmax(130px,1.25fr)_minmax(130px,1.2fr)_minmax(112px,0.9fr)] items-start gap-x-3 leading-5">
+      <div>{index + 1}.</div>
+      <div>{row.action}</div>
+      <div>{row.userName}</div>
+      <div>{row.roleLabel}</div>
+      <div>{row.dateTime}</div>
+    </div>
+  );
+}
+
+function getCompactApprovalHistoryEntryParts(
+  request: SupplyRequest,
+  entry: NonNullable<SupplyRequest["approvalHistory"]>[number],
+) {
+  const userName = formatApprovalHistoryUser(request, entry);
+  const role = getApprovalHistoryRole(request, entry);
+  const roleLabel = role ? userRoleLabels[role] : "Должность не указана";
+
+  return {
+    action: compactActionLabels[entry.action],
+    userName,
+    roleLabel,
+    dateTime: formatDateTime(entry.createdAt),
+  };
+}
+
 function formatApprovalHistoryUser(
   request: SupplyRequest,
   entry: NonNullable<SupplyRequest["approvalHistory"]>[number],
@@ -403,6 +479,48 @@ function formatApprovalHistoryUser(
   const recipient = getApprovalHistoryRecipient(request, entry.toStatus);
 
   return recipient ?? formatUser(entry.actor, entry.actorId);
+}
+
+function getApprovalHistoryRole(
+  request: SupplyRequest,
+  entry: NonNullable<SupplyRequest["approvalHistory"]>[number],
+): UserRole | null {
+  if (entry.action === "CREATED" || !entry.toStatus) {
+    return request.authorObjectRole ?? getObjectAccessRole(request, entry.actorId);
+  }
+
+  if (
+    entry.toStatus === "PENDING_TRANSPORT_AUTHOR" ||
+    entry.toStatus === "PENDING_PRODUCTION_AUTHOR" ||
+    entry.toStatus === "PENDING_REQUEST_AUTHOR"
+  ) {
+    return request.authorObjectRole ?? getObjectAccessRole(request, request.authorId);
+  }
+
+  if (entry.toStatus === "PENDING_SUPPLY") {
+    return "SUPPLY";
+  }
+
+  if (entry.toStatus === "PENDING_STOREKEEPER") {
+    return "STOREKEEPER";
+  }
+
+  if (entry.toStatus === "PENDING_WORKSHOP_MANAGER") {
+    return "WORKSHOP_MANAGER";
+  }
+
+  return getRoleForStatus(entry.toStatus);
+}
+
+function getObjectAccessRole(request: SupplyRequest, userId?: string | null) {
+  if (!userId) {
+    return null;
+  }
+
+  return (
+    request.object?.userAccesses?.find((objectAccess) => objectAccess.userId === userId)
+      ?.role ?? null
+  );
 }
 
 function getApprovalHistoryRecipient(
@@ -494,6 +612,10 @@ function formatUser(
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("ru-KZ");
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("ru-KZ");
 }
 
 function formatQuantity(value?: string | null) {
