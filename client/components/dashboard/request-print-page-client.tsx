@@ -259,14 +259,6 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
                 <div className="mt-1 text-slate-700">
                   {formatApprovalHistoryUser(request, entry)}
                 </div>
-                <div className="mt-1 text-slate-600">
-                  {formatStatusTransition(entry.fromStatus, entry.toStatus)}
-                </div>
-                {entry.comment ? (
-                  <div className="mt-2 whitespace-pre-wrap rounded-md bg-slate-50 p-2 text-slate-700 print:bg-white print:p-0">
-                    {entry.comment}
-                  </div>
-                ) : null}
               </div>
             ))}
           </div>
