@@ -241,7 +241,7 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
         </section>
       ) : null}
 
-      <section className="mx-auto w-full max-w-4xl print:max-w-[180mm]">
+      <section className="mx-auto w-full max-w-4xl px-2 sm:px-6 print:w-[170mm] print:max-w-[170mm] print:px-0">
         <SectionTitle>Путь согласования</SectionTitle>
         {request.approvalHistory?.length ? (
           <div className="grid gap-2">
