@@ -286,8 +286,10 @@ function PrintDocument({ request }: { request: SupplyRequest }) {
         </section>
       ) : null}
 
-      <section className="mx-auto w-full max-w-4xl px-2 sm:px-6 print:w-[170mm] print:max-w-[170mm] print:px-0">
-        <SectionTitle>Путь согласования</SectionTitle>
+      <section className="mx-auto w-full max-w-6xl px-2 sm:px-6 print:w-3/4 print:max-w-none print:px-0">
+        <SectionTitle className="text-center">
+          Путь согласования
+        </SectionTitle>
         {request.approvalHistory?.length ? (
           <div className="grid gap-1 text-left text-sm">
             {request.approvalHistory.map((entry, index) => (
@@ -365,9 +367,17 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function SectionTitle({
+  children,
+  className = "",
+}: {
+  children: string;
+  className?: string;
+}) {
   return (
-    <h2 className="mb-3 border-b border-slate-300 pb-2 text-base font-semibold">
+    <h2
+      className={`mb-3 border-b border-slate-300 pb-2 text-base font-semibold ${className}`}
+    >
       {children}
     </h2>
   );
@@ -442,7 +452,7 @@ function ApprovalHistoryPrintRow({
   const row = getCompactApprovalHistoryEntryParts(request, entry);
 
   return (
-    <div className="grid grid-cols-[24px_minmax(82px,0.85fr)_minmax(130px,1.25fr)_minmax(130px,1.2fr)_minmax(112px,0.9fr)] items-start gap-x-3 leading-5">
+    <div className="grid grid-cols-[32px_1fr_1.5fr_1.5fr_1fr] items-start gap-x-4 leading-5">
       <div>{index + 1}.</div>
       <div>{row.action}</div>
       <div>{row.userName}</div>
