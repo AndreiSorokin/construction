@@ -5,9 +5,7 @@
   NotFoundException,
 } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { createReadStream } from "fs";
-import { access, mkdir, unlink, writeFile } from "fs/promises";
-import { extname, join } from "path";
+import { extname } from "path";
 import {
   ApprovalAction,
   ObjectType,
@@ -19,6 +17,7 @@ import {
   UserRole,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
 import { AssignSupplyRequestDto } from "./dto/assign-supply-request.dto";
 import { AssignWorkshopManagerDto } from "./dto/assign-workshop-manager.dto";
 import { CompleteStorekeeperRequestDto } from "./dto/complete-storekeeper-request.dto";
@@ -48,6 +47,16 @@ type RouteChainStep = {
   status: SupplyRequestStatus | null;
 };
 
+type UploadedRequestFile = {
+  originalName: string;
+  storedName: string;
+  mimeType: string;
+  size: number;
+  storagePath: string;
+};
+
+type RequestFileFolder = "attachments" | "invoices";
+
 function normalizeUploadedFileName(fileName: string) {
   const normalizedName = fileName.trim() || "file";
 
@@ -72,9 +81,7 @@ const TRANSPORT_START_ROUTE = [
   SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
 ];
 
-const CONSTRUCTION_START_ROUTE = [
-  SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-];
+const CONSTRUCTION_START_ROUTE = [SupplyRequestStatus.PENDING_CHIEF_ENGINEER];
 
 const CONSTRUCTION_WITH_PTO_START_ROUTE = [
   SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
@@ -350,14 +357,8 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
     WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
   },
   TRANSPORT: {
-    FOREMAN: [
-      ...CONSTRUCTION_START_ROUTE,
-      ...SUPPLY_FINAL_ROUTE,
-    ],
-    SITE_MANAGER: [
-      ...CONSTRUCTION_START_ROUTE,
-      ...SUPPLY_FINAL_ROUTE,
-    ],
+    FOREMAN: [...CONSTRUCTION_START_ROUTE, ...SUPPLY_FINAL_ROUTE],
+    SITE_MANAGER: [...CONSTRUCTION_START_ROUTE, ...SUPPLY_FINAL_ROUTE],
     CHIEF_ENGINEER: SUPPLY_FINAL_ROUTE,
     WORKSHOP_MANAGER: PRODUCTION_SUPPLY_ROUTE,
     DEPUTY_PRODUCTION_DIRECTOR: SUPPLY_FINAL_ROUTE,
@@ -369,18 +370,10 @@ const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
 
 @Injectable()
 export class SupplyRequestsService {
-  private readonly invoiceUploadsDir = join(
-    process.cwd(),
-    "uploads",
-    "invoices",
-  );
-  private readonly attachmentUploadsDir = join(
-    process.cwd(),
-    "uploads",
-    "attachments",
-  );
-
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async createMaterialRequest(
     dto: CreateMaterialSupplyRequestDto,
@@ -541,66 +534,65 @@ export class SupplyRequestsService {
       }
     }
 
-    await mkdir(this.invoiceUploadsDir, { recursive: true });
+    const uploadedFiles = await this.uploadRequestFiles(files, "invoices");
 
-    return this.prisma.$transaction(async (tx) => {
-      const request = await tx.supplyRequest.create({
-        data: {
-          requestNumber: await this.createRequestNumber(tx, "EXP"),
-          type: SupplyRequestType.EXPRESS_MATERIAL,
-          objectId: dto.objectId,
-          authorId,
-          purpose: dto.comment.trim(),
-          status: route.status,
-          items: {
-            create: items.map((item) => ({
-              materialNameSnapshot: item.materialName.trim(),
-              materialTypeSnapshot: "",
-              measurementUnitSnapshot: item.measurementUnit.trim(),
-              estimatedPriceSnapshot: new Prisma.Decimal(0),
-              quantity: new Prisma.Decimal(item.quantity),
-              orderQuantity: new Prisma.Decimal(item.quantity),
-              stockQuantity: new Prisma.Decimal(0),
-            })),
-          },
-          approvalHistory: {
-            create: {
-              actorId: authorId,
-              action: ApprovalAction.CREATED,
-              fromStatus: null,
-              toStatus: route.status,
-              comment: route.comment,
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const request = await tx.supplyRequest.create({
+          data: {
+            requestNumber: await this.createRequestNumber(tx, "EXP"),
+            type: SupplyRequestType.EXPRESS_MATERIAL,
+            objectId: dto.objectId,
+            authorId,
+            purpose: dto.comment.trim(),
+            status: route.status,
+            items: {
+              create: items.map((item) => ({
+                materialNameSnapshot: item.materialName.trim(),
+                materialTypeSnapshot: "",
+                measurementUnitSnapshot: item.measurementUnit.trim(),
+                estimatedPriceSnapshot: new Prisma.Decimal(0),
+                quantity: new Prisma.Decimal(item.quantity),
+                orderQuantity: new Prisma.Decimal(item.quantity),
+                stockQuantity: new Prisma.Decimal(0),
+              })),
+            },
+            approvalHistory: {
+              create: {
+                actorId: authorId,
+                action: ApprovalAction.CREATED,
+                fromStatus: null,
+                toStatus: route.status,
+                comment: route.comment,
+              },
             },
           },
-        },
-        include: this.requestInclude,
-      });
-
-      for (const file of files) {
-        const originalName = normalizeUploadedFileName(file.originalname);
-        const storedName = `${randomUUID()}${extname(originalName)}`;
-        const filePath = join(this.invoiceUploadsDir, storedName);
-
-        await writeFile(filePath, file.buffer);
-
-        await tx.supplyRequestInvoice.create({
-          data: {
-            requestId: request.id,
-            uploadedById: authorId,
-            originalName,
-            storedName,
-            mimeType: file.mimetype,
-            size: file.size,
-            path: filePath,
-          },
+          include: this.requestInclude,
         });
-      }
 
-      return tx.supplyRequest.findUnique({
-        where: { id: request.id },
-        include: this.requestInclude,
+        for (const file of uploadedFiles) {
+          await tx.supplyRequestInvoice.create({
+            data: {
+              requestId: request.id,
+              uploadedById: authorId,
+              originalName: file.originalName,
+              storedName: file.storedName,
+              mimeType: file.mimeType,
+              size: file.size,
+              path: file.storagePath,
+            },
+          });
+        }
+
+        return tx.supplyRequest.findUnique({
+          where: { id: request.id },
+          include: this.requestInclude,
+        });
       });
-    });
+    } catch (error) {
+      await this.cleanupUploadedFiles(uploadedFiles, "invoices");
+      throw error;
+    }
   }
 
   async createTransportRequest(
@@ -828,9 +820,7 @@ export class SupplyRequestsService {
     authorId: string,
   ) {
     if (!dto.purpose.trim()) {
-      throw new BadRequestException(
-        "Production request must contain purpose",
-      );
+      throw new BadRequestException("Production request must contain purpose");
     }
 
     const route = await this.getInitialRequestRoute(
@@ -839,68 +829,68 @@ export class SupplyRequestsService {
       SupplyRequestType.PRODUCTION,
     );
 
-    if (files?.length) {
-      await mkdir(this.attachmentUploadsDir, { recursive: true });
-    }
+    const uploadedFiles = await this.uploadRequestFiles(
+      files ?? [],
+      "attachments",
+    );
 
-    return this.prisma.$transaction(async (tx) => {
-      const request = await tx.supplyRequest.create({
-        data: {
-          requestNumber: await this.createRequestNumber(tx, "PRD"),
-          type: SupplyRequestType.PRODUCTION,
-          objectId: dto.objectId,
-          authorId,
-          purpose: dto.purpose.trim(),
-          status: route.status,
-          approvalHistory: {
-            create: {
-              actorId: authorId,
-              action: ApprovalAction.CREATED,
-              fromStatus: null,
-              toStatus: route.status,
-              comment: route.comment,
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const request = await tx.supplyRequest.create({
+          data: {
+            requestNumber: await this.createRequestNumber(tx, "PRD"),
+            type: SupplyRequestType.PRODUCTION,
+            objectId: dto.objectId,
+            authorId,
+            purpose: dto.purpose.trim(),
+            status: route.status,
+            approvalHistory: {
+              create: {
+                actorId: authorId,
+                action: ApprovalAction.CREATED,
+                fromStatus: null,
+                toStatus: route.status,
+                comment: route.comment,
+              },
             },
           },
-        },
-        include: this.requestInclude,
-      });
-
-      for (const file of files ?? []) {
-        const originalName = normalizeUploadedFileName(file.originalname);
-        const storedName = `${randomUUID()}${extname(originalName)}`;
-        const filePath = join(this.attachmentUploadsDir, storedName);
-
-        await writeFile(filePath, file.buffer);
-
-        await tx.supplyRequestAttachment.create({
-          data: {
-            requestId: request.id,
-            uploadedById: authorId,
-            originalName,
-            storedName,
-            mimeType: file.mimetype,
-            size: file.size,
-            path: filePath,
-          },
+          include: this.requestInclude,
         });
-      }
 
-      return tx.supplyRequest.findUnique({
-        where: { id: request.id },
-        include: this.requestInclude,
+        for (const file of uploadedFiles) {
+          await tx.supplyRequestAttachment.create({
+            data: {
+              requestId: request.id,
+              uploadedById: authorId,
+              originalName: file.originalName,
+              storedName: file.storedName,
+              mimeType: file.mimeType,
+              size: file.size,
+              path: file.storagePath,
+            },
+          });
+        }
+
+        return tx.supplyRequest.findUnique({
+          where: { id: request.id },
+          include: this.requestInclude,
+        });
       });
-    });
+    } catch (error) {
+      await this.cleanupUploadedFiles(uploadedFiles, "attachments");
+      throw error;
+    }
   }
 
   async findAll(query: FindSupplyRequestsDto = {}) {
     const hasPaginationOrFilters = Boolean(
       query.page ||
-        query.limit ||
-        query.objectSearch ||
-        query.type ||
-        query.status ||
-        query.dateFrom ||
-        query.dateTo,
+      query.limit ||
+      query.objectSearch ||
+      query.type ||
+      query.status ||
+      query.dateFrom ||
+      query.dateTo,
     );
 
     if (!hasPaginationOrFilters) {
@@ -1070,7 +1060,8 @@ export class SupplyRequestsService {
 
     if (objectRole === UserRole.DEPUTY_PRODUCTION_DIRECTOR) {
       return (
-        request.status === SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR
+        request.status ===
+        SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR
       );
     }
 
@@ -1170,24 +1161,20 @@ export class SupplyRequestsService {
     }
 
     await this.ensureUserObjectAccess(actorId, invoice.request.objectId);
-    const filePath = await this.resolveUploadedFilePath(
+    const file = await this.storage.get(
       invoice.path,
-      this.invoiceUploadsDir,
+      "invoices",
       invoice.storedName,
     );
 
     return {
-      file: createReadStream(filePath),
+      file,
       mimeType: invoice.mimeType,
       originalName: invoice.originalName,
     };
   }
 
-  async findAttachmentFile(
-    id: string,
-    attachmentId: string,
-    actorId: string,
-  ) {
+  async findAttachmentFile(id: string, attachmentId: string, actorId: string) {
     const attachment = await this.prisma.supplyRequestAttachment.findFirst({
       where: {
         id: attachmentId,
@@ -1207,46 +1194,17 @@ export class SupplyRequestsService {
     }
 
     await this.ensureUserObjectAccess(actorId, attachment.request.objectId);
-    const filePath = await this.resolveUploadedFilePath(
+    const file = await this.storage.get(
       attachment.path,
-      this.attachmentUploadsDir,
+      "attachments",
       attachment.storedName,
     );
 
     return {
-      file: createReadStream(filePath),
+      file,
       mimeType: attachment.mimeType,
       originalName: attachment.originalName,
     };
-  }
-
-  private async resolveUploadedFilePath(
-    storedPath: string,
-    uploadsDir: string,
-    storedName: string,
-  ) {
-    const fallbackPath = join(uploadsDir, storedName);
-
-    for (const filePath of [storedPath, fallbackPath]) {
-      try {
-        await access(filePath);
-        return filePath;
-      } catch {
-        // Try the next known location before reporting the file as missing.
-      }
-    }
-
-    throw new NotFoundException(
-      "Uploaded file is missing on the server storage",
-    );
-  }
-
-  private async unlinkIfExists(filePath: string) {
-    await unlink(filePath).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== "ENOENT") {
-        throw error;
-      }
-    });
   }
 
   async deleteInvoice(id: string, invoiceId: string, actorId: string) {
@@ -1285,11 +1243,7 @@ export class SupplyRequestsService {
       where: { id: invoice.id },
     });
 
-    await unlink(invoice.path).catch((error: NodeJS.ErrnoException) => {
-      if (error.code !== "ENOENT") {
-        throw error;
-      }
-    });
+    await this.storage.delete(invoice.path, "invoices", invoice.storedName);
 
     return this.findOne(id);
   }
@@ -1313,9 +1267,7 @@ export class SupplyRequestsService {
     ]);
 
     if (!request.items.length) {
-      throw new BadRequestException(
-        "Only requests with items can be edited",
-      );
+      throw new BadRequestException("Only requests with items can be edited");
     }
 
     const hasQuantityUpdates =
@@ -1325,8 +1277,7 @@ export class SupplyRequestsService {
     const hasTextUpdates =
       dto.materialName !== undefined || dto.measurementUnit !== undefined;
     const hasCashPaymentUpdates =
-      dto.cashPaidAmount !== undefined ||
-      dto.cashPaymentComment !== undefined;
+      dto.cashPaidAmount !== undefined || dto.cashPaymentComment !== undefined;
     const hasPtoCommentUpdates = dto.ptoComment !== undefined;
     const hasChiefEngineerCommentUpdates =
       dto.chiefEngineerComment !== undefined;
@@ -1361,12 +1312,16 @@ export class SupplyRequestsService {
       this.ensureAssignedSupplyUser(request, actorId);
       actorRole = UserRole.SUPPLY;
     } else {
-      const objectAccess = await this.ensureUserObjectRole(actorId, request.objectId, [
-        UserRole.PTO,
-        UserRole.CHIEF_ENGINEER,
-        UserRole.SUPPLY,
-        UserRole.SUPPLY_MANAGER,
-      ]);
+      const objectAccess = await this.ensureUserObjectRole(
+        actorId,
+        request.objectId,
+        [
+          UserRole.PTO,
+          UserRole.CHIEF_ENGINEER,
+          UserRole.SUPPLY,
+          UserRole.SUPPLY_MANAGER,
+        ],
+      );
 
       if (objectAccess.role === UserRole.SUPPLY) {
         this.ensureAssignedSupplyUser(request, actorId);
@@ -1411,8 +1366,8 @@ export class SupplyRequestsService {
 
     if (
       hasCashPaymentUpdates &&
-      (request.status !== SupplyRequestStatus.PENDING_SUPPLY &&
-        request.status !== SupplyRequestStatus.RETURNED_TO_SUPPLY)
+      request.status !== SupplyRequestStatus.PENDING_SUPPLY &&
+      request.status !== SupplyRequestStatus.RETURNED_TO_SUPPLY
     ) {
       throw new BadRequestException(
         "Cash payment fields can be edited only by supply at the supply stage",
@@ -1448,9 +1403,7 @@ export class SupplyRequestsService {
     }
 
     const newQuantity =
-      dto.quantity === undefined
-        ? undefined
-        : new Prisma.Decimal(dto.quantity);
+      dto.quantity === undefined ? undefined : new Prisma.Decimal(dto.quantity);
     const newOrderQuantity =
       dto.orderQuantity === undefined
         ? undefined
@@ -1658,7 +1611,8 @@ export class SupplyRequestsService {
             itemId,
             materialName: requestItem.materialNameSnapshot,
             quantity: requestItem.quantity.toString(),
-            estimatedPriceSnapshot: requestItem.estimatedPriceSnapshot.toString(),
+            estimatedPriceSnapshot:
+              requestItem.estimatedPriceSnapshot.toString(),
           },
         },
       });
@@ -1824,10 +1778,9 @@ export class SupplyRequestsService {
     dto: RequestActionDto,
     actorId: string,
   ) {
-    const request = await this.ensureRequestStatus(
-      id,
-      [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
-    );
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+    ]);
     if (
       request.type !== SupplyRequestType.MATERIAL &&
       request.type !== SupplyRequestType.QUARRY &&
@@ -1902,10 +1855,9 @@ export class SupplyRequestsService {
     dto: ReviewRequestItemsDto,
     actorId: string,
   ) {
-    const request = await this.ensureRequestStatus(
-      id,
-      [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
-    );
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+    ]);
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
@@ -2556,10 +2508,9 @@ export class SupplyRequestsService {
       throw new BadRequestException("Reject comment is required");
     }
 
-    const request = await this.ensureRequestStatus(
-      id,
-      [SupplyRequestStatus.PENDING_CHIEF_ENGINEER],
-    );
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
+    ]);
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
@@ -2572,7 +2523,7 @@ export class SupplyRequestsService {
       request.type !== SupplyRequestType.APPEAL
     ) {
       throw new BadRequestException(
-          "This request type cannot be rejected by chief engineer",
+        "This request type cannot be rejected by chief engineer",
       );
     }
 
@@ -2599,13 +2550,10 @@ export class SupplyRequestsService {
     dto: RequestActionDto,
     actorId: string,
   ) {
-    const request = await this.ensureRequestStatus(
-      id,
-      [
-        SupplyRequestStatus.PENDING_SUPPLY,
-        SupplyRequestStatus.RETURNED_TO_SUPPLY,
-      ],
-    );
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_SUPPLY,
+      SupplyRequestStatus.RETURNED_TO_SUPPLY,
+    ]);
 
     if (
       request.type !== SupplyRequestType.MATERIAL &&
@@ -2623,44 +2571,42 @@ export class SupplyRequestsService {
       UserRole.SUPPLY,
     ]);
     this.ensureAssignedSupplyUser(request, actorId);
+    const nextStatus = this.getNextRouteStatus(request);
+    const uploadedFiles = await this.uploadRequestFiles(
+      files ?? [],
+      "invoices",
+    );
 
-    if (files?.length) {
-      await mkdir(this.invoiceUploadsDir, { recursive: true });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        for (const file of uploadedFiles) {
+          await tx.supplyRequestInvoice.create({
+            data: {
+              requestId: id,
+              uploadedById: actorId,
+              originalName: file.originalName,
+              storedName: file.storedName,
+              mimeType: file.mimeType,
+              size: file.size,
+              path: file.storagePath,
+            },
+          });
+        }
+
+        return this.moveRequest(
+          tx,
+          id,
+          actorId,
+          this.getRouteActionForStatus(nextStatus),
+          request.status,
+          nextStatus,
+          dto.comment,
+        );
+      });
+    } catch (error) {
+      await this.cleanupUploadedFiles(uploadedFiles, "invoices");
+      throw error;
     }
-
-    return this.prisma.$transaction(async (tx) => {
-      for (const file of files ?? []) {
-        const originalName = normalizeUploadedFileName(file.originalname);
-        const storedName = `${randomUUID()}${extname(originalName)}`;
-        const filePath = join(this.invoiceUploadsDir, storedName);
-
-        await writeFile(filePath, file.buffer);
-
-        await tx.supplyRequestInvoice.create({
-          data: {
-            requestId: id,
-            uploadedById: actorId,
-            originalName,
-            storedName,
-            mimeType: file.mimetype,
-            size: file.size,
-            path: filePath,
-          },
-        });
-      }
-
-      const nextStatus = this.getNextRouteStatus(request);
-
-      return this.moveRequest(
-        tx,
-        id,
-        actorId,
-        this.getRouteActionForStatus(nextStatus),
-        request.status,
-        nextStatus,
-        dto.comment,
-      );
-    });
   }
 
   async attachInvoicesBySupplyManager(
@@ -2681,57 +2627,56 @@ export class SupplyRequestsService {
     if (!files?.length) {
       throw new BadRequestException("At least one invoice file is required");
     }
+    const uploadedFiles = await this.uploadRequestFiles(files, "invoices");
 
-    await mkdir(this.invoiceUploadsDir, { recursive: true });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const uploadedInvoices: Array<{ id: string; originalName: string }> =
+          [];
 
-    return this.prisma.$transaction(async (tx) => {
-      const uploadedInvoices: Array<{ id: string; originalName: string }> = [];
+        for (const file of uploadedFiles) {
+          const invoice = await tx.supplyRequestInvoice.create({
+            data: {
+              requestId: id,
+              uploadedById: actorId,
+              originalName: file.originalName,
+              storedName: file.storedName,
+              mimeType: file.mimeType,
+              size: file.size,
+              path: file.storagePath,
+            },
+          });
 
-      for (const file of files) {
-        const originalName = normalizeUploadedFileName(file.originalname);
-        const storedName = `${randomUUID()}${extname(originalName)}`;
-        const filePath = join(this.invoiceUploadsDir, storedName);
+          uploadedInvoices.push({
+            id: invoice.id,
+            originalName: invoice.originalName,
+          });
+        }
 
-        await writeFile(filePath, file.buffer);
-
-        const invoice = await tx.supplyRequestInvoice.create({
+        await tx.approvalHistory.create({
           data: {
             requestId: id,
-            uploadedById: actorId,
-            originalName,
-            storedName,
-            mimeType: file.mimetype,
-            size: file.size,
-            path: filePath,
+            actorId,
+            action: ApprovalAction.COMMENTED,
+            fromStatus: request.status,
+            toStatus: request.status,
+            comment:
+              dto.comment?.trim() || "Начальник снабжения прикрепил счета",
+            changesJson: {
+              uploadedInvoices,
+            },
           },
         });
 
-        uploadedInvoices.push({
-          id: invoice.id,
-          originalName: invoice.originalName,
+        return tx.supplyRequest.findUnique({
+          where: { id },
+          include: this.requestInclude,
         });
-      }
-
-      await tx.approvalHistory.create({
-        data: {
-          requestId: id,
-          actorId,
-          action: ApprovalAction.COMMENTED,
-          fromStatus: request.status,
-          toStatus: request.status,
-          comment:
-            dto.comment?.trim() || "Начальник снабжения прикрепил счета",
-          changesJson: {
-            uploadedInvoices,
-          },
-        },
       });
-
-      return tx.supplyRequest.findUnique({
-        where: { id },
-        include: this.requestInclude,
-      });
-    });
+    } catch (error) {
+      await this.cleanupUploadedFiles(uploadedFiles, "invoices");
+      throw error;
+    }
   }
 
   async sendMoneyToDirectorBySupply(
@@ -2960,25 +2905,22 @@ export class SupplyRequestsService {
       UserRole.DIRECTOR,
     ]);
 
-    const filePaths = new Set<string>();
-
-    for (const invoice of request.invoices) {
-      filePaths.add(invoice.path);
-      filePaths.add(join(this.invoiceUploadsDir, invoice.storedName));
-    }
-
-    for (const attachment of request.attachments) {
-      filePaths.add(attachment.path);
-      filePaths.add(join(this.attachmentUploadsDir, attachment.storedName));
-    }
-
     await this.prisma.supplyRequest.delete({
       where: { id },
     });
 
-    await Promise.all(
-      Array.from(filePaths).map((filePath) => this.unlinkIfExists(filePath)),
-    );
+    await Promise.all([
+      ...request.invoices.map((invoice) =>
+        this.storage.delete(invoice.path, "invoices", invoice.storedName),
+      ),
+      ...request.attachments.map((attachment) =>
+        this.storage.delete(
+          attachment.path,
+          "attachments",
+          attachment.storedName,
+        ),
+      ),
+    ]);
 
     return { success: true };
   }
@@ -3109,12 +3051,12 @@ export class SupplyRequestsService {
       return this.moveRequest(
         tx,
         id,
-          actorId,
-          this.getRouteActionForStatus(nextStatus),
-          request.status,
-          nextStatus,
-          dto.comment,
-          {
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+        {
           completedItemIds: dto.completedItemIds,
           skippedItemIds,
         },
@@ -3301,9 +3243,7 @@ export class SupplyRequestsService {
     });
 
     if (!objectAccess || !roles.includes(objectAccess.role)) {
-      throw new ForbiddenException(
-        "User role is not allowed for this object",
-      );
+      throw new ForbiddenException("User role is not allowed for this object");
     }
 
     return objectAccess;
@@ -3361,11 +3301,10 @@ export class SupplyRequestsService {
       requestType === SupplyRequestType.MATERIAL ||
       requestType === SupplyRequestType.PRODUCTION
     ) {
-      const indexedRoute =
-        this.getRouteStartingAfterAuthorRoleFromChains(
-          MATERIAL_AND_PRODUCTION_ROUTE_CHAINS,
-          authorRole,
-        );
+      const indexedRoute = this.getRouteStartingAfterAuthorRoleFromChains(
+        MATERIAL_AND_PRODUCTION_ROUTE_CHAINS,
+        authorRole,
+      );
 
       if (indexedRoute?.length) {
         return indexedRoute;
@@ -3373,11 +3312,10 @@ export class SupplyRequestsService {
     }
 
     if (requestType === SupplyRequestType.TRANSPORT) {
-      const indexedRoute =
-        this.getRouteStartingAfterAuthorRoleFromChains(
-          TRANSPORT_ROUTE_CHAINS,
-          authorRole,
-        );
+      const indexedRoute = this.getRouteStartingAfterAuthorRoleFromChains(
+        TRANSPORT_ROUTE_CHAINS,
+        authorRole,
+      );
 
       if (indexedRoute?.length) {
         return indexedRoute;
@@ -3385,11 +3323,10 @@ export class SupplyRequestsService {
     }
 
     if (this.isSupplyOnlyIndexedRouteType(requestType)) {
-      const indexedRoute =
-        this.getRouteStartingAfterAuthorRoleFromChains(
-          SUPPLY_ONLY_ROUTE_CHAINS,
-          authorRole,
-        );
+      const indexedRoute = this.getRouteStartingAfterAuthorRoleFromChains(
+        SUPPLY_ONLY_ROUTE_CHAINS,
+        authorRole,
+      );
 
       if (indexedRoute?.length) {
         return indexedRoute;
@@ -3509,9 +3446,55 @@ export class SupplyRequestsService {
     return statusesByRole[role] ?? [];
   }
 
+  private async uploadRequestFiles(
+    files: Express.Multer.File[],
+    folder: RequestFileFolder,
+  ): Promise<UploadedRequestFile[]> {
+    const uploadedFiles: UploadedRequestFile[] = [];
+
+    try {
+      for (const file of files) {
+        const originalName = normalizeUploadedFileName(file.originalname);
+        const storedName = `${randomUUID()}${extname(originalName)}`;
+        const storagePath = await this.storage.upload(
+          folder,
+          storedName,
+          file.buffer,
+          file.mimetype,
+        );
+
+        uploadedFiles.push({
+          originalName,
+          storedName,
+          mimeType: file.mimetype,
+          size: file.size,
+          storagePath,
+        });
+      }
+
+      return uploadedFiles;
+    } catch (error) {
+      await this.cleanupUploadedFiles(uploadedFiles, folder);
+      throw error;
+    }
+  }
+
+  private async cleanupUploadedFiles(
+    files: UploadedRequestFile[],
+    folder: RequestFileFolder,
+  ) {
+    await Promise.allSettled(
+      files.map((file) =>
+        this.storage.delete(file.storagePath, folder, file.storedName),
+      ),
+    );
+  }
+
   private parseExpressMaterialItems(itemsJson: string) {
     try {
-      const items = JSON.parse(itemsJson) as CreateMaterialSupplyRequestDto["items"];
+      const items = JSON.parse(
+        itemsJson,
+      ) as CreateMaterialSupplyRequestDto["items"];
 
       if (!Array.isArray(items) || items.length < 1) {
         throw new Error("empty");
@@ -3546,8 +3529,7 @@ export class SupplyRequestsService {
       PENDING_CHIEF_ENGINEER: "главному инженеру",
       PENDING_DEPUTY_PRODUCTION_DIRECTOR:
         "заместителю директора по производству",
-      PENDING_DEPUTY_TRANSPORT_DIRECTOR:
-        "заместителю директора по транспорту",
+      PENDING_DEPUTY_TRANSPORT_DIRECTOR: "заместителю директора по транспорту",
       PENDING_SUPPLY_MANAGER: "начальнику снабжения",
       PENDING_SUPPLY_MANAGER_REVIEW: "начальнику снабжения на проверку",
       PENDING_SUPPLY: "снабженцу",
@@ -3644,7 +3626,10 @@ export class SupplyRequestsService {
     const currentStepIndex = route.indexOf(request.status);
 
     if (currentStepIndex < 0) {
-      return this.getPreviousStatusFromApprovalHistory(request.id, request.status);
+      return this.getPreviousStatusFromApprovalHistory(
+        request.id,
+        request.status,
+      );
     }
 
     return currentStepIndex === 0
@@ -3681,28 +3666,29 @@ export class SupplyRequestsService {
   }
 
   private getRouteActionForStatus(status: SupplyRequestStatus) {
-    const actionByStatus: Partial<Record<SupplyRequestStatus, ApprovalAction>> = {
-      PENDING_PTO: ApprovalAction.SENT_TO_PTO,
-      PENDING_CHIEF_ENGINEER: ApprovalAction.SENT_TO_CHIEF_ENGINEER,
-      PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-      ApprovalAction.SENT_TO_SUPPLY_MANAGER,
-      PENDING_DEPUTY_TRANSPORT_DIRECTOR: ApprovalAction.APPROVED,
-      PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
-      PENDING_SUPPLY_MANAGER_REVIEW: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
-      PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
-      PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
-      PENDING_ACCOUNTANT: ApprovalAction.SENT_TO_ACCOUNTANT,
-      PENDING_GARAGE_MANAGER: ApprovalAction.SENT_TO_GARAGE_MANAGER,
-      PENDING_WAREHOUSE_MANAGER: ApprovalAction.SENT_TO_WAREHOUSE_MANAGER,
-      PENDING_STOREKEEPER: ApprovalAction.SENT_TO_STOREKEEPER,
-      PENDING_TRANSPORT_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
-      PENDING_WORKSHOP_MANAGER: ApprovalAction.SENT_TO_WORKSHOP_MANAGER,
-      PENDING_PRODUCTION_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
-      PENDING_REQUEST_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
-      IN_PROGRESS: ApprovalAction.MARKED_IN_PROGRESS,
-      COMPLETED: ApprovalAction.COMPLETED,
-      ARCHIVED: ApprovalAction.ARCHIVED,
-    };
+    const actionByStatus: Partial<Record<SupplyRequestStatus, ApprovalAction>> =
+      {
+        PENDING_PTO: ApprovalAction.SENT_TO_PTO,
+        PENDING_CHIEF_ENGINEER: ApprovalAction.SENT_TO_CHIEF_ENGINEER,
+        PENDING_DEPUTY_PRODUCTION_DIRECTOR:
+          ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        PENDING_DEPUTY_TRANSPORT_DIRECTOR: ApprovalAction.APPROVED,
+        PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        PENDING_SUPPLY_MANAGER_REVIEW: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
+        PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
+        PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
+        PENDING_ACCOUNTANT: ApprovalAction.SENT_TO_ACCOUNTANT,
+        PENDING_GARAGE_MANAGER: ApprovalAction.SENT_TO_GARAGE_MANAGER,
+        PENDING_WAREHOUSE_MANAGER: ApprovalAction.SENT_TO_WAREHOUSE_MANAGER,
+        PENDING_STOREKEEPER: ApprovalAction.SENT_TO_STOREKEEPER,
+        PENDING_TRANSPORT_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
+        PENDING_WORKSHOP_MANAGER: ApprovalAction.SENT_TO_WORKSHOP_MANAGER,
+        PENDING_PRODUCTION_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
+        PENDING_REQUEST_AUTHOR: ApprovalAction.SENT_TO_AUTHOR,
+        IN_PROGRESS: ApprovalAction.MARKED_IN_PROGRESS,
+        COMPLETED: ApprovalAction.COMPLETED,
+        ARCHIVED: ApprovalAction.ARCHIVED,
+      };
 
     return actionByStatus[status] ?? ApprovalAction.APPROVED;
   }
@@ -3785,8 +3771,7 @@ export class SupplyRequestsService {
     const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
       PENDING_PTO: UserRole.PTO,
       PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
-      PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-        UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+      PENDING_DEPUTY_PRODUCTION_DIRECTOR: UserRole.DEPUTY_PRODUCTION_DIRECTOR,
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
       PENDING_SUPPLY_MANAGER_REVIEW: UserRole.SUPPLY_MANAGER,
@@ -3801,9 +3786,7 @@ export class SupplyRequestsService {
     const role = roleByStatus[request.status];
 
     if (!role) {
-      throw new ForbiddenException(
-        "Request cannot be processed at this stage",
-      );
+      throw new ForbiddenException("Request cannot be processed at this stage");
     }
 
     await this.ensureUserObjectRole(actorId, request.objectId, [role]);
@@ -3832,8 +3815,7 @@ export class SupplyRequestsService {
       PENDING_PTO: UserRole.PTO,
       PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
       PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
-      PENDING_DEPUTY_PRODUCTION_DIRECTOR:
-        UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+      PENDING_DEPUTY_PRODUCTION_DIRECTOR: UserRole.DEPUTY_PRODUCTION_DIRECTOR,
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
       PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
@@ -3862,9 +3844,7 @@ export class SupplyRequestsService {
         request.type === SupplyRequestType.EXPRESS_MATERIAL) &&
       request.items.length < 1
     ) {
-      throw new BadRequestException(
-        "Request has no active approved items",
-      );
+      throw new BadRequestException("Request has no active approved items");
     }
   }
 

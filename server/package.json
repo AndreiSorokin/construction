@@ -13,9 +13,11 @@
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "storage:migrate-to-s3": "node dist/storage/migrate-local-files.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1072.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
