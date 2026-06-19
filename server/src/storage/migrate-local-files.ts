@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma/prisma.service";
@@ -16,6 +17,7 @@ async function migrateLocalFiles() {
 
   let migrated = 0;
   let skipped = 0;
+  let missing = 0;
 
   try {
     const invoices = await prisma.supplyRequestInvoice.findMany();
@@ -26,12 +28,26 @@ async function migrateLocalFiles() {
         continue;
       }
 
-      const storagePath = await storage.migrateLocalFile(
-        invoice.path,
-        "invoices",
-        invoice.storedName,
-        invoice.mimeType,
-      );
+      let storagePath: string;
+
+      try {
+        storagePath = await storage.migrateLocalFile(
+          invoice.path,
+          "invoices",
+          invoice.storedName,
+          invoice.mimeType,
+        );
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+
+        missing += 1;
+        console.warn(
+          `[missing invoice] id=${invoice.id} name=${invoice.originalName} path=${invoice.path}`,
+        );
+        continue;
+      }
 
       await prisma.supplyRequestInvoice.update({
         where: { id: invoice.id },
@@ -48,12 +64,26 @@ async function migrateLocalFiles() {
         continue;
       }
 
-      const storagePath = await storage.migrateLocalFile(
-        attachment.path,
-        "attachments",
-        attachment.storedName,
-        attachment.mimeType,
-      );
+      let storagePath: string;
+
+      try {
+        storagePath = await storage.migrateLocalFile(
+          attachment.path,
+          "attachments",
+          attachment.storedName,
+          attachment.mimeType,
+        );
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+
+        missing += 1;
+        console.warn(
+          `[missing attachment] id=${attachment.id} name=${attachment.originalName} path=${attachment.path}`,
+        );
+        continue;
+      }
 
       await prisma.supplyRequestAttachment.update({
         where: { id: attachment.id },
@@ -63,7 +93,7 @@ async function migrateLocalFiles() {
     }
 
     console.log(
-      `S3 migration completed. Migrated: ${migrated}, skipped: ${skipped}`,
+      `S3 migration completed. Migrated: ${migrated}, skipped: ${skipped}, missing: ${missing}`,
     );
   } finally {
     await app.close();
