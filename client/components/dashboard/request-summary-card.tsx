@@ -33,6 +33,7 @@ type RequestSummaryCardProps = {
 const NEW_ROUTE_STARTED_AT = new Date("2026-06-07T00:00:00+03:00");
 
 const statusClasses: Record<SupplyRequestStatus, string> = {
+  PENDING_TRANSPORT_SUPPLY: "bg-cyan-50 text-cyan-800",
   CREATED: "bg-slate-100 text-slate-700",
   PENDING_PTO: "bg-amber-50 text-amber-700",
   PENDING_CHIEF_ENGINEER: "bg-indigo-50 text-indigo-700",
@@ -360,6 +361,7 @@ function getLatestReturnComment(request: SupplyRequest) {
 }
 
 const holderRoleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
+  PENDING_TRANSPORT_SUPPLY: "TRANSPORT_SUPPLY",
   CREATED: "FOREMAN",
   PENDING_ACCOUNTANT: "ACCOUNTANT",
   PENDING_CHIEF_ENGINEER: "CHIEF_ENGINEER",

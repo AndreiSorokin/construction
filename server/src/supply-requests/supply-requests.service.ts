@@ -173,22 +173,14 @@ const MATERIAL_AND_PRODUCTION_ROUTE_CHAINS: RouteChainStep[][] = [
       status: SupplyRequestStatus.PENDING_GARAGE_MANAGER,
     },
     {
-      roles: [UserRole.DEPUTY_TRANSPORT_DIRECTOR],
-      status: SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
-    },
-    {
       roles: [UserRole.WAREHOUSE_MANAGER],
       status: SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
     },
     {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
+      roles: [UserRole.TRANSPORT_SUPPLY],
+      status: SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY,
     },
-    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-    },
+    { roles: [], status: SupplyRequestStatus.PENDING_REQUEST_AUTHOR },
     { roles: [], status: SupplyRequestStatus.COMPLETED },
   ],
   [
@@ -207,10 +199,7 @@ const MATERIAL_AND_PRODUCTION_ROUTE_CHAINS: RouteChainStep[][] = [
       status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
     },
     { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-    },
+    { roles: [], status: SupplyRequestStatus.PENDING_REQUEST_AUTHOR },
     { roles: [], status: SupplyRequestStatus.COMPLETED },
   ],
   [
@@ -220,18 +209,11 @@ const MATERIAL_AND_PRODUCTION_ROUTE_CHAINS: RouteChainStep[][] = [
       status: SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
     },
     {
-      roles: [UserRole.WAREHOUSE_MANAGER],
-      status: SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
-    },
-    {
       roles: [UserRole.SUPPLY_MANAGER],
       status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
     },
     { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-    },
+    { roles: [], status: SupplyRequestStatus.PENDING_REQUEST_AUTHOR },
     { roles: [], status: SupplyRequestStatus.COMPLETED },
   ],
 ];
@@ -244,18 +226,10 @@ const SUPPLY_ONLY_ROUTE_CHAINS: RouteChainStep[][] = [
       status: SupplyRequestStatus.PENDING_GARAGE_MANAGER,
     },
     {
-      roles: [UserRole.DEPUTY_TRANSPORT_DIRECTOR],
-      status: SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
+      roles: [UserRole.TRANSPORT_SUPPLY],
+      status: SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY,
     },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
-    },
-    { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-    },
+    { roles: [], status: SupplyRequestStatus.PENDING_REQUEST_AUTHOR },
     { roles: [], status: SupplyRequestStatus.COMPLETED },
   ],
   [
@@ -269,10 +243,7 @@ const SUPPLY_ONLY_ROUTE_CHAINS: RouteChainStep[][] = [
       status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
     },
     { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-    },
+    { roles: [], status: SupplyRequestStatus.PENDING_REQUEST_AUTHOR },
     { roles: [], status: SupplyRequestStatus.COMPLETED },
   ],
   [
@@ -286,15 +257,10 @@ const SUPPLY_ONLY_ROUTE_CHAINS: RouteChainStep[][] = [
       status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
     },
     { roles: [UserRole.SUPPLY], status: SupplyRequestStatus.PENDING_SUPPLY },
-    {
-      roles: [UserRole.SUPPLY_MANAGER],
-      status: SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
-    },
+    { roles: [], status: SupplyRequestStatus.PENDING_REQUEST_AUTHOR },
     { roles: [], status: SupplyRequestStatus.COMPLETED },
   ],
 ];
-
-const TRANSPORT_ROUTE_CHAINS = SUPPLY_ONLY_ROUTE_CHAINS.slice(1);
 
 const REQUEST_ROUTE_CONFIG: RequestRouteMap = {
   MATERIAL: {
@@ -1038,8 +1004,6 @@ export class SupplyRequestsService {
     }
 
     if (
-      (request.type === SupplyRequestType.EXPRESS_MATERIAL ||
-        request.type === SupplyRequestType.BUSINESS_TRIP) &&
       request.status === SupplyRequestStatus.PENDING_REQUEST_AUTHOR &&
       request.authorId === userId
     ) {
@@ -1101,6 +1065,10 @@ export class SupplyRequestsService {
           request.status === SupplyRequestStatus.RETURNED_TO_SUPPLY ||
           request.status === SupplyRequestStatus.IN_PROGRESS)
       );
+    }
+
+    if (objectRole === UserRole.TRANSPORT_SUPPLY) {
+      return request.status === SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY;
     }
 
     if (objectRole === UserRole.STOREKEEPER) {
@@ -1641,12 +1609,14 @@ export class SupplyRequestsService {
       SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
       SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
       SupplyRequestStatus.PENDING_SUPPLY,
+      SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY,
       SupplyRequestStatus.PENDING_DIRECTOR,
       SupplyRequestStatus.PENDING_ACCOUNTANT,
       SupplyRequestStatus.PENDING_GARAGE_MANAGER,
       SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
       SupplyRequestStatus.PENDING_STOREKEEPER,
       SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
+      SupplyRequestStatus.PENDING_REQUEST_AUTHOR,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
       SupplyRequestStatus.IN_PROGRESS,
     ]);
@@ -2320,6 +2290,63 @@ export class SupplyRequestsService {
     await this.ensureUserObjectRole(actorId, request.objectId, [
       UserRole.GARAGE_MANAGER,
     ]);
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async approveByTransportSupply(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY,
+    ]);
+    await this.ensureUserObjectRole(actorId, request.objectId, [
+      UserRole.TRANSPORT_SUPPLY,
+    ]);
+
+    const nextStatus = this.getNextRouteStatus(request);
+
+    return this.prisma.$transaction((tx) =>
+      this.moveRequest(
+        tx,
+        id,
+        actorId,
+        this.getRouteActionForStatus(nextStatus),
+        request.status,
+        nextStatus,
+        dto.comment,
+      ),
+    );
+  }
+
+  async completeByRequestAuthor(
+    id: string,
+    dto: RequestActionDto,
+    actorId: string,
+  ) {
+    const request = await this.ensureRequestStatus(id, [
+      SupplyRequestStatus.PENDING_REQUEST_AUTHOR,
+    ]);
+
+    if (request.authorId !== actorId) {
+      throw new ForbiddenException(
+        "Only the request author can confirm completion",
+      );
+    }
 
     const nextStatus = this.getNextRouteStatus(request);
 
@@ -3306,20 +3333,7 @@ export class SupplyRequestsService {
         authorRole,
       );
 
-      if (indexedRoute?.length) {
-        return indexedRoute;
-      }
-    }
-
-    if (requestType === SupplyRequestType.TRANSPORT) {
-      const indexedRoute = this.getRouteStartingAfterAuthorRoleFromChains(
-        TRANSPORT_ROUTE_CHAINS,
-        authorRole,
-      );
-
-      if (indexedRoute?.length) {
-        return indexedRoute;
-      }
+      return indexedRoute;
     }
 
     if (this.isSupplyOnlyIndexedRouteType(requestType)) {
@@ -3328,11 +3342,17 @@ export class SupplyRequestsService {
         authorRole,
       );
 
-      if (indexedRoute?.length) {
-        return indexedRoute;
-      }
+      return indexedRoute;
     }
 
+    return this.getLegacyRequestRoute(requestType, authorRole, objectType);
+  }
+
+  private getLegacyRequestRoute(
+    requestType: SupplyRequestType,
+    authorRole: UserRole,
+    objectType: ObjectType,
+  ) {
     const route = REQUEST_ROUTE_CONFIG[requestType]?.[authorRole] ?? null;
 
     if (
@@ -3413,6 +3433,7 @@ export class SupplyRequestsService {
   private isSupplyOnlyIndexedRouteType(requestType: SupplyRequestType) {
     return (
       requestType === SupplyRequestType.MONEY ||
+      requestType === SupplyRequestType.TRANSPORT ||
       requestType === SupplyRequestType.QUARRY ||
       requestType === SupplyRequestType.FUEL ||
       requestType === SupplyRequestType.BUSINESS_TRIP ||
@@ -3435,6 +3456,7 @@ export class SupplyRequestsService {
       PTO: [SupplyRequestStatus.PENDING_PTO],
       STOREKEEPER: [SupplyRequestStatus.PENDING_STOREKEEPER],
       SUPPLY: [SupplyRequestStatus.PENDING_SUPPLY],
+      TRANSPORT_SUPPLY: [SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY],
       SUPPLY_MANAGER: [
         SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
         SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
@@ -3533,6 +3555,7 @@ export class SupplyRequestsService {
       PENDING_SUPPLY_MANAGER: "начальнику снабжения",
       PENDING_SUPPLY_MANAGER_REVIEW: "начальнику снабжения на проверку",
       PENDING_SUPPLY: "снабженцу",
+      PENDING_TRANSPORT_SUPPLY: "транспортному снабженцу",
       PENDING_DIRECTOR: "директору",
       PENDING_ACCOUNTANT: "бухгалтеру",
       PENDING_GARAGE_MANAGER: "заведующему гаражом",
@@ -3587,6 +3610,20 @@ export class SupplyRequestsService {
       request.status === SupplyRequestStatus.PENDING_PTO
     ) {
       return SupplyRequestStatus.PENDING_SUPPLY_MANAGER;
+    }
+
+    if (currentStepIndex < 0) {
+      const legacyRoute =
+        REQUEST_ROUTE_CONFIG[request.type]?.[authorRole] ?? null;
+      const legacyStepIndex = legacyRoute?.indexOf(request.status) ?? -1;
+
+      if (
+        legacyRoute &&
+        legacyStepIndex >= 0 &&
+        legacyStepIndex < legacyRoute.length - 1
+      ) {
+        return legacyRoute[legacyStepIndex + 1];
+      }
     }
 
     if (currentStepIndex < 0 || currentStepIndex >= route.length - 1) {
@@ -3676,6 +3713,7 @@ export class SupplyRequestsService {
         PENDING_SUPPLY_MANAGER: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
         PENDING_SUPPLY_MANAGER_REVIEW: ApprovalAction.SENT_TO_SUPPLY_MANAGER,
         PENDING_SUPPLY: ApprovalAction.SENT_TO_SUPPLY,
+        PENDING_TRANSPORT_SUPPLY: ApprovalAction.SENT_TO_TRANSPORT_SUPPLY,
         PENDING_DIRECTOR: ApprovalAction.SENT_TO_DIRECTOR,
         PENDING_ACCOUNTANT: ApprovalAction.SENT_TO_ACCOUNTANT,
         PENDING_GARAGE_MANAGER: ApprovalAction.SENT_TO_GARAGE_MANAGER,
@@ -3775,6 +3813,7 @@ export class SupplyRequestsService {
       PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
       PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
       PENDING_SUPPLY_MANAGER_REVIEW: UserRole.SUPPLY_MANAGER,
+      PENDING_TRANSPORT_SUPPLY: UserRole.TRANSPORT_SUPPLY,
       PENDING_DIRECTOR: UserRole.DIRECTOR,
       PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
       PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,

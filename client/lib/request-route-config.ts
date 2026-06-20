@@ -1,36 +1,10 @@
 import { SupplyRequestType, UserRole } from "@/lib/types";
 
 const requestCreatorRoles: Record<SupplyRequestType, UserRole[]> = {
-  MATERIAL: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "GARAGE_MANAGER",
-    "DEPUTY_TRANSPORT_DIRECTOR",
-    "CHIEF_ENGINEER",
-    "PTO",
-    "WAREHOUSE_MANAGER",
-    "SUPPLY_MANAGER",
-    "SUPPLY",
-    "WORKSHOP_MANAGER",
-    "DEPUTY_PRODUCTION_DIRECTOR",
-  ],
-  TRANSPORT: getTransportRequestCreatorRoles(),
+  MATERIAL: getMaterialAndProductionCreatorRoles(),
+  TRANSPORT: getSupplyOnlyRequestCreatorRoles(),
   MONEY: getSupplyOnlyRequestCreatorRoles(),
-  PRODUCTION: [
-    "MECHANIC",
-    "FOREMAN",
-    "SITE_MANAGER",
-    "GARAGE_MANAGER",
-    "DEPUTY_TRANSPORT_DIRECTOR",
-    "CHIEF_ENGINEER",
-    "PTO",
-    "WAREHOUSE_MANAGER",
-    "SUPPLY_MANAGER",
-    "SUPPLY",
-    "WORKSHOP_MANAGER",
-    "DEPUTY_PRODUCTION_DIRECTOR",
-  ],
+  PRODUCTION: getMaterialAndProductionCreatorRoles(),
   QUARRY: getSupplyOnlyRequestCreatorRoles(),
   EXPRESS_MATERIAL: ["SUPPLY"],
   FUEL: getSupplyOnlyRequestCreatorRoles(),
@@ -42,7 +16,7 @@ function getSupplyOnlyRequestCreatorRoles(): UserRole[] {
   return [
     "MECHANIC",
     "GARAGE_MANAGER",
-    "DEPUTY_TRANSPORT_DIRECTOR",
+    "TRANSPORT_SUPPLY",
     "FOREMAN",
     "SITE_MANAGER",
     "CHIEF_ENGINEER",
@@ -53,11 +27,16 @@ function getSupplyOnlyRequestCreatorRoles(): UserRole[] {
   ];
 }
 
-function getTransportRequestCreatorRoles(): UserRole[] {
+function getMaterialAndProductionCreatorRoles(): UserRole[] {
   return [
+    "MECHANIC",
     "FOREMAN",
     "SITE_MANAGER",
+    "GARAGE_MANAGER",
     "CHIEF_ENGINEER",
+    "PTO",
+    "WAREHOUSE_MANAGER",
+    "TRANSPORT_SUPPLY",
     "WORKSHOP_MANAGER",
     "DEPUTY_PRODUCTION_DIRECTOR",
     "SUPPLY_MANAGER",

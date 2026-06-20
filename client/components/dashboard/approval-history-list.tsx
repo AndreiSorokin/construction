@@ -26,6 +26,7 @@ type ItemChangeDetails = {
 };
 
 const actionLabels: Record<ApprovalAction, string> = {
+  SENT_TO_TRANSPORT_SUPPLY: "Отправлена транспортному снабженцу",
   CREATED: "Создана",
   APPROVED: "Утверждена",
   REJECTED: "Отклонена",

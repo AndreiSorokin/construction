@@ -17,6 +17,7 @@ export const requestTypeLabels: Record<SupplyRequestType, string> = {
 };
 
 export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
+  PENDING_TRANSPORT_SUPPLY: "У транспортного снабженца",
   CREATED: "Создана",
   PENDING_PTO: "В ПТО",
   PENDING_CHIEF_ENGINEER: "У главного инженера",
@@ -44,6 +45,7 @@ export const requestStatusLabels: Record<SupplyRequestStatus, string> = {
 };
 
 export const userRoleLabels: Record<UserRole, string> = {
+  TRANSPORT_SUPPLY: "Транспортный снабженец",
   MECHANIC: "Механик",
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",

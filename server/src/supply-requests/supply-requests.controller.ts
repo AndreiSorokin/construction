@@ -495,6 +495,32 @@ export class SupplyRequestsController {
     return this.supplyRequestsService.completeByGarageManager(id, dto, user.id);
   }
 
+  @Patch(":id/transport-supply/approve")
+  approveByTransportSupply(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.approveByTransportSupply(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
+  @Patch(":id/author/complete")
+  completeByRequestAuthor(
+    @Param("id") id: string,
+    @Body() dto: RequestActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.completeByRequestAuthor(
+      id,
+      dto,
+      user.id,
+    );
+  }
+
   @Patch(":id/transport/author/complete")
   completeTransportByAuthor(
     @Param("id") id: string,

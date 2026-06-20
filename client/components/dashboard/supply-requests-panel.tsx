@@ -31,6 +31,7 @@ import {
   approveSupplyRequestByDirector,
   approveSupplyRequestByPto,
   approveSupplyRequestBySupply,
+  approveSupplyRequestByTransportSupply,
   approveSupplyRequestByWarehouseManager,
   approveSupplyRequestByWorkshopManager,
   approveSupplyRequestByAccountant,
@@ -42,11 +43,10 @@ import {
   attachInvoicesBySupplyManager,
   completeTransportByAuthor,
   completeQuarryByAuthor,
-  completeBusinessTripByAuthor,
-  completeExpressMaterialByAuthor,
   completeProductionByAuthor,
   completeTransportByGarageManager,
   completeSupplyRequest,
+  completeSupplyRequestByAuthor,
   completeSupplyRequestByStorekeeper,
   deleteSupplyRequestInvoice,
   deleteSupplyRequestItem,
@@ -786,6 +786,40 @@ export function SupplyRequestsPanel({
     }
   }
 
+  async function approveByTransportSupply(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий транспортного снабженца");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await approveSupplyRequestByTransportSupply(request.id, comment);
+      onSuccess(
+        `Заявка ${request.requestNumber} отправлена автору на подтверждение`,
+      );
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
+  async function completeByRequestAuthor(request: SupplyRequest) {
+    const comment = window.prompt("Комментарий к подтверждению получения");
+
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      await completeSupplyRequestByAuthor(request.id, comment);
+      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
+      await loadRequests();
+    } catch (error) {
+      onError(error);
+    }
+  }
+
   async function completeTransportByRequestAuthor(request: SupplyRequest) {
     const comment = window.prompt("Комментарий к подтверждению исполнения");
 
@@ -799,38 +833,6 @@ export function SupplyRequestsPanel({
       } else {
         await completeTransportByAuthor(request.id, comment);
       }
-      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
-      await loadRequests();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
-  async function completeExpressMaterialByRequestAuthor(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к подтверждению исполнения");
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      await completeExpressMaterialByAuthor(request.id, comment);
-      onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
-      await loadRequests();
-    } catch (error) {
-      onError(error);
-    }
-  }
-
-  async function completeBusinessTripByRequestAuthor(request: SupplyRequest) {
-    const comment = window.prompt("Комментарий к подтверждению исполнения");
-
-    if (comment === null) {
-      return;
-    }
-
-    try {
-      await completeBusinessTripByAuthor(request.id, comment);
       onSuccess(`Заявка ${request.requestNumber} отмечена как исполненная`);
       await loadRequests();
     } catch (error) {
@@ -972,8 +974,6 @@ export function SupplyRequestsPanel({
               }
 
               if (
-                (request.type === "EXPRESS_MATERIAL" ||
-                  request.type === "BUSINESS_TRIP") &&
                 request.status === "PENDING_REQUEST_AUTHOR" &&
                 request.authorId === user.id
               ) {
@@ -981,11 +981,7 @@ export function SupplyRequestsPanel({
                   <SimpleApprovalCard
                     key={request.id}
                     request={request}
-                    onApprove={
-                      request.type === "BUSINESS_TRIP"
-                        ? completeBusinessTripByRequestAuthor
-                        : completeExpressMaterialByRequestAuthor
-                    }
+                    onApprove={completeByRequestAuthor}
                     onReject={rejectToPreviousStep}
                   />
                 );
@@ -1131,6 +1127,17 @@ export function SupplyRequestsPanel({
                     key={request.id}
                     request={request}
                     onComplete={completeByGarageManager}
+                    onReject={rejectToPreviousStep}
+                  />
+                );
+              }
+
+              if (objectRole === "TRANSPORT_SUPPLY") {
+                return (
+                  <SimpleApprovalCard
+                    key={request.id}
+                    request={request}
+                    onApprove={approveByTransportSupply}
                     onReject={rejectToPreviousStep}
                   />
                 );
@@ -1327,8 +1334,6 @@ function getVisibleRequests(
     }
 
     if (
-      (request.type === "EXPRESS_MATERIAL" ||
-        request.type === "BUSINESS_TRIP") &&
       request.status === "PENDING_REQUEST_AUTHOR" &&
       request.authorId === userId
     ) {
@@ -1365,6 +1370,10 @@ function getVisibleRequests(
 
     if (objectRole === "GARAGE_MANAGER") {
       return request.status === "PENDING_GARAGE_MANAGER";
+    }
+
+    if (objectRole === "TRANSPORT_SUPPLY") {
+      return request.status === "PENDING_TRANSPORT_SUPPLY";
     }
 
     if (objectRole === "SUPPLY_MANAGER") {

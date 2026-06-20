@@ -30,6 +30,7 @@ const requestTypeLabels: Record<SupplyRequestType, string> = {
 };
 
 const requestStatusLabels: Record<SupplyRequestStatus, string> = {
+  PENDING_TRANSPORT_SUPPLY: "У транспортного снабженца",
   CREATED: "Создана",
   PENDING_PTO: "В ПТО",
   PENDING_CHIEF_ENGINEER: "У главного инженера",
@@ -55,6 +56,7 @@ const requestStatusLabels: Record<SupplyRequestStatus, string> = {
 };
 
 const actionLabels: Record<ApprovalAction, string> = {
+  SENT_TO_TRANSPORT_SUPPLY: "Передано транспортному снабженцу",
   CREATED: "Создание",
   APPROVED: "Согласование",
   REJECTED: "Отклонение",
@@ -81,6 +83,7 @@ const actionLabels: Record<ApprovalAction, string> = {
 };
 
 const compactActionLabels: Record<ApprovalAction, string> = {
+  SENT_TO_TRANSPORT_SUPPLY: "Согласовано",
   CREATED: "Создано",
   APPROVED: "Согласовано",
   REJECTED: "Отклонено",
@@ -107,6 +110,7 @@ const compactActionLabels: Record<ApprovalAction, string> = {
 };
 
 const userRoleLabels: Record<UserRole, string> = {
+  TRANSPORT_SUPPLY: "Транспортный снабженец",
   MECHANIC: "Механик",
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
@@ -575,6 +579,7 @@ function getApprovalHistoryRecipient(
 
 function getRoleForStatus(status: SupplyRequestStatus): UserRole | null {
   const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
+    PENDING_TRANSPORT_SUPPLY: "TRANSPORT_SUPPLY",
     PENDING_ACCOUNTANT: "ACCOUNTANT",
     PENDING_CHIEF_ENGINEER: "CHIEF_ENGINEER",
     PENDING_DEPUTY_PRODUCTION_DIRECTOR: "DEPUTY_PRODUCTION_DIRECTOR",

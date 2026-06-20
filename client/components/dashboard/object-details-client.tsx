@@ -43,6 +43,7 @@ const objectTypeLabels = {
 };
 
 const inviteRoleLabels: Record<UserRole, string> = {
+  TRANSPORT_SUPPLY: "Транспортный снабженец",
   MECHANIC: "Механик",
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",

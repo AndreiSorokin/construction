@@ -592,6 +592,32 @@ export function completeTransportByGarageManager(
   );
 }
 
+export function approveSupplyRequestByTransportSupply(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/transport-supply/approve`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
+export function completeSupplyRequestByAuthor(
+  requestId: string,
+  comment?: string,
+) {
+  return apiClient<SupplyRequest>(
+    `/supply-requests/${requestId}/author/complete`,
+    {
+      method: "PATCH",
+      body: { comment },
+    },
+  );
+}
+
 export function completeTransportByAuthor(
   requestId: string,
   comment?: string,

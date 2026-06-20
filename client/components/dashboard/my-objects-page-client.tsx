@@ -12,6 +12,7 @@ import { getMyObjects } from "@/lib/objects-api";
 import { UserObjectAccess } from "@/lib/types";
 
 const accessRoleLabels: Record<UserObjectAccess["role"], string> = {
+  TRANSPORT_SUPPLY: "Транспортный снабженец",
   MECHANIC: "Механик",
   FOREMAN: "Прораб",
   SITE_MANAGER: "Начальник участка",
