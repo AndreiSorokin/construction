@@ -157,7 +157,6 @@ export type SupplyRequestItem = {
   quantity: string;
   orderQuantity: string;
   stockQuantity: string;
-  ptoLimitPrice?: string | null;
   supplierPurchasePrice?: string | null;
   cashPaidAmount?: string | null;
   cashPaymentComment?: string | null;

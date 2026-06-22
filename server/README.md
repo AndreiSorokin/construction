@@ -65,7 +65,6 @@ npm run start:dev
 - `POST /supply-requests/money`
 - `GET /supply-requests`
 - `GET /supply-requests/:id`
-- `PATCH /supply-requests/:id/pto-limit-prices`
 - `PATCH /supply-requests/:id/chief-engineer/approve`
 - `PATCH /supply-requests/:id/supplier-purchase-prices`
 - `PATCH /supply-requests/:id/transport/supply/approve`

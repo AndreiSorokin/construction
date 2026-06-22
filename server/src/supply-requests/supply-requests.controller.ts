@@ -36,7 +36,6 @@ import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
 import { SendToStorekeeperDto } from "./dto/send-to-storekeeper.dto";
-import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { SupplyRequestsService } from "./supply-requests.service";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
@@ -238,15 +237,6 @@ export class SupplyRequestsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplyRequestsService.rejectToPreviousStep(id, dto, user.id);
-  }
-
-  @Patch(":id/pto-limit-prices")
-  setPtoLimitPrices(
-    @Param("id") id: string,
-    @Body() dto: SetPtoLimitPricesDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.supplyRequestsService.setPtoLimitPrices(id, dto, user.id);
   }
 
   @Patch(":id/pto/approve")

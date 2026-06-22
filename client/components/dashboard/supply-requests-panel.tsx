@@ -54,7 +54,6 @@ import {
   rejectSupplyRequestToPreviousStep,
   sendMaterialToDirectorBySupplyManager,
   sendTransportToGarageManager,
-  setPtoLimitPrices,
   updateSupplyRequestItem,
 } from "@/lib/supply-requests-api";
 import { SupplyRequest, User, UserObjectAccess, UserRole } from "@/lib/types";
@@ -120,35 +119,20 @@ export function SupplyRequestsPanel({
     }
   }
 
-  async function submitPtoPrices(
+  async function submitPtoApproval(
     request: SupplyRequest,
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const items = request.items.map((item) => ({
-      requestItemId: item.id,
-      ptoLimitPrice: String(form.get(`ptoLimitPrice:${item.id}`) ?? ""),
-    }));
-
-    if (
-      items.some(
-        (item) => !item.ptoLimitPrice.trim() || Number(item.ptoLimitPrice) <= 0,
-      )
-    ) {
-      onError("ПТО должно указать сумму для каждой позиции");
-      return;
-    }
 
     try {
-      await setPtoLimitPrices(request.id, {
-        comment: String(form.get("comment") ?? ""),
-        items,
-      });
-
-      onSuccess(
-        `Заявка ${request.requestNumber} отправлена`,
+      await approveSupplyRequestByPto(
+        request.id,
+        String(form.get("comment") ?? ""),
       );
+
+      onSuccess(`Заявка ${request.requestNumber} согласована ПТО`);
       await loadRequests();
     } catch (error) {
       onError(error);
@@ -1008,7 +992,7 @@ export function SupplyRequestsPanel({
                     onUpdatePtoComment={updatePtoItemComment}
                     onUpdateItem={updateRequestItemQuantity}
                     onUpdateTextField={updateRequestItemTextField}
-                    onSubmit={submitPtoPrices}
+                    onSubmit={submitPtoApproval}
                   />
                 );
               }
@@ -1064,6 +1048,7 @@ export function SupplyRequestsPanel({
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1077,6 +1062,7 @@ export function SupplyRequestsPanel({
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1092,6 +1078,8 @@ export function SupplyRequestsPanel({
                       onApprove={approveBySupplyManagerReview}
                       onReject={rejectToPreviousStep}
                       onUpdateSupplyManagerComment={updateSupplyManagerItemComment}
+                      onUpdateItem={updateRequestItemQuantity}
+                      onUpdateTextField={updateRequestItemTextField}
                     />
                   );
                 }
@@ -1106,6 +1094,8 @@ export function SupplyRequestsPanel({
                     onReject={rejectToPreviousStep}
                     onSubmit={assignBySupplyManager}
                     onUpdateSupplyManagerComment={updateSupplyManagerItemComment}
+                    onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1117,6 +1107,8 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByAccountant}
                     onReject={rejectToPreviousStep}
+                    onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1128,6 +1120,8 @@ export function SupplyRequestsPanel({
                     request={request}
                     onComplete={completeByGarageManager}
                     onReject={rejectToPreviousStep}
+                    onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1139,6 +1133,8 @@ export function SupplyRequestsPanel({
                     request={request}
                     onApprove={approveByTransportSupply}
                     onReject={rejectToPreviousStep}
+                    onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1180,6 +1176,8 @@ export function SupplyRequestsPanel({
                   onReject={rejectToPreviousStep}
                   onSubmit={submitInvoicesBySupply}
                   onUpdateSupplierComment={updateSupplierItemComment}
+                  onUpdateItem={updateRequestItemQuantity}
+                  onUpdateTextField={updateRequestItemTextField}
                 />
                 );
               }
@@ -1191,6 +1189,8 @@ export function SupplyRequestsPanel({
                     request={request}
                     onComplete={completeByStorekeeper}
                     onReject={rejectToPreviousStep}
+                    onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }
@@ -1216,6 +1216,7 @@ export function SupplyRequestsPanel({
                     onDeleteItem={deleteRequestItemFromRequest}
                     onReject={rejectToPreviousStep}
                     onUpdateItem={updateRequestItemQuantity}
+                    onUpdateTextField={updateRequestItemTextField}
                   />
                 );
               }

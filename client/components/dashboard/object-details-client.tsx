@@ -11,7 +11,6 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
-import { AppealRequestModal } from "@/components/dashboard/appeal-request-modal";
 import { BusinessTripRequestModal } from "@/components/dashboard/business-trip-request-modal";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { MaterialRequestModal } from "@/components/dashboard/material-request-modal";
@@ -83,7 +82,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const [isBusinessTripRequestOpen, setIsBusinessTripRequestOpen] =
     useState(false);
   const [isProductionRequestOpen, setIsProductionRequestOpen] = useState(false);
-  const [isAppealRequestOpen, setIsAppealRequestOpen] = useState(false);
   const [isCopyStaffOpen, setIsCopyStaffOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [isEditingObjectName, setIsEditingObjectName] = useState(false);
@@ -129,10 +127,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
   const canCreateProductionRequest = canCreateRequestType(
     currentObjectRole,
     "PRODUCTION",
-  );
-  const canCreateAppealRequest = canCreateRequestType(
-    currentObjectRole,
-    "APPEAL",
   );
   const canInviteUsers = currentObjectRole === "DIRECTOR";
   const canDeleteObject = currentObjectRole === "DIRECTOR";
@@ -501,17 +495,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                     </button>
                   ) : null}
 
-                  {canCreateAppealRequest ? (
-                    <button
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                      onClick={() => setIsAppealRequestOpen(true)}
-                      type="button"
-                    >
-                      <Send size={16} />
-                      Обращение
-                    </button>
-                  ) : null}
-
                   {canDeleteObject ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50 sm:col-span-2 xl:col-span-1"
@@ -655,13 +638,6 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               isOpen={isProductionRequestOpen}
               object={object}
               onClose={() => setIsProductionRequestOpen(false)}
-              onError={showError}
-              onSuccess={showSuccess}
-            />
-            <AppealRequestModal
-              isOpen={isAppealRequestOpen}
-              object={object}
-              onClose={() => setIsAppealRequestOpen(false)}
               onError={showError}
               onSuccess={showSuccess}
             />

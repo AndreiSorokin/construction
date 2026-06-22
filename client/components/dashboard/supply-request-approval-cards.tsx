@@ -96,6 +96,8 @@ export function SupplyManagerRequestCard({
   onAttachInvoices,
   onSendToDirector,
   onUpdateSupplyManagerComment,
+  onUpdateItem,
+  onUpdateTextField,
   onReject,
   onSubmit,
   request,
@@ -111,6 +113,16 @@ export function SupplyManagerRequestCard({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
     comment: string,
+  ) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
   ) => void;
   onReject: (request: SupplyRequest) => void;
   onSubmit: (
@@ -130,6 +142,8 @@ export function SupplyManagerRequestCard({
         commentLabel="Комментарий начальника снабжения"
         request={request}
         onUpdateComment={onUpdateSupplyManagerComment}
+        onUpdateItem={onUpdateItem}
+        onUpdateTextField={onUpdateTextField}
       />
       <InvoiceList request={request} />
       {onAttachInvoices ? (
@@ -240,16 +254,36 @@ export function SupplyManagerTransportRequestCard({
 export function SimpleApprovalCard({
   onApprove,
   onReject,
+  onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
   onReject: (request: SupplyRequest) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
     <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
-        <RequestDetails request={request} />
+        {isItemRequest(request) ? (
+          <ItemReviewTable
+            request={request}
+            onUpdateItem={onUpdateItem}
+            onUpdateTextField={onUpdateTextField}
+          />
+        ) : (
+          <RequestDetails request={request} />
+        )}
         <div className={approvalActionsWithMarginClass}>
           <button
             className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
@@ -277,6 +311,8 @@ export function SupplyManagerReviewCard({
   onAttachInvoices,
   onApprove,
   onUpdateSupplyManagerComment,
+  onUpdateItem,
+  onUpdateTextField,
   onReject,
   request,
   checklistStorageScope,
@@ -291,6 +327,16 @@ export function SupplyManagerReviewCard({
     item: SupplyRequest["items"][number],
     comment: string,
   ) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   onReject: (request: SupplyRequest) => void;
   request: SupplyRequest;
   checklistStorageScope: string;
@@ -304,6 +350,8 @@ export function SupplyManagerReviewCard({
           commentLabel="Комментарий начальника снабжения"
           request={request}
           onUpdateComment={onUpdateSupplyManagerComment}
+          onUpdateItem={onUpdateItem}
+          onUpdateTextField={onUpdateTextField}
         />
         <InvoiceList request={request} />
         {onAttachInvoices ? (
@@ -409,16 +457,36 @@ export function DeputyProductionAssignmentCard({
 export function GarageManagerTransportRequestCard({
   onComplete,
   onReject,
+  onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onComplete: (request: SupplyRequest) => void;
   onReject: (request: SupplyRequest) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
     <div className={limeApprovalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
-        <RequestDetails request={request} />
+        {isItemRequest(request) ? (
+          <ItemReviewTable
+            request={request}
+            onUpdateItem={onUpdateItem}
+            onUpdateTextField={onUpdateTextField}
+          />
+        ) : (
+          <RequestDetails request={request} />
+        )}
         <div className={approvalActionsWithMarginClass}>
           <button
             className="inline-flex h-7 min-w-0 items-center justify-center gap-1 rounded-md border border-red-200 bg-white px-1 py-1 text-[10px] font-medium leading-none text-red-700 hover:bg-red-50 [&_svg]:size-3 sm:h-10 sm:w-auto sm:gap-2 sm:px-3 sm:text-sm sm:[&_svg]:size-4"
@@ -519,14 +587,12 @@ export function PtoRequestCard({
       onSubmit={(event) => onSubmit(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
-
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-sm">
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-slate-200 text-left text-slate-500">
               <th className="py-2 pr-3 font-medium">ТМЦ</th>
               <MaterialQuantityHeaders />
-              <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
               <th className="py-2 pr-3 font-medium">Удаление</th>
             </tr>
           </thead>
@@ -555,17 +621,6 @@ export function PtoRequestCard({
                   onUpdate={onUpdateItem}
                 />
                 <td className="py-3 pr-3">
-                  <input
-                    className="h-10 w-36 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
-                    defaultValue={String(item.ptoLimitPrice ?? "")}
-                    min="0.01"
-                    name={`ptoLimitPrice:${item.id}`}
-                    required
-                    step="0.01"
-                    type="number"
-                  />
-                </td>
-                <td className="py-3 pr-3">
                   <RequestItemDeleteAction
                     item={item}
                     request={request}
@@ -575,9 +630,9 @@ export function PtoRequestCard({
               </tr>
             ))}
           </tbody>
-        </table>
-      </div>
-      <div className="mt-4 grid gap-3">
+          </table>
+        </div>
+        <div className="mt-4 grid gap-3">
         <input
           className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
           name="comment"
@@ -600,7 +655,7 @@ export function PtoRequestCard({
             Согласовать
           </button>
         </div>
-      </div>
+        </div>
       </RequestSummaryCard>
     </form>
   );
@@ -734,6 +789,7 @@ export function DeputyProductionDirectorRequestCard({
   onDeleteItem,
   onReject,
   onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
@@ -747,6 +803,11 @@ export function DeputyProductionDirectorRequestCard({
     item: SupplyRequest["items"][number],
     field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -754,13 +815,12 @@ export function DeputyProductionDirectorRequestCard({
       <RequestSummaryCard request={request} variant="approval">
         {isItemRequest(request) ? (
           <>
-            <PriceComparisonTable
+            <ItemReviewTable
               request={request}
-              mode="pto"
               onDeleteItem={onDeleteItem}
               onUpdateItem={onUpdateItem}
+              onUpdateTextField={onUpdateTextField}
             />
-            <Totals request={request} mode="pto" />
           </>
         ) : (
           <RequestDetails request={request} />
@@ -791,10 +851,22 @@ export function DeputyProductionDirectorRequestCard({
 export function AccountantRequestCard({
   onApprove,
   onReject,
+  onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
   onReject: (request: SupplyRequest) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -804,8 +876,11 @@ export function AccountantRequestCard({
           <PlainItemRequestDetails request={request} />
         ) : isItemRequest(request) ? (
           <>
-            <PriceComparisonTable request={request} mode="pto" />
-            <Totals request={request} mode="pto" />
+            <ItemReviewTable
+              request={request}
+              onUpdateItem={onUpdateItem}
+              onUpdateTextField={onUpdateTextField}
+            />
           </>
         ) : (
           <MoneyDetails request={request} />
@@ -837,6 +912,8 @@ export function AccountantRequestCard({
 export function SupplyRequestCard({
   onDeleteInvoice,
   onUpdateSupplierComment,
+  onUpdateItem,
+  onUpdateTextField,
   onReject,
   onSubmit,
   request,
@@ -847,6 +924,16 @@ export function SupplyRequestCard({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
     comment: string,
+  ) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
   ) => void;
   onReject: (request: SupplyRequest) => void;
   onSubmit: (
@@ -867,6 +954,8 @@ export function SupplyRequestCard({
         checklistStorageScope={checklistStorageScope}
         request={request}
         onUpdateSupplierComment={onUpdateSupplierComment}
+        onUpdateItem={onUpdateItem}
+        onUpdateTextField={onUpdateTextField}
       />
       <InvoiceList request={request} onDeleteInvoice={onDeleteInvoice} />
       <div className="mt-4 grid gap-3">
@@ -1105,6 +1194,8 @@ export function SupplyInProgressCard({
 export function StorekeeperRequestCard({
   onComplete,
   onReject,
+  onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onComplete: (
@@ -1112,6 +1203,16 @@ export function StorekeeperRequestCard({
     event: FormEvent<HTMLFormElement>,
   ) => void;
   onReject: (request: SupplyRequest) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -1120,7 +1221,11 @@ export function StorekeeperRequestCard({
       onSubmit={(event) => onComplete(request, event)}
     >
       <RequestSummaryCard request={request} variant="approval">
-        <StorekeeperItemsChecklist request={request} />
+        <StorekeeperItemsChecklist
+          request={request}
+          onUpdateItem={onUpdateItem}
+          onUpdateTextField={onUpdateTextField}
+        />
         <InvoiceList request={request} />
         <div className="mt-4 grid gap-3">
           <input
@@ -1157,6 +1262,7 @@ export function DirectorRequestCard({
   onDeleteItem,
   onReject,
   onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   onApprove: (request: SupplyRequest) => void;
@@ -1171,6 +1277,11 @@ export function DirectorRequestCard({
     item: SupplyRequest["items"][number],
     field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
   return (
@@ -1181,13 +1292,12 @@ export function DirectorRequestCard({
         <PlainItemRequestDetails request={request} />
       ) : isItemRequest(request) ? (
         <>
-          <PriceComparisonTable
+          <ItemReviewTable
             request={request}
-            mode="pto"
             onDeleteItem={onDeleteItem}
             onUpdateItem={onUpdateItem}
+            onUpdateTextField={onUpdateTextField}
           />
-          <Totals request={request} mode="pto" />
         </>
       ) : (
         <RequestDetails request={request} />
@@ -1557,6 +1667,8 @@ function MaterialItemsTable({ request }: { request: SupplyRequest }) {
 function SupplierMaterialItemsTable({
   checklistStorageScope,
   onUpdateSupplierComment,
+  onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
   checklistStorageScope: string;
@@ -1564,6 +1676,16 @@ function SupplierMaterialItemsTable({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
     comment: string,
+  ) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
   ) => void;
   request: SupplyRequest;
 }) {
@@ -1575,6 +1697,8 @@ function SupplierMaterialItemsTable({
       request={request}
       showCashPayment
       onUpdateComment={onUpdateSupplierComment}
+      onUpdateTextField={onUpdateTextField}
+      onUpdateItem={onUpdateItem}
     />
   );
 }
@@ -1584,6 +1708,8 @@ function SupplyItemWorkTable({
   commentField,
   commentLabel,
   onUpdateComment,
+  onUpdateItem,
+  onUpdateTextField,
   request,
   showCashPayment = false,
 }: {
@@ -1594,6 +1720,16 @@ function SupplyItemWorkTable({
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
     comment: string,
+  ) => void;
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
   ) => void;
   request: SupplyRequest;
   showCashPayment?: boolean;
@@ -1665,8 +1801,23 @@ function SupplyItemWorkTable({
               </td>
               <td className="py-3 pr-3 text-slate-950">
                 <ItemNameWithComments item={item} />
+                {onUpdateTextField ? (
+                  <TextItemEditActions
+                    item={item}
+                    request={request}
+                    onUpdate={onUpdateTextField}
+                  />
+                ) : null}
               </td>
-              <MaterialQuantityCells item={item} />
+              {onUpdateItem ? (
+                <EditableMaterialQuantityCells
+                  item={item}
+                  request={request}
+                  onUpdate={onUpdateItem}
+                />
+              ) : (
+                <MaterialQuantityCells item={item} />
+              )}
               {showCashPayment ? (
                 <>
                   <td className="py-3 pr-3">
@@ -1751,7 +1902,23 @@ function getFulfillmentStatusClass(
   return "bg-slate-100 text-slate-600";
 }
 
-function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
+function StorekeeperItemsChecklist({
+  onUpdateItem,
+  onUpdateTextField,
+  request,
+}: {
+  onUpdateItem?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field?: "orderQuantity" | "quantity" | "stockQuantity",
+  ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
+  request: SupplyRequest;
+}) {
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-sm">
@@ -1776,8 +1943,23 @@ function StorekeeperItemsChecklist({ request }: { request: SupplyRequest }) {
               </td>
               <td className="py-3 pr-3 text-slate-950">
                 {item.materialNameSnapshot}
+                {onUpdateTextField ? (
+                  <TextItemEditActions
+                    item={item}
+                    request={request}
+                    onUpdate={onUpdateTextField}
+                  />
+                ) : null}
               </td>
-              <MaterialQuantityCells item={item} />
+              {onUpdateItem ? (
+                <EditableMaterialQuantityCells
+                  item={item}
+                  request={request}
+                  onUpdate={onUpdateItem}
+                />
+              ) : (
+                <MaterialQuantityCells item={item} />
+              )}
             </tr>
           ))}
         </tbody>
@@ -1913,13 +2095,12 @@ function WarehouseStockItemsTable({
   );
 }
 
-function PriceComparisonTable({
-  mode,
+function ItemReviewTable({
   onDeleteItem,
   onUpdateItem,
+  onUpdateTextField,
   request,
 }: {
-  mode: "pto" | "supplier";
   onDeleteItem?: (
     request: SupplyRequest,
     item: SupplyRequest["items"][number],
@@ -1929,34 +2110,42 @@ function PriceComparisonTable({
     item: SupplyRequest["items"][number],
     field?: "orderQuantity" | "quantity" | "stockQuantity",
   ) => void;
+  onUpdateTextField?: (
+    request: SupplyRequest,
+    item: SupplyRequest["items"][number],
+    field: "materialName" | "measurementUnit",
+  ) => void;
   request: SupplyRequest;
 }) {
-  const canEditItems = Boolean(onDeleteItem && onUpdateItem);
+  const canEditQuantities = Boolean(onUpdateItem);
+  const canDeleteItems = Boolean(onDeleteItem);
 
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[980px] border-collapse text-sm">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-slate-500">
             <th className="py-2 pr-3 font-medium">ТМЦ</th>
             <MaterialQuantityHeaders />
-            <th className="py-2 pr-3 font-medium">Сумма ПТО по позиции</th>
-            <th className="py-2 pr-3 font-medium">Итого ПТО</th>
-            {canEditItems ? (
+            {canDeleteItems ? (
               <th className="py-2 pr-3 font-medium">Удаление</th>
             ) : null}
           </tr>
         </thead>
         <tbody>
-          {request.items.map((item) => {
-            const ptoTotal = getPtoTotal(item);
-
-            return (
-              <tr className="border-b border-slate-100" key={item.id}>
+          {request.items.map((item) => (
+            <tr className="border-b border-slate-100" key={item.id}>
                 <td className="py-3 pr-3 text-slate-950">
-                  {item.materialNameSnapshot}
+                  <ItemNameWithComments item={item} />
+                  {onUpdateTextField ? (
+                    <TextItemEditActions
+                      item={item}
+                      request={request}
+                      onUpdate={onUpdateTextField}
+                    />
+                  ) : null}
                 </td>
-                {canEditItems && onUpdateItem ? (
+                {canEditQuantities && onUpdateItem ? (
                   <EditableMaterialQuantityCells
                     item={item}
                     request={request}
@@ -1965,13 +2154,7 @@ function PriceComparisonTable({
                 ) : (
                   <MaterialQuantityCells item={item} />
                 )}
-                <td className="py-3 pr-3 font-medium text-slate-950">
-                  {formatMoney(toNumber(item.ptoLimitPrice))}
-                </td>
-                <td className="py-3 pr-3 text-slate-600">
-                  {formatMoney(ptoTotal)}
-                </td>
-                {canEditItems && onDeleteItem && onUpdateItem ? (
+                {canDeleteItems && onDeleteItem ? (
                   <td className="py-3 pr-3">
                     <RequestItemDeleteAction
                       item={item}
@@ -1980,21 +2163,10 @@ function PriceComparisonTable({
                     />
                   </td>
                 ) : null}
-              </tr>
-            );
-          })}
+            </tr>
+          ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function Totals({ request }: { mode: "pto" | "supplier"; request: SupplyRequest }) {
-  const ptoTotal = getRequestPtoTotal(request);
-
-  return (
-    <div className="mt-4 grid gap-2 rounded-md bg-slate-50 p-3 text-sm sm:grid-cols-3">
-      <Metric label="Итого по цене ПТО" value={formatMoney(ptoTotal)} />
     </div>
   );
 }
@@ -2682,63 +2854,6 @@ function InvoicePreviewModal({
         </div>
       </div>
     </div>
-  );
-}
-
-function Metric({
-  label,
-  tone,
-  value,
-}: {
-  label: string;
-  tone?: "danger" | "success";
-  value: string;
-}) {
-  return (
-    <div>
-      <div className="text-slate-500">{label}</div>
-      <div
-        className={
-          tone === "danger"
-            ? "mt-1 font-semibold text-red-700"
-            : tone === "success"
-              ? "mt-1 font-semibold text-emerald-700"
-              : "mt-1 font-semibold text-slate-950"
-        }
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function getEstimatedTotal(item: SupplyRequest["items"][number]) {
-  return toNumber(item.estimatedPriceSnapshot) * toNumber(item.quantity);
-}
-
-function getPtoTotal(item: SupplyRequest["items"][number]) {
-  return toNumber(item.ptoLimitPrice);
-}
-
-function getSupplierTotal(item: SupplyRequest["items"][number]) {
-  return toNumber(item.supplierPurchasePrice) * toNumber(item.quantity);
-}
-
-function getRequestEstimatedTotal(request: SupplyRequest) {
-  return request.items.reduce(
-    (total, item) => total + getEstimatedTotal(item),
-    0,
-  );
-}
-
-function getRequestPtoTotal(request: SupplyRequest) {
-  return request.items.reduce((total, item) => total + getPtoTotal(item), 0);
-}
-
-function getRequestSupplierTotal(request: SupplyRequest) {
-  return request.items.reduce(
-    (total, item) => total + getSupplierTotal(item),
-    0,
   );
 }
 

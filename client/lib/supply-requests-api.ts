@@ -246,25 +246,6 @@ export async function getSupplyRequestsPage(
   };
 }
 
-export function setPtoLimitPrices(
-  requestId: string,
-  payload: {
-    comment?: string;
-    items: Array<{
-      requestItemId: string;
-      ptoLimitPrice: string;
-    }>;
-  },
-) {
-  return apiClient<SupplyRequest>(
-    `/supply-requests/${requestId}/pto-limit-prices`,
-    {
-      method: "PATCH",
-      body: payload,
-    },
-  );
-}
-
 export function approveSupplyRequestByPto(
   requestId: string,
   comment?: string,

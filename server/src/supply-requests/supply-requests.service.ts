@@ -9,7 +9,6 @@ import { extname } from "path";
 import {
   ApprovalAction,
   ObjectType,
-  PriceField,
   Prisma,
   SupplyRequestItemFulfillmentStatus,
   SupplyRequestStatus,
@@ -35,7 +34,6 @@ import { FindSupplyRequestsDto } from "./dto/find-supply-requests.dto";
 import { RequestActionDto } from "./dto/request-action.dto";
 import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
 import { SendToStorekeeperDto } from "./dto/send-to-storekeeper.dto";
-import { SetPtoLimitPricesDto } from "./dto/set-pto-limit-prices.dto";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
 type RequestRouteMap = Partial<
@@ -1225,12 +1223,21 @@ export class SupplyRequestsService {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_PTO,
       SupplyRequestStatus.PENDING_CHIEF_ENGINEER,
-      SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
       SupplyRequestStatus.PENDING_DEPUTY_PRODUCTION_DIRECTOR,
-      SupplyRequestStatus.PENDING_DIRECTOR,
+      SupplyRequestStatus.PENDING_DEPUTY_TRANSPORT_DIRECTOR,
       SupplyRequestStatus.PENDING_SUPPLY_MANAGER,
-      SupplyRequestStatus.PENDING_SUPPLY,
       SupplyRequestStatus.PENDING_SUPPLY_MANAGER_REVIEW,
+      SupplyRequestStatus.PENDING_SUPPLY,
+      SupplyRequestStatus.PENDING_TRANSPORT_SUPPLY,
+      SupplyRequestStatus.PENDING_DIRECTOR,
+      SupplyRequestStatus.PENDING_GARAGE_MANAGER,
+      SupplyRequestStatus.PENDING_WAREHOUSE_MANAGER,
+      SupplyRequestStatus.PENDING_STOREKEEPER,
+      SupplyRequestStatus.PENDING_ACCOUNTANT,
+      SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR,
+      SupplyRequestStatus.PENDING_WORKSHOP_MANAGER,
+      SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR,
+      SupplyRequestStatus.PENDING_REQUEST_AUTHOR,
       SupplyRequestStatus.RETURNED_TO_SUPPLY,
     ]);
 
@@ -1265,21 +1272,29 @@ export class SupplyRequestsService {
       throw new BadRequestException("At least one item field is required");
     }
 
-    let actorRole: UserRole;
+    let actorRole: UserRole | null = null;
 
-    if (hasQuantityUpdates) {
-      actorRole = await this.ensureCanModifyRequestItems(
+    if (hasQuantityUpdates || hasTextUpdates) {
+      actorRole = await this.ensureCanEditItemAsCurrentHolder(
+        request,
         actorId,
-        request.objectId,
-        request.status,
       );
-    } else if (hasCashPaymentUpdates) {
+    }
+
+    if (hasCashPaymentUpdates) {
       await this.ensureUserObjectRole(actorId, request.objectId, [
         UserRole.SUPPLY,
       ]);
       this.ensureAssignedSupplyUser(request, actorId);
       actorRole = UserRole.SUPPLY;
-    } else {
+    }
+
+    if (
+      hasPtoCommentUpdates ||
+      hasChiefEngineerCommentUpdates ||
+      hasSupplyManagerCommentUpdates ||
+      hasSupplierCommentUpdates
+    ) {
       const objectAccess = await this.ensureUserObjectRole(
         actorId,
         request.objectId,
@@ -1296,20 +1311,6 @@ export class SupplyRequestsService {
       }
 
       actorRole = objectAccess.role;
-    }
-
-    if (
-      hasTextUpdates &&
-      !(
-        (actorRole === UserRole.PTO &&
-          request.status === SupplyRequestStatus.PENDING_PTO) ||
-        (actorRole === UserRole.CHIEF_ENGINEER &&
-          request.status === SupplyRequestStatus.PENDING_CHIEF_ENGINEER)
-      )
-    ) {
-      throw new BadRequestException(
-        "Item name and measurement unit can be edited only by PTO or chief engineer at their stages",
-      );
     }
 
     if (
@@ -1640,91 +1641,10 @@ export class SupplyRequestsService {
     );
   }
 
-  async setPtoLimitPrices(
-    id: string,
-    dto: SetPtoLimitPricesDto,
-    actorId: string,
-  ) {
-    const request = await this.ensureRequestStatus(
-      id,
-      [SupplyRequestStatus.PENDING_PTO],
-      SupplyRequestType.MATERIAL,
-    );
-    await this.ensureUserObjectRole(actorId, request.objectId, [UserRole.PTO]);
-
-    if (dto.items.length !== request.items.length) {
-      throw new BadRequestException(
-        "PTO price must be provided for every request item",
-      );
-    }
-
-    const ptoTotalAmount = dto.items.reduce((total, item) => {
-      const price = new Prisma.Decimal(item.ptoLimitPrice);
-
-      return total.add(price);
-    }, new Prisma.Decimal(0));
-
-    return this.prisma.$transaction(async (tx) => {
-      for (const item of dto.items) {
-        const requestItem = request.items.find(
-          (existing) => existing.id === item.requestItemId,
-        );
-
-        if (!requestItem) {
-          throw new BadRequestException(
-            "Request item does not belong to request",
-          );
-        }
-
-        const newValue = new Prisma.Decimal(item.ptoLimitPrice);
-
-        if (newValue.lte(0)) {
-          throw new BadRequestException(
-            "PTO price must be greater than zero for every request item",
-          );
-        }
-
-        await tx.requestPriceHistory.create({
-          data: {
-            requestItemId: requestItem.id,
-            actorId,
-            field: PriceField.PTO_LIMIT_PRICE,
-            oldValue: requestItem.ptoLimitPrice,
-            newValue,
-          },
-        });
-
-        await tx.supplyRequestItem.update({
-          where: { id: requestItem.id },
-          data: { ptoLimitPrice: newValue },
-        });
-      }
-
-      return this.moveRequest(
-        tx,
-        id,
-        actorId,
-        this.getRouteActionForStatus(this.getNextRouteStatus(request)),
-        request.status,
-        this.getNextRouteStatus(request),
-        dto.comment,
-        {
-          ptoTotalAmount: ptoTotalAmount.toString(),
-        },
-      );
-    });
-  }
-
   async approveByPto(id: string, dto: RequestActionDto, actorId: string) {
     const request = await this.ensureRequestStatus(id, [
       SupplyRequestStatus.PENDING_PTO,
     ]);
-
-    if (request.type === SupplyRequestType.MATERIAL) {
-      throw new BadRequestException(
-        "Material requests must be approved with PTO prices",
-      );
-    }
 
     await this.ensureUserObjectRole(actorId, request.objectId, [UserRole.PTO]);
 
@@ -3139,12 +3059,7 @@ export class SupplyRequestsService {
       orderBy: { createdAt: "asc" as const },
     },
     items: {
-      include: {
-        priceHistory: {
-          include: { actor: true },
-          orderBy: { createdAt: "desc" as const },
-        },
-      },
+      orderBy: { createdAt: "asc" as const },
     },
     approvalHistory: {
       include: { actor: true },
@@ -3776,6 +3691,24 @@ export class SupplyRequestsService {
     return objectAccess.role;
   }
 
+  private readonly CURRENT_HOLDER_ROLE_BY_STATUS: Partial<
+    Record<SupplyRequestStatus, UserRole>
+  > = {
+    PENDING_PTO: UserRole.PTO,
+    PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
+    PENDING_DEPUTY_PRODUCTION_DIRECTOR: UserRole.DEPUTY_PRODUCTION_DIRECTOR,
+    PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
+    PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
+    PENDING_SUPPLY_MANAGER_REVIEW: UserRole.SUPPLY_MANAGER,
+    PENDING_TRANSPORT_SUPPLY: UserRole.TRANSPORT_SUPPLY,
+    PENDING_DIRECTOR: UserRole.DIRECTOR,
+    PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
+    PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,
+    PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
+    PENDING_STOREKEEPER: UserRole.STOREKEEPER,
+    PENDING_WORKSHOP_MANAGER: UserRole.WORKSHOP_MANAGER,
+  };
+
   private async ensureCanProcessRequestAtCurrentStatus(
     request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
     actorId: string,
@@ -3806,23 +3739,7 @@ export class SupplyRequestsService {
       return;
     }
 
-    const roleByStatus: Partial<Record<SupplyRequestStatus, UserRole>> = {
-      PENDING_PTO: UserRole.PTO,
-      PENDING_CHIEF_ENGINEER: UserRole.CHIEF_ENGINEER,
-      PENDING_DEPUTY_PRODUCTION_DIRECTOR: UserRole.DEPUTY_PRODUCTION_DIRECTOR,
-      PENDING_DEPUTY_TRANSPORT_DIRECTOR: UserRole.DEPUTY_TRANSPORT_DIRECTOR,
-      PENDING_SUPPLY_MANAGER: UserRole.SUPPLY_MANAGER,
-      PENDING_SUPPLY_MANAGER_REVIEW: UserRole.SUPPLY_MANAGER,
-      PENDING_TRANSPORT_SUPPLY: UserRole.TRANSPORT_SUPPLY,
-      PENDING_DIRECTOR: UserRole.DIRECTOR,
-      PENDING_ACCOUNTANT: UserRole.ACCOUNTANT,
-      PENDING_GARAGE_MANAGER: UserRole.GARAGE_MANAGER,
-      PENDING_WAREHOUSE_MANAGER: UserRole.WAREHOUSE_MANAGER,
-      PENDING_STOREKEEPER: UserRole.STOREKEEPER,
-      PENDING_WORKSHOP_MANAGER: UserRole.WORKSHOP_MANAGER,
-    };
-
-    const role = roleByStatus[request.status];
+    const role = this.CURRENT_HOLDER_ROLE_BY_STATUS[request.status];
 
     if (!role) {
       throw new ForbiddenException("Request cannot be processed at this stage");
@@ -3874,6 +3791,69 @@ export class SupplyRequestsService {
     }
   }
 
+  private async ensureCanEditItemAsCurrentHolder(
+    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+    actorId: string,
+  ): Promise<UserRole | null> {
+    const { status } = request;
+
+    if (
+      status === SupplyRequestStatus.PENDING_TRANSPORT_AUTHOR ||
+      status === SupplyRequestStatus.PENDING_PRODUCTION_AUTHOR ||
+      status === SupplyRequestStatus.PENDING_REQUEST_AUTHOR
+    ) {
+      if (request.authorId !== actorId) {
+        throw new ForbiddenException(
+          "Only the request author can edit items at this stage",
+        );
+      }
+
+      return null;
+    }
+
+    if (
+      status === SupplyRequestStatus.PENDING_SUPPLY ||
+      status === SupplyRequestStatus.RETURNED_TO_SUPPLY
+    ) {
+      await this.ensureUserObjectRole(actorId, request.objectId, [
+        UserRole.SUPPLY,
+      ]);
+      this.ensureAssignedSupplyUser(request, actorId);
+
+      return UserRole.SUPPLY;
+    }
+
+    const role = this.CURRENT_HOLDER_ROLE_BY_STATUS[status];
+
+    if (!role) {
+      throw new ForbiddenException(
+        "Request items cannot be edited at this stage",
+      );
+    }
+
+    await this.ensureUserObjectRole(actorId, request.objectId, [role]);
+
+    if (
+      status === SupplyRequestStatus.PENDING_STOREKEEPER &&
+      request.assignedStorekeeperId !== actorId
+    ) {
+      throw new ForbiddenException(
+        "Only the assigned storekeeper can edit items",
+      );
+    }
+
+    if (
+      status === SupplyRequestStatus.PENDING_WORKSHOP_MANAGER &&
+      request.assignedWorkshopManagerId !== actorId
+    ) {
+      throw new ForbiddenException(
+        "Only the assigned workshop manager can edit items",
+      );
+    }
+
+    return role;
+  }
+
   private ensureMaterialRequestHasActiveItems(
     request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
   ) {
@@ -3885,20 +3865,6 @@ export class SupplyRequestsService {
     ) {
       throw new BadRequestException("Request has no active approved items");
     }
-  }
-
-  private getMaterialPtoTotalAmount(
-    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
-  ) {
-    return request.items.reduce((total, item) => {
-      if (!item.ptoLimitPrice) {
-        throw new BadRequestException(
-          "PTO price must be provided before sending material request to director",
-        );
-      }
-
-      return total.add(item.ptoLimitPrice);
-    }, new Prisma.Decimal(0));
   }
 
   private async moveRequest(
