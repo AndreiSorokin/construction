@@ -1,6 +1,4 @@
-import { apiClient } from "./api";
-import { getAccessToken } from "./auth-storage";
-import { API_URL } from "./config";
+import { apiClient, authorizedFetch } from "./api";
 import {
   MoneyRequestPaymentType,
   SupplyRequest,
@@ -789,12 +787,8 @@ export async function downloadSupplyRequestInvoice(
   invoiceId: string,
   fileName: string,
 ) {
-  const token = getAccessToken();
-  const response = await fetch(
-    `${API_URL}/supply-requests/${requestId}/invoices/${invoiceId}/download`,
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    },
+  const response = await authorizedFetch(
+    `/supply-requests/${requestId}/invoices/${invoiceId}/download`,
   );
 
   if (!response.ok) {
@@ -815,12 +809,8 @@ export async function getSupplyRequestInvoicePreview(
   requestId: string,
   invoiceId: string,
 ) {
-  const token = getAccessToken();
-  const response = await fetch(
-    `${API_URL}/supply-requests/${requestId}/invoices/${invoiceId}/download`,
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    },
+  const response = await authorizedFetch(
+    `/supply-requests/${requestId}/invoices/${invoiceId}/download`,
   );
 
   if (!response.ok) {
@@ -840,12 +830,8 @@ export async function downloadSupplyRequestAttachment(
   attachmentId: string,
   fileName: string,
 ) {
-  const token = getAccessToken();
-  const response = await fetch(
-    `${API_URL}/supply-requests/${requestId}/attachments/${attachmentId}/download`,
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    },
+  const response = await authorizedFetch(
+    `/supply-requests/${requestId}/attachments/${attachmentId}/download`,
   );
 
   if (!response.ok) {
@@ -866,12 +852,8 @@ export async function getSupplyRequestAttachmentPreview(
   requestId: string,
   attachmentId: string,
 ) {
-  const token = getAccessToken();
-  const response = await fetch(
-    `${API_URL}/supply-requests/${requestId}/attachments/${attachmentId}/download`,
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    },
+  const response = await authorizedFetch(
+    `/supply-requests/${requestId}/attachments/${attachmentId}/download`,
   );
 
   if (!response.ok) {

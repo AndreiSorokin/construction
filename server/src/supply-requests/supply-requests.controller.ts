@@ -129,8 +129,11 @@ export class SupplyRequestsController {
   }
 
   @Get()
-  findAll(@Query() query: FindSupplyRequestsDto) {
-    return this.supplyRequestsService.findAll(query);
+  findAll(
+    @Query() query: FindSupplyRequestsDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplyRequestsService.findAll(query, user.id);
   }
 
   @Get("pending-count")

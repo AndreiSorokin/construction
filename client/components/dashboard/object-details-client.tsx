@@ -83,6 +83,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     useState(false);
   const [isProductionRequestOpen, setIsProductionRequestOpen] = useState(false);
   const [isCopyStaffOpen, setIsCopyStaffOpen] = useState(false);
+  const [isDeleteObjectOpen, setIsDeleteObjectOpen] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [isEditingObjectName, setIsEditingObjectName] = useState(false);
   const [myObjectAccesses, setMyObjectAccesses] = useState<UserObjectAccess[]>(
@@ -198,12 +199,16 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
     }
   }
 
-  async function handleDeleteObject() {
-    const confirmed = window.confirm(
-      "Удалить объект? Это действие нельзя отменить.",
-    );
+  async function handleDeleteObject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    if (!confirmed) {
+    const form = new FormData(event.currentTarget);
+    const confirmationText = String(form.get("confirmation") ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (confirmationText !== "удалить") {
+      showError('Введите слово "удалить", чтобы подтвердить удаление');
       return;
     }
 
@@ -498,7 +503,7 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
                   {canDeleteObject ? (
                     <button
                       className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50 sm:col-span-2 xl:col-span-1"
-                      onClick={() => void handleDeleteObject()}
+                      onClick={() => setIsDeleteObjectOpen(true)}
                       type="button"
                     >
                       <Trash2 size={16} />
@@ -653,6 +658,11 @@ export function ObjectDetailsClient({ objectId }: { objectId: string }) {
               objectAccesses={myObjectAccesses}
               onClose={() => setIsCopyStaffOpen(false)}
               onSubmit={copyStaffFromObject}
+            />
+            <DeleteObjectModal
+              isOpen={isDeleteObjectOpen}
+              onClose={() => setIsDeleteObjectOpen(false)}
+              onSubmit={handleDeleteObject}
             />
           </>
         )}
@@ -936,6 +946,77 @@ function CopyStaffModal({
             type="submit"
           >
             Скопировать
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function DeleteObjectModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const [confirmationText, setConfirmationText] = useState("");
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const isConfirmed = confirmationText.trim().toLowerCase() === "удалить";
+
+  function closeAndReset() {
+    setConfirmationText("");
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/40 px-4 py-4">
+      <form
+        className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl sm:p-5"
+        onSubmit={(event) => {
+          onSubmit(event);
+          setConfirmationText("");
+        }}
+      >
+        <h2 className="font-semibold text-slate-950">Удалить объект</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Это действие нельзя отменить. Вместе с объектом будут безвозвратно
+          удалены все его заявки, файлы и история согласований.
+        </p>
+
+        <label className="mt-4 grid gap-1.5">
+          <span className="text-sm font-medium text-slate-700">
+            Введите слово «удалить», чтобы подтвердить
+          </span>
+          <input
+            autoComplete="off"
+            className="h-10 rounded-md border border-slate-300 px-3 outline-none focus:border-teal-700"
+            name="confirmation"
+            onChange={(event) => setConfirmationText(event.target.value)}
+            value={confirmationText}
+          />
+        </label>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <button
+            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={closeAndReset}
+            type="button"
+          >
+            Отмена
+          </button>
+          <button
+            className="h-10 rounded-md bg-red-700 px-3 text-sm font-medium text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!isConfirmed}
+            type="submit"
+          >
+            Удалить объект
           </button>
         </div>
       </form>

@@ -31,6 +31,10 @@ export class ApiError extends Error {
 let refreshAuthSessionPromise: Promise<AuthResponse | null> | null = null;
 
 export async function apiClient<T>(path: string, options: ApiOptions = {}) {
+  return handleResponse<T>(await authorizedFetch(path, options));
+}
+
+export async function authorizedFetch(path: string, options: ApiOptions = {}) {
   const token = options.accessToken ?? getAccessToken();
   const response = await request(path, options, token);
 
@@ -38,13 +42,11 @@ export async function apiClient<T>(path: string, options: ApiOptions = {}) {
     const refreshed = await refreshAuthSession();
 
     if (refreshed) {
-      return handleResponse<T>(
-        await request(path, options, refreshed.accessToken),
-      );
+      return request(path, options, refreshed.accessToken);
     }
   }
 
-  return handleResponse<T>(response);
+  return response;
 }
 
 function request(path: string, options: ApiOptions, token?: string | null) {
@@ -96,22 +98,33 @@ async function refreshAuthSessionOnce() {
   const refreshToken = getRefreshToken();
 
   if (!refreshToken) {
-    clearAuthSession();
     return null;
   }
 
-  const response = await fetch(`${API_URL}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
+  let response: Response;
 
-  if (!response.ok) {
-    clearAuthSession();
+  try {
+    response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    // Network hiccup - keep the existing session, the next request can retry.
     return null;
   }
 
-  const auth = (await response.json()) as AuthResponse;
-  saveAuthSession(auth);
-  return auth;
+  if (response.ok) {
+    const auth = (await response.json()) as AuthResponse;
+    saveAuthSession(auth);
+    return auth;
+  }
+
+  // Only wipe the session on a confirmed invalid token, and only if no other
+  // tab already rotated it while this request was in flight.
+  if (response.status === 401 && getRefreshToken() === refreshToken) {
+    clearAuthSession();
+  }
+
+  return null;
 }

@@ -246,7 +246,7 @@ model SupplyRequest {
   amount                Decimal?               @db.Decimal(18, 2)
   paymentType           MoneyRequestPaymentType?
   paymentPurpose        String?
-  object                ObjectEntity           @relation(fields: [objectId], references: [id])
+  object                ObjectEntity           @relation(fields: [objectId], references: [id], onDelete: Cascade)
   author                User                   @relation("SupplyRequestAuthor", fields: [authorId], references: [id])
   assignedSupplyUser    User?                  @relation("AssignedSupplyUser", fields: [assignedSupplyUserId], references: [id])
   assignedStorekeeper   User?                  @relation("AssignedStorekeeper", fields: [assignedStorekeeperId], references: [id])

@@ -36,6 +36,12 @@ import { ReviewRequestItemsDto } from "./dto/review-request-items.dto";
 import { SendToStorekeeperDto } from "./dto/send-to-storekeeper.dto";
 import { UpdateSupplyRequestItemDto } from "./dto/update-supply-request-item.dto";
 
+const SAFE_USER_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+} as const;
+
 type RequestRouteMap = Partial<
   Record<SupplyRequestType, Partial<Record<UserRole, SupplyRequestStatus[]>>>
 >;
@@ -846,7 +852,13 @@ export class SupplyRequestsService {
     }
   }
 
-  async findAll(query: FindSupplyRequestsDto = {}) {
+  async findAll(query: FindSupplyRequestsDto = {}, userId: string) {
+    const objectAccesses = await this.prisma.userObjectAccess.findMany({
+      where: { userId },
+      select: { objectId: true },
+    });
+    const objectIds = objectAccesses.map((access) => access.objectId);
+
     const hasPaginationOrFilters = Boolean(
       query.page ||
       query.limit ||
@@ -857,8 +869,21 @@ export class SupplyRequestsService {
       query.dateTo,
     );
 
+    if (!objectIds.length) {
+      return hasPaginationOrFilters
+        ? {
+            items: [],
+            limit: this.parsePositiveInteger(query.limit, 10),
+            page: this.parsePositiveInteger(query.page, 1),
+            total: 0,
+            totalPages: 1,
+          }
+        : [];
+    }
+
     if (!hasPaginationOrFilters) {
       const requests = await this.prisma.supplyRequest.findMany({
+        where: { objectId: { in: objectIds } },
         include: this.requestInclude,
         orderBy: { createdAt: "desc" },
       });
@@ -868,7 +893,10 @@ export class SupplyRequestsService {
 
     const page = this.parsePositiveInteger(query.page, 1);
     const limit = Math.min(this.parsePositiveInteger(query.limit, 10), 100);
-    const where = this.buildFindAllWhere(query);
+    const where = {
+      ...this.buildFindAllWhere(query),
+      objectId: { in: objectIds },
+    };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.supplyRequest.findMany({
         where,
@@ -3035,34 +3063,37 @@ export class SupplyRequestsService {
 
   private readonly requestInclude = {
     author: {
-      include: {
-        objectAccesses: true,
+      select: {
+        ...SAFE_USER_SELECT,
+        objectAccesses: {
+          select: { objectId: true, role: true },
+        },
       },
     },
-    assignedSupplyUser: true,
-    assignedStorekeeper: true,
-    assignedWorkshopManager: true,
-    assignedBy: true,
+    assignedSupplyUser: { select: SAFE_USER_SELECT },
+    assignedStorekeeper: { select: SAFE_USER_SELECT },
+    assignedWorkshopManager: { select: SAFE_USER_SELECT },
+    assignedBy: { select: SAFE_USER_SELECT },
     object: {
       include: {
         userAccesses: {
-          include: { user: true },
+          include: { user: { select: SAFE_USER_SELECT } },
         },
       },
     },
     invoices: {
-      include: { uploadedBy: true },
+      include: { uploadedBy: { select: SAFE_USER_SELECT } },
       orderBy: { createdAt: "asc" as const },
     },
     attachments: {
-      include: { uploadedBy: true },
+      include: { uploadedBy: { select: SAFE_USER_SELECT } },
       orderBy: { createdAt: "asc" as const },
     },
     items: {
       orderBy: { createdAt: "asc" as const },
     },
     approvalHistory: {
-      include: { actor: true },
+      include: { actor: { select: SAFE_USER_SELECT } },
       orderBy: { createdAt: "asc" as const },
     },
   };
@@ -3118,12 +3149,15 @@ export class SupplyRequestsService {
       where: { id },
       include: {
         items: true,
-        assignedSupplyUser: true,
-        assignedStorekeeper: true,
-        assignedWorkshopManager: true,
+        assignedSupplyUser: { select: SAFE_USER_SELECT },
+        assignedStorekeeper: { select: SAFE_USER_SELECT },
+        assignedWorkshopManager: { select: SAFE_USER_SELECT },
         author: {
-          include: {
-            objectAccesses: true,
+          select: {
+            ...SAFE_USER_SELECT,
+            objectAccesses: {
+              select: { objectId: true, role: true },
+            },
           },
         },
         object: {
@@ -3781,7 +3815,7 @@ export class SupplyRequestsService {
   }
 
   private ensureAssignedSupplyUser(
-    request: Awaited<ReturnType<SupplyRequestsService["ensureRequestStatus"]>>,
+    request: { assignedSupplyUserId: string | null },
     actorId: string,
   ) {
     if (request.assignedSupplyUserId !== actorId) {

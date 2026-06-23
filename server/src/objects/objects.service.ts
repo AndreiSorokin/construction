@@ -14,6 +14,7 @@ import {
 } from "@prisma/client";
 import { MailService } from "../mail/mail.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { StorageService } from "../storage/storage.service";
 import { AddObjectAccessDto } from "./dto/add-object-access.dto";
 import {
   CopyObjectAccessDto,
@@ -25,12 +26,19 @@ import { InviteUserDto } from "./dto/invite-user.dto";
 import { UpdateObjectDto } from "./dto/update-object.dto";
 import { UpdateObjectMaterialDto } from "./dto/update-object-material.dto";
 
+const SAFE_USER_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+} as const;
+
 @Injectable()
 export class ObjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly storage: StorageService,
   ) {}
 
   async create(dto: CreateObjectDto, ownerId: string) {
@@ -90,11 +98,11 @@ export class ObjectsService {
   findAll() {
     return this.prisma.objectEntity.findMany({
       include: {
-        owner: true,
+        owner: { select: SAFE_USER_SELECT },
         limits: true,
         materials: true,
         userAccesses: {
-          include: { user: true },
+          include: { user: { select: SAFE_USER_SELECT } },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -107,17 +115,10 @@ export class ObjectsService {
       include: {
         object: {
           include: {
-            owner: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-            materials: true,
+            owner: { select: SAFE_USER_SELECT },
             limits: true,
             userAccesses: {
-              include: { user: true },
+              include: { user: { select: SAFE_USER_SELECT } },
             },
           },
         },
@@ -130,11 +131,11 @@ export class ObjectsService {
     const object = await this.prisma.objectEntity.findUnique({
       where: { id },
       include: {
-        owner: true,
+        owner: { select: SAFE_USER_SELECT },
         limits: true,
         materials: true,
         userAccesses: {
-          include: { user: true },
+          include: { user: { select: SAFE_USER_SELECT } },
         },
       },
     });
@@ -160,11 +161,11 @@ export class ObjectsService {
       where: { id },
       data: { name },
       include: {
-        owner: true,
+        owner: { select: SAFE_USER_SELECT },
         limits: true,
         materials: true,
         userAccesses: {
-          include: { user: true },
+          include: { user: { select: SAFE_USER_SELECT } },
         },
       },
     });
@@ -333,7 +334,7 @@ export class ObjectsService {
         },
       },
       data: { role },
-      include: { user: true },
+      include: { user: { select: SAFE_USER_SELECT } },
     });
   }
 
@@ -590,15 +591,7 @@ export class ObjectsService {
   async delete(id: string, actorId: string) {
     const object = await this.prisma.objectEntity.findUnique({
       where: { id },
-      select: {
-        id: true,
-        ownerId: true,
-        _count: {
-          select: {
-            supplyRequests: true,
-          },
-        },
-      },
+      select: { id: true, ownerId: true },
     });
 
     if (!object) {
@@ -609,15 +602,32 @@ export class ObjectsService {
       throw new BadRequestException("Only object owner can delete object");
     }
 
-    if (object._count.supplyRequests > 0) {
-      throw new BadRequestException(
-        "Object with supply requests cannot be deleted",
-      );
-    }
+    const requests = await this.prisma.supplyRequest.findMany({
+      where: { objectId: id },
+      select: {
+        invoices: { select: { path: true, storedName: true } },
+        attachments: { select: { path: true, storedName: true } },
+      },
+    });
 
     await this.prisma.objectEntity.delete({
       where: { id },
     });
+
+    const fileDeletions = requests.flatMap((request) => [
+      ...request.invoices.map((invoice) =>
+        this.storage.delete(invoice.path, "invoices", invoice.storedName),
+      ),
+      ...request.attachments.map((attachment) =>
+        this.storage.delete(
+          attachment.path,
+          "attachments",
+          attachment.storedName,
+        ),
+      ),
+    ]);
+
+    await Promise.allSettled(fileDeletions);
 
     return { success: true };
   }
