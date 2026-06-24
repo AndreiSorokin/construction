@@ -136,15 +136,19 @@ export function SupplyManagerRequestCard({
   return (
     <div className={approvalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
-      <SupplyItemWorkTable
-        checklistStorageScope={checklistStorageScope}
-        commentField="supplyManagerComment"
-        commentLabel="Комментарий начальника снабжения"
-        request={request}
-        onUpdateComment={onUpdateSupplyManagerComment}
-        onUpdateItem={onUpdateItem}
-        onUpdateTextField={onUpdateTextField}
-      />
+      {isItemRequest(request) ? (
+        <SupplyItemWorkTable
+          checklistStorageScope={checklistStorageScope}
+          commentField="supplyManagerComment"
+          commentLabel="Комментарий начальника снабжения"
+          request={request}
+          onUpdateComment={onUpdateSupplyManagerComment}
+          onUpdateItem={onUpdateItem}
+          onUpdateTextField={onUpdateTextField}
+        />
+      ) : (
+        <RequestDetails request={request} />
+      )}
       <InvoiceList request={request} />
       {onAttachInvoices ? (
         <InvoiceUploadForm request={request} onSubmit={onAttachInvoices} />
@@ -344,15 +348,19 @@ export function SupplyManagerReviewCard({
   return (
     <div className={skyApprovalCardClass}>
       <RequestSummaryCard request={request} variant="approval">
-        <SupplyItemWorkTable
-          checklistStorageScope={checklistStorageScope}
-          commentField="supplyManagerComment"
-          commentLabel="Комментарий начальника снабжения"
-          request={request}
-          onUpdateComment={onUpdateSupplyManagerComment}
-          onUpdateItem={onUpdateItem}
-          onUpdateTextField={onUpdateTextField}
-        />
+        {isItemRequest(request) ? (
+          <SupplyItemWorkTable
+            checklistStorageScope={checklistStorageScope}
+            commentField="supplyManagerComment"
+            commentLabel="Комментарий начальника снабжения"
+            request={request}
+            onUpdateComment={onUpdateSupplyManagerComment}
+            onUpdateItem={onUpdateItem}
+            onUpdateTextField={onUpdateTextField}
+          />
+        ) : (
+          <RequestDetails request={request} />
+        )}
         <InvoiceList request={request} />
         {onAttachInvoices ? (
           <InvoiceUploadForm request={request} onSubmit={onAttachInvoices} />
