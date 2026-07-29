@@ -2,6 +2,7 @@
   "name": "@interstroy/server",
   "version": "1.0.0",
   "private": true,
+  "type": "commonjs",
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
