@@ -1,0 +1,526 @@
+// Prisma schema — ТОО «Интерстиль»: снабжение + наряды
+// БД: PostgreSQL. Генерация: `npx prisma generate`, миграции: `npx prisma migrate dev`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+// ──────────────────────────── Справочники / орг.структура ────────────────────────────
+
+enum Role {
+  ADMIN
+  REQUESTER
+  APPROVER
+  WAREHOUSE
+  SUPPLY
+}
+
+enum RequestType {
+  TMC // ТМЦ
+  TRANSPORT // транспорт
+  QUARRY // карьер
+  FUNDS // денежные средства
+  FUEL // ГСМ
+  TRAVEL // командировка
+  PRODUCTION // производство
+}
+
+enum Priority {
+  URGENT // Срочно
+  HIGH // Высокий
+  NORMAL // Обычный
+  LOW // Низкий
+}
+
+enum RequestStatus {
+  APPROVAL // на согласовании
+  SUPPLY // в снабжении
+  FULFILLED // выполнено снабжением
+  DONE // подтверждено заявителем
+  REJECTED // отклонено
+}
+
+enum SupplyStage {
+  NEW
+  INWORK
+  ORDERED
+  ARRIVED
+}
+
+enum OrderStatus {
+  APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum WorkKind {
+  STROY // строительные
+  ELEKTRO // электромонтажные
+}
+
+enum StockStatus {
+  IN // есть на складе
+  OUT // нет
+}
+
+enum DecisionAction {
+  CREATED
+  APPROVED
+  REJECTED
+  STOCK
+  FULFILLED
+  CONFIRMED
+  RETURNED
+  EDITED // правка состава/полей
+  RESUBMITTED // отправлено повторно после доработки
+  WITHDRAWN // отозвано автором
+  CONSOLIDATED // включено в сводную
+  UNCONSOLIDATED // сводная расформирована
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  users           User[]
+  objects         ObjectSite[]
+  supplyChainSteps SupplyChainStep[]
+  orderChainSteps  OrderChainStep[]
+  requests        Request[]
+  orders          Order[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  login        String   @unique
+  email        String?  @unique
+  passwordHash String
+  name         String
+  role         Role     @default(REQUESTER)
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  isLead       Boolean  @default(false) // старший снабжения — может назначать исполнителей
+  ordersAccess Boolean  @default(false) // доступ к разделу «Наряды»
+  canPrice     Boolean  @default(false) // право менять ЦЕНЫ в нарядах (кол-во может любой согласующий)
+  theme        String   @default("light") // light | dark
+  avatarKey    String? // ключ фото профиля в S3
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  objectAccess   ObjectAccess[]
+  refreshTokens  RefreshToken[]
+  notes          Note[]
+  createdRequests Request[] @relation("RequestRequester")
+  createdOrders   Order[]   @relation("OrderRequester")
+
+  @@index([role])
+}
+
+model ObjectSite {
+  id           String   @id @default(cuid())
+  name         String
+  color        String   @default("stone")
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  access   ObjectAccess[]
+  requests Request[]
+  orders   Order[]
+}
+
+// доступ пользователей к объектам (многие-ко-многим)
+model ObjectAccess {
+  objectId String
+  userId   String
+  object   ObjectSite @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([objectId, userId])
+}
+
+// шаг маршрута согласования заявок (по отделу и типу)
+model SupplyChainStep {
+  id           String      @id @default(cuid())
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  type         RequestType
+  order        Int
+  approverId   String
+  label        String
+
+  @@index([departmentId, type, order])
+}
+
+// шаг маршрута согласования нарядов (только строительный отдел; единый маршрут)
+model OrderChainStep {
+  id           String     @id @default(cuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  order        Int
+  approverId   String
+  label        String
+
+  @@index([departmentId, order])
+}
+
+// номенклатура снабжения (необязательная подсказка при создании заявки)
+model CatalogItem {
+  id       String @id @default(cuid())
+  name     String
+  unit     String
+  category String
+}
+
+// списки работ для нарядов
+model WorkCatalog {
+  id    String    @id @default(cuid())
+  name  String
+  kind  WorkKind
+  items WorkItem[]
+}
+
+model WorkItem {
+  id        String      @id @default(cuid())
+  catalogId String
+  catalog   WorkCatalog @relation(fields: [catalogId], references: [id], onDelete: Cascade)
+  name      String
+  unit      String
+  price     Decimal     @db.Decimal(14, 2)
+  dsu       Int? // % ДСУ; null если «--»
+
+  @@index([catalogId])
+}
+
+// ИП-подрядчики (на кого закрываются наряды)
+model Ip {
+  id     String  @id @default(cuid())
+  name   String
+  bin    String?
+  vat    Boolean @default(true) // плательщик НДС / общеустановленный режим
+  orders Order[]
+}
+
+// ──────────────────────────── Заявки (снабжение) ────────────────────────────
+
+model Request {
+  id                String        @id @default(cuid())
+  number            String        @unique // ТМЦ-0001 и т.п.
+  type              RequestType
+  departmentId      String
+  department        Department    @relation(fields: [departmentId], references: [id])
+  requesterId       String
+  requester         User          @relation("RequestRequester", fields: [requesterId], references: [id])
+  objectId          String?
+  object            ObjectSite?   @relation(fields: [objectId], references: [id], onDelete: SetNull)
+  priority          Priority      @default(NORMAL)
+  note              String        @default("")
+  due               DateTime?
+  status            RequestStatus @default(APPROVAL)
+  currentStageIndex Int           @default(0)
+  // снабжение
+  assigneeId        String?
+  supplyStage       SupplyStage   @default(NEW)
+  postponed         Boolean       @default(false)
+  spent             Decimal?      @db.Decimal(14, 2) // фактически потрачено (снабжение)
+  // объединение заявок (сводные СВ-####)
+  isConsolidated     Boolean  @default(false) // это сводная
+  consolidatedIntoId String? // исходная входит в сводную (скрыта у автора, postponed)
+  consolidatedInto   Request?  @relation("Consolidation", fields: [consolidatedIntoId], references: [id], onDelete: SetNull)
+  consolidatedFrom   Request[] @relation("Consolidation")
+  wasConsolidated    String? // номер сводной, в составе которой закуплена (после fulfill)
+  // динамические поля по типу заявки (vehicle, route, amount, purpose…)
+  fields            Json          @default("{}")
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  items       RequestItem[]
+  chainSteps  RequestApprovalStep[]
+  events      RequestEvent[]
+  supplyNotes SupplyNote[]
+  attachments Attachment[]
+
+  @@index([status])
+  @@index([type])
+  @@index([departmentId])
+}
+
+model RequestItem {
+  id          String       @id @default(cuid())
+  requestId   String
+  request     Request      @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  name        String
+  unit        String
+  qty         String       @default("") // храним как введено (может быть «≈ 30»)
+  note        String       @default("")
+  fulfilled   Boolean      @default(false)
+  deliveredQty String      @default("") // «получено N» (снабженец)
+  eta         DateTime? // ожидаемый срок поставки позиции
+  srcRefs     Json? // для позиций СВОДНОЙ: [{requestId,itemId}] — откуда агрегировано
+  stockStatus StockStatus?
+  stockById   String?
+  stockByName String?
+  stockAt     DateTime?
+}
+
+// снапшот маршрута согласования на момент создания + решения
+model RequestApprovalStep {
+  id           String          @id @default(cuid())
+  requestId    String
+  request      Request         @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  order        Int
+  approverId   String
+  approverName String
+  role         Role
+  label        String
+  decision     DecisionAction?
+  decidedAt    DateTime?
+  comment      String?
+
+  @@index([requestId, order])
+}
+
+model RequestEvent {
+  id        String         @id @default(cuid())
+  requestId String
+  request   Request        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  action    DecisionAction
+  byId      String
+  byName    String
+  stage     String?
+  comment   String?
+  at        DateTime       @default(now())
+
+  @@index([requestId])
+}
+
+model SupplyNote {
+  id        String   @id @default(cuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  byId      String
+  byName    String
+  text      String
+  at        DateTime @default(now())
+}
+
+// ──────────────────────────── Наряды ────────────────────────────
+
+model Order {
+  id                String      @id @default(cuid())
+  number            String      @unique // Н-0001
+  departmentId      String
+  department        Department  @relation(fields: [departmentId], references: [id])
+  requesterId       String
+  requester         User        @relation("OrderRequester", fields: [requesterId], references: [id])
+  objectId          String?
+  object            ObjectSite? @relation(fields: [objectId], references: [id], onDelete: SetNull)
+  ipId              String?
+  ip                Ip?         @relation(fields: [ipId], references: [id], onDelete: SetNull)
+  period            String // YYYY-MM
+  catalogId         String?
+  note              String      @default("")
+  status            OrderStatus @default(APPROVAL)
+  currentStageIndex Int         @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  lines       OrderLine[]
+  chainSteps  OrderApprovalStep[]
+  events      OrderEvent[]
+  attachments Attachment[]
+
+  @@index([status])
+  @@index([period])
+  @@index([departmentId])
+}
+
+model OrderLine {
+  id      String  @id @default(cuid())
+  orderId String
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  workId  String?
+  name    String
+  unit    String
+  price   Decimal @db.Decimal(14, 2)
+  dsu     Int?
+  qty     String  @default("")
+}
+
+model OrderApprovalStep {
+  id           String          @id @default(cuid())
+  orderId      String
+  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order_       Int             @map("order_index")
+  approverId   String
+  approverName String
+  role         Role
+  label        String
+  decision     DecisionAction?
+  decidedAt    DateTime?
+  comment      String?
+
+  @@index([orderId, order_])
+}
+
+model OrderEvent {
+  id      String         @id @default(cuid())
+  orderId String
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  action  DecisionAction
+  byId    String
+  byName  String
+  stage   String?
+  comment String?
+  at      DateTime       @default(now())
+
+  @@index([orderId])
+}
+
+// ──────────────────────────── Вложения (S3) ────────────────────────────
+
+model Attachment {
+  id        String   @id @default(cuid())
+  requestId String?
+  request   Request? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromConsolidated String? // перенесено из сводной СВ-N при разъединении
+  key       String // ключ объекта в S3
+  filename  String
+  mime      String
+  size      Int
+  byId      String
+  byName    String
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+  @@index([orderId])
+}
+
+// ──────────────────────────── Личный блокнот ────────────────────────────
+
+model Note {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("")
+  body      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ──────────────────────────── Нумерация ────────────────────────────
+
+// последовательные номера документов (req:TMC, req:FUEL, order …)
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}
+
+// ──────────────────────────── Refresh-токены (ротация + защита от гонки) ────────────────────────────
+
+// Каждый refresh-токен одноразовый и принадлежит «семье» (familyId = сессия устройства).
+// При обновлении токен помечается rotatedAt и ссылается на преемника (replacedById).
+// Повторное использование вне grace-окна → компрометация → отзыв всей семьи.
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId     String // общая «семья» цепочки ротаций (одна сессия)
+  tokenHash    String    @unique // bcrypt/sha256 от секрета токена
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  rotatedAt    DateTime? // когда токен был обменян
+  replacedById String? // id выданного на замену токена
+  revoked      Boolean   @default(false)
+  userAgent    String?
+  ip           String?
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+// ──────────────────────────── Настройки приложения (одна строка id="app") ────────────────────────────
+
+model AppSetting {
+  id          String  @id @default("app")
+  urgentLimit Int     @default(3) // «Срочно» в день; 0 = без лимита
+  logoKey     String? // логотип компании в S3 (PNG с альфой / SVG)
+  logoW       Int?
+  logoH       Int?
+  updatedAt   DateTime @updatedAt
+}
+
+// ──────────────────────────── Связь (без сокетов: обычные списки) ────────────────────────────
+
+// сообщения администратору — односторонний канал «сотрудник → админ»
+model AdminMessage {
+  id        String    @id @default(cuid())
+  fromId    String
+  fromName  String
+  text      String
+  createdAt DateTime  @default(now())
+  readAt    DateTime? // отметка «прочитано админом»
+
+  @@index([createdAt])
+}
+
+// анонимные сообщения руководству — автор НЕ сохраняется нигде
+model AnonMessage {
+  id        String   @id @default(cuid())
+  text      String
+  createdAt DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  text      String
+  byId      String
+  byName    String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  reads AnnouncementRead[]
+}
+
+model AnnouncementRead {
+  announcementId String
+  userId         String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  at             DateTime     @default(now())
+
+  @@id([announcementId, userId])
+}
+
+// общий календарь событий
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  date      String // YYYY-MM-DD
+  title     String
+  byId      String
+  byName    String
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+// черновики заявок: по одному на пользователя и тип
+model Draft {
+  userId    String
+  type      RequestType
+  payload   Json
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, type])
+}

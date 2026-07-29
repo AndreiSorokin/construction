@@ -1,0 +1,194 @@
+'use client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api } from '@/lib/api';
+import { Login } from '@/components/Login';
+import { Shell, type ViewKey } from '@/components/Shell';
+import { RequestsView } from '@/components/RequestsView';
+import { RequestDetail } from '@/components/RequestDetail';
+import { NewRequest } from '@/components/NewRequest';
+import { OrdersView } from '@/components/OrdersView';
+import { NewOrder } from '@/components/NewOrder';
+import { OrderDetail } from '@/components/OrderDetail';
+import { Notebook } from '@/components/Notebook';
+import { SettingsView } from '@/components/SettingsView';
+import { CommsView } from '@/components/CommsView';
+import { SettingsApp } from '@/components/SettingsApp';
+import { DialogHost, NotifBell } from '@/components/ui';
+import { PrintDoc } from '@/components/PrintDoc';
+import { ReportsView } from '@/components/ReportsView';
+import { BatchPrint } from '@/components/BatchPrint';
+
+export default function Home() {
+  const [checking, setChecking] = useState(true);
+  const [me, setMe] = useState<any>(null);
+  const [boot, setBoot] = useState<any>(null);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [loadErr, setLoadErr] = useState('');
+
+  const [view, setView] = useState<ViewKey>('requests');
+  const [openReq, setOpenReq] = useState<string | null>(null);
+  const [newReq, setNewReq] = useState(false);
+  const [openOrd, setOpenOrd] = useState<string | null>(null);
+  const [newOrd, setNewOrd] = useState(false);
+  const [printDoc, setPrintDoc] = useState<{ kind: 'request' | 'order'; data: any } | null>(null);
+  const [batchIds, setBatchIds] = useState<string[] | null>(null);
+  const [repeatFrom, setRepeatFrom] = useState<any>(null);
+  const [appSettings, setAppSettings] = useState<any>(null);   // логотип, лимит «Срочно»
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [commsUnread, setCommsUnread] = useState(0);
+
+  const showOrders = !!me && (me.role === 'ADMIN' || me.ordersAccess ||
+    orders.some((o) => o.chainSteps?.some((s: any) => s.approverId === me.id)));
+
+  const loadAll = useCallback(async (withNotes = true) => {
+    setLoadErr('');
+    try {
+      const [b, rs, os, ns] = await Promise.all([
+        api.bootstrap(),
+        api.requests.list(),
+        api.orders.list(),
+        withNotes ? api.notes.list() : Promise.resolve(null),
+      ]);
+      setBoot(b);
+      setMe(b.me);
+      api.settings.get().then(setAppSettings).catch(() => undefined);
+      api.settings.avatarUrl(b.me.id).then((r: any) => setAvatarUrl(r.avatarUrl)).catch(() => undefined);
+      // бейдж «Связь»: непрочитанные объявления (+ сообщения у админа)
+      Promise.all([
+        api.comms.announcements().catch(() => []),
+        b.me.role === 'ADMIN' ? api.comms.messages().catch(() => []) : Promise.resolve([]),
+      ]).then(([anns, msgs]: any[]) => {
+        setCommsUnread((anns || []).filter((a: any) => !a.readByMe).length + (msgs || []).filter((m: any) => !m.readAt).length);
+      }).catch(() => undefined);
+      // тема пользователя (упрощённый тёмный режим)
+      document.documentElement.classList.toggle('dark', b.me.theme === 'dark');
+      setRequests(rs);
+      setOrders(os);
+      if (ns) setNotes(ns);
+    } catch (e: any) {
+      setLoadErr(e?.message || 'Не удалось загрузить данные');
+    }
+  }, []);
+
+  // восстановление сессии по refresh-cookie
+  useEffect(() => {
+    api.me()
+      .then(async (u) => { setMe(u); await loadAll(); })
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, [loadAll]);
+
+  // фоновое обновление списков раз в 30 c (когда вкладка видима)
+  useEffect(() => {
+    if (!me) return;
+    const iv = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      api.requests.list().then(setRequests).catch(() => {});
+      api.orders.list().then(setOrders).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(iv);
+  }, [me]);
+
+  const onLogin = async (u: any) => { setMe(u); await loadAll(); };
+  const onLogout = async () => {
+    await api.logout();
+    setMe(null); setBoot(null); setRequests([]); setOrders([]); setNotes([]);
+    setView('requests'); setOpenReq(null); setOpenOrd(null); setNewReq(false); setNewOrd(false);
+  };
+
+  const replaceReq = (r: any) => setRequests((prev) => prev.map((x) => (x.id === r.id ? r : x)));
+  const replaceOrd = (o: any) => setOrders((prev) => prev.map((x) => (x.id === o.id ? o : x)));
+
+  const badges = useMemo(() => {
+    if (!me) return {};
+    const reqTurn = requests.filter((r) => r.status === 'APPROVAL' && r.chainSteps?.[r.currentStageIndex]?.approverId === me.id).length;
+    const ordTurn = orders.filter((o) => o.status === 'APPROVAL' && o.chainSteps?.find((s: any) => s.order_ === o.currentStageIndex)?.approverId === me.id).length;
+    return { requests: reqTurn, orders: ordTurn, comms: commsUnread } as Partial<Record<ViewKey, number>>;
+  }, [requests, orders, me, commsUnread]);
+
+  // события по МОИМ заявкам: что сделали другие за последние две недели
+  const notifItems = useMemo(() => {
+    if (!me) return [];
+    const since = Date.now() - 14 * 86400000;
+    const TXT: Record<string, string> = {
+      APPROVED: 'согласована', REJECTED: 'отклонена', RETURNED: 'возвращена в снабжение',
+      STOCK: 'отметка склада', FULFILLED: 'закуплена — подтвердите получение',
+      CONSOLIDATED: 'включена в сводную', UNCONSOLIDATED: 'сводная расформирована', EDITED: 'изменена',
+    };
+    const out: any[] = [];
+    for (const r of requests) {
+      if (r.requesterId !== me.id) continue;
+      for (const e of r.events || []) {
+        if (e.byId === me.id || !TXT[e.action]) continue;
+        if (new Date(e.at).getTime() < since) continue;
+        out.push({ id: e.id, reqId: r.id, number: r.number, text: `${TXT[e.action]} · ${e.byName}`, at: e.at });
+      }
+    }
+    return out.sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 30);
+  }, [requests, me]);
+
+  if (checking) return <main className="flex min-h-screen items-center justify-center text-stone-400">Загрузка…</main>;
+  if (!me) return <><Login onDone={onLogin} /><DialogHost /></>;
+  if (!boot) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 text-stone-500">
+        {loadErr ? (<><p>{loadErr}</p><button className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white" onClick={() => loadAll()}>Повторить</button></>) : 'Загрузка данных…'}
+      </main>
+    );
+  }
+
+  if (printDoc) return <PrintDoc doc={printDoc} boot={boot} onClose={() => setPrintDoc(null)} />;
+  if (batchIds) return <BatchPrint requests={requests.filter((r) => batchIds.includes(r.id))} boot={boot} onBack={() => setBatchIds(null)} />;
+
+  const curReq = openReq ? requests.find((r) => r.id === openReq) : null;
+  const curOrd = openOrd ? orders.find((o) => o.id === openOrd) : null;
+
+  let content: any = null;
+  if (view === 'requests') {
+    content = newReq ? (
+      <NewRequest me={me} boot={boot} initial={repeatFrom} settings={appSettings}
+                  onBack={() => { setNewReq(false); setRepeatFrom(null); }}
+                  onCreated={(r) => { setRequests((p) => [r, ...p]); setNewReq(false); setRepeatFrom(null); setOpenReq(r.id); }} />
+    ) : curReq ? (
+      <RequestDetail me={me} boot={boot} r={curReq} onBack={() => setOpenReq(null)}
+                     onUpdated={replaceReq} onPrint={() => setPrintDoc({ kind: 'request', data: curReq })}
+                     onOpenRequest={(id) => setOpenReq(id)}
+                     onRepeat={(r) => { setRepeatFrom({ type: r.type, note: r.note || '', objectId: r.objectId || '', priority: 'NORMAL', due: '', fields: r.fields || {}, items: (r.items || []).map((i: any) => ({ name: i.name, unit: i.unit, qty: i.qty, note: i.note || '' })) }); setOpenReq(null); setNewReq(true); }} />
+    ) : (
+      <RequestsView me={me} boot={boot} requests={requests} onOpen={setOpenReq} onNew={() => setNewReq(true)}
+                    onConsolidated={(r) => { setRequests((p) => [r, ...p.map((x) => (r.sourceIds || []).includes(x.id) ? x : x)]); loadAll(false); setOpenReq(r.id); }}
+                    onBatchPrint={(ids) => setBatchIds(ids)} onReloadAll={() => loadAll(false)} />
+    );
+  } else if (view === 'orders') {
+    content = newOrd ? (
+      <NewOrder me={me} boot={boot} onBack={() => setNewOrd(false)}
+                onCreated={(o) => { setOrders((p) => [o, ...p]); setNewOrd(false); setOpenOrd(o.id); }} />
+    ) : curOrd ? (
+      <OrderDetail me={me} boot={boot} o={curOrd} onBack={() => setOpenOrd(null)}
+                   onUpdated={replaceOrd} onPrint={() => setPrintDoc({ kind: 'order', data: curOrd })} />
+    ) : (
+      <OrdersView me={me} boot={boot} orders={orders} onOpen={setOpenOrd} onNew={() => setNewOrd(true)} />
+    );
+  } else if (view === 'comms') {
+    content = <CommsView me={me} />;
+  } else if (view === 'profile') {
+    content = <SettingsApp me={me} />;
+  } else if (view === 'reports') {
+    content = <ReportsView requests={requests} orders={orders} boot={boot} />;
+  } else if (view === 'notebook') {
+    content = <Notebook notes={notes} setNotes={setNotes} />;
+  } else if (view === 'settings') {
+    content = <SettingsView boot={boot} me={me} reload={() => loadAll(false)} />;
+  }
+
+  return (
+    <Shell me={me} view={view} setView={(v) => { setView(v); setOpenReq(null); setOpenOrd(null); setNewReq(false); setNewOrd(false); }}
+           badges={badges} showOrders={showOrders} onLogout={onLogout} onReload={() => loadAll()} logoUrl={appSettings?.logoUrl || null} avatarUrl={avatarUrl}
+           notif={<NotifBell items={notifItems} dark onOpen={(id) => { setView('requests'); setOpenReq(id); }} />}>
+      {content}
+      <DialogHost />
+    </Shell>
+  );
+}

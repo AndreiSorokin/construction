@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+}
+
+
+/* Тёмный режим — временное решение: инверсия применяется ТОЛЬКО к области контента,
+   чтобы тёмная навигация оставалась тёмной. Полная тёмная палитра — отдельная задача. */
+html.dark body { background: #0c0a09; }
+html.dark main { filter: invert(1) hue-rotate(180deg); }
+html.dark main img, html.dark main video { filter: invert(1) hue-rotate(180deg); }
+@media print { html.dark main { filter: none; } }

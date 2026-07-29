@@ -1,0 +1,72 @@
+services:
+  interstroy-client:
+    build:
+      context: ./client
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    container_name: interstroy-client
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    networks:
+      - edge
+    labels:
+      autoheal: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  interstroy-server:
+    build:
+      context: ./server
+    container_name: interstroy-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Postgres поднят на самом хосте (не в Docker) — контейнер достаёт его через host-gateway,
+      # добавленный ниже в extra_hosts. Подставьте реальный порт/пароль вашего Postgres.
+      DATABASE_URL: ${DATABASE_URL}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM: ${MAIL_FROM}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # чтобы достучаться до Postgres на хосте
+    networks:
+      - edge
+    labels:
+      autoheal: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+# "edge" — внешняя сеть, общая со старым приложением: только через неё существующий Caddy
+# видит эти контейнеры по имени. Порты наружу (80/443) остаются только у старого Caddy —
+# второй Caddy здесь не поднимаем, чтобы не спорить за порты. Сеть создаётся один раз:
+#   docker network create edge
+# и старый docker-compose.yml (caddy-сервис) нужно minimально доп. подключить к ней же
+# (см. инструкцию в чате) — без изменения его существующих сервисов/портов.
+networks:
+  edge:
+    external: true
