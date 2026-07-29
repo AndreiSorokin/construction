@@ -1,0 +1,16 @@
+ck.interstil.kz {
+	encode zstd gzip
+
+	request_body {
+		max_size 20MB
+	}
+
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy interstroy-server:3000
+	}
+
+	handle {
+		reverse_proxy interstroy-client:3000
+	}
+}
