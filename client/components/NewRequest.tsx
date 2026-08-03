@@ -3,13 +3,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Plus, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PRIORITY_RU, TYPE_RU } from '@/lib/format';
-import { Card, ErrorBox, btnGhost, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
+import { Card, ErrorBox, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
 
 const TYPE_DESC: Record<string, string> = {
   TMC: 'Материалы, инструмент, запчасти', TRANSPORT: 'Техника и перевозки', QUARRY: 'Инертные материалы',
   FUNDS: 'Оплаты и наличные', FUEL: 'Топливо и масла', TRAVEL: 'Командировочные', PRODUCTION: 'Заказ в цех',
 };
 const HAS_ITEMS = new Set(['TMC', 'PRODUCTION']);
+const UNITS = ['шт', 'компл', 'упак', 'пара', 'мешок', 'рулон', 'лист', 'бухта', 'м', 'м²', 'м³', 'кг', 'т', 'л', 'рейс', 'смена', 'час'];
 const TYPE_FIELDS: Record<string, { key: string; label: string; type?: string; options?: string[] }[]> = {
   TMC: [],
   TRANSPORT: [
@@ -38,23 +39,32 @@ function ItemsEditor({ items, setItems, catalog }: { items: any[]; setItems: (v:
     upd(i, { name, ...(c ? { unit: c.unit } : {}) });
   };
   return (
-    <div>
+    <div className="space-y-2">
       <datalist id="catalog-names">
         {catalog.map((c) => <option key={c.id} value={c.name} />)}
       </datalist>
-      {items.map((it, i) => (
-        <div key={i} className="mb-2 flex gap-1.5">
-          <input className={`${inputCls} flex-1`} placeholder="Наименование" list="catalog-names"
-                 value={it.name} onChange={(e) => pick(i, e.target.value)} />
-          <input className={`${inputCls} w-20`} placeholder="ед." value={it.unit} onChange={(e) => upd(i, { unit: e.target.value })} />
-          <input className={`${inputCls} w-20`} placeholder="кол." value={it.qty} onChange={(e) => upd(i, { qty: e.target.value })} />
-          <button className="text-stone-300 hover:text-rose-600" onClick={() => setItems(items.filter((_, j) => j !== i))}>
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
-      <button className={btnGhost} onClick={() => setItems([...items, { name: '', unit: 'шт', qty: '', note: '' }])}>
-        <Plus className="h-4 w-4" /> Позиция
+      {items.map((it, i) => {
+        const unitOptions = it.unit && !UNITS.includes(it.unit) ? [it.unit, ...UNITS] : UNITS;
+        return (
+          <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg bg-stone-50 p-2">
+            <span className="w-5 shrink-0 text-center font-mono text-xs text-stone-400">{i + 1}</span>
+            <input className={`${inputCls} flex-1`} placeholder="Наименование" list="catalog-names"
+                   value={it.name} onChange={(e) => pick(i, e.target.value)} />
+            <input className={`${inputCls} w-20 font-mono`} placeholder="кол-во" inputMode="decimal"
+                   value={it.qty} onChange={(e) => upd(i, { qty: e.target.value })} />
+            <select className={`${inputCls} w-24`} value={it.unit || 'шт'} onChange={(e) => upd(i, { unit: e.target.value })}>
+              {unitOptions.map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+            <button className="rounded-md p-2 text-stone-400 hover:bg-stone-200 hover:text-rose-600"
+              onClick={() => setItems(items.length > 1 ? items.filter((_, j) => j !== i) : items)} title="Удалить позицию">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        );
+      })}
+      <button className="inline-flex items-center gap-1 text-xs font-medium text-stone-600 hover:text-stone-900"
+        onClick={() => setItems([...items, { name: '', unit: 'шт', qty: '', note: '' }])}>
+        <Plus className="h-3.5 w-3.5" /> Добавить позицию
       </button>
     </div>
   );

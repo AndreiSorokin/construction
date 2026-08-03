@@ -41,7 +41,18 @@ function ChainBlock({ steps }: { steps: any[] }) {
   );
 }
 
-export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'order'; data: any }; boot: any; onClose: () => void }) {
+function buildIpSummary(orders: any[]) {
+  const m = new Map<string, { ip: string; count: number; sum: number; numbers: string[] }>();
+  for (const o of orders) {
+    const k = o.ip?.name || '— без ИП —';
+    if (!m.has(k)) m.set(k, { ip: k, count: 0, sum: 0, numbers: [] });
+    const x = m.get(k)!;
+    x.count++; x.sum += (o.lines || []).reduce((s: number, l: any) => s + lineSum(l), 0); x.numbers.push(o.number);
+  }
+  return [...m.values()].sort((a, b) => b.sum - a.sum);
+}
+
+export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'order' | 'order-summary'; data: any }; boot: any; onClose: () => void }) {
   const d = doc.data;
   return (
     <div className="min-h-screen bg-white p-6 text-black">
@@ -50,7 +61,45 @@ export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'ord
         <button className={btnGhost} onClick={onClose}><X className="h-4 w-4" /> Закрыть</button>
       </div>
       <div className="mx-auto max-w-2xl">
-        {doc.kind === 'request' ? (
+        {doc.kind === 'order-summary' ? (
+          <>
+            <div className="mb-4 flex items-start justify-between gap-4 border-b-2 border-black pb-2">
+              <div>
+                <div className="text-xs">ТОО «Интерстиль» · г. Актобе</div>
+                <div className="mt-1 text-lg font-bold">СВОД ПО НАРЯДАМ — {periodLabel(d.period).toUpperCase()}</div>
+                <div className="text-xs">Нарядов: {d.orders.length} (отклонённые не учитываются)</div>
+              </div>
+              <div className="text-right text-xs text-stone-500">сформировано {fmtDate(new Date().toISOString())}</div>
+            </div>
+            {(() => {
+              const rows = buildIpSummary(d.orders);
+              const sum = rows.reduce((s, x) => s + x.sum, 0);
+              return (
+                <table className="mt-4 w-full border-collapse text-sm">
+                  <thead><tr className="border-y-2 border-black text-left">
+                    <th className="py-1.5">ИП</th><th className="py-1.5 text-right">Нарядов</th><th className="py-1.5 pl-3 text-right">Сумма работ</th>
+                  </tr></thead>
+                  <tbody>
+                    {rows.length ? rows.map((x) => (
+                      <tr key={x.ip} className="border-b border-stone-300">
+                        <td className="py-1.5">{x.ip}<div className="font-mono text-xs text-stone-500">{x.numbers.join(', ')}</div></td>
+                        <td className="py-1.5 text-right font-mono">{x.count}</td>
+                        <td className="py-1.5 pl-3 text-right font-mono">{money(x.sum)}</td>
+                      </tr>
+                    )) : <tr><td colSpan={3} className="py-3 text-center text-stone-400">Нарядов за месяц нет.</td></tr>}
+                  </tbody>
+                  <tfoot><tr className="border-t-2 border-black font-semibold">
+                    <td className="py-2">Итого</td><td className="py-2 text-right font-mono">{d.orders.length}</td><td className="py-2 pl-3 text-right font-mono">{money(sum)}</td>
+                  </tr></tfoot>
+                </table>
+              );
+            })()}
+            <div className="mt-10 grid grid-cols-2 gap-8 text-xs">
+              <div className="border-t border-stone-400 pt-1 text-center text-stone-400">составил · подпись / дата</div>
+              <div className="border-t border-stone-400 pt-1 text-center text-stone-400">директор · подпись / дата</div>
+            </div>
+          </>
+        ) : doc.kind === 'request' ? (
           <>
             <Head title={`Заявка (${TYPE_RU[d.type]})`} number={d.number} date={d.createdAt} />
             <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-sm">
@@ -127,10 +176,12 @@ export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'ord
             <ChainBlock steps={d.chainSteps} />
           </>
         )}
-        <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
-          <div>Сдал: ____________________</div>
-          <div>Принял: ____________________</div>
-        </div>
+        {doc.kind !== 'order-summary' && (
+          <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
+            <div>Сдал: ____________________</div>
+            <div>Принял: ____________________</div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,11 +1,11 @@
 'use client';
 import type { ReactNode } from 'react';
 import {
-  Boxes, ScrollText, NotebookPen, MessagesSquare, BarChart3, CircleUser,
+  Boxes, ScrollText, NotebookPen, MessagesSquare, BarChart3, CircleUser, Layers,
   Settings, LogOut, RefreshCw, Building2,
 } from 'lucide-react';
 
-export type ViewKey = 'requests' | 'orders' | 'notebook' | 'comms' | 'reports' | 'profile' | 'settings';
+export type ViewKey = 'requests' | 'bank' | 'orders' | 'notebook' | 'comms' | 'reports' | 'profile' | 'settings';
 
 /* Акценты модулей. Классы записаны статически: Tailwind собирается заранее
    и НЕ увидит строку вида `bg-${accent}-600`. */
@@ -16,20 +16,6 @@ const ACCENT = {
   stone: { on: 'bg-stone-600 text-white', dot: 'bg-stone-500', title: 'text-stone-400', chip: 'bg-stone-100 text-stone-700', border: 'border-stone-200' },
 } as const;
 type AccentKey = keyof typeof ACCENT;
-
-const MODULES: Record<string, { title: string; sub: string; icon: any; accent: AccentKey }> = {
-  supply: { title: 'Снабжение', sub: 'Заявки и закупки по отделам.', icon: Boxes, accent: 'amber' },
-  orders: { title: 'Наряды', sub: 'Наряды на работы. Отдельный модуль, не связан со снабжением.', icon: ScrollText, accent: 'sky' },
-  personal: { title: 'Личный кабинет', sub: 'Блокнот, связь и профиль — ваше рабочее место.', icon: CircleUser, accent: 'violet' },
-  system: { title: 'Настройки', sub: 'Люди, маршруты согласования, справочники.', icon: Settings, accent: 'stone' },
-};
-
-const MODULE_OF: Record<ViewKey, string> = {
-  requests: 'supply', reports: 'supply',
-  orders: 'orders',
-  notebook: 'personal', comms: 'personal', profile: 'personal',
-  settings: 'system',
-};
 
 export function Shell({
   me, view, setView, badges, showOrders, onLogout, onReload, children, logoUrl, avatarUrl, notif,
@@ -46,6 +32,7 @@ export function Shell({
     {
       title: 'Снабжение', accent: 'amber', items: [
         { k: 'requests', label: 'Снабжение', icon: Boxes },
+        { k: 'bank', label: 'Банк', icon: Layers },
         ...(canReports ? [{ k: 'reports' as ViewKey, label: 'Отчёты', icon: BarChart3 }] : []),
       ],
     },
@@ -84,10 +71,6 @@ export function Shell({
       </button>
     );
   };
-
-  const mod = MODULES[MODULE_OF[view] || 'supply'];
-  const ModIcon = mod.icon;
-  const acc = ACCENT[mod.accent];
 
   const logo = (h: number, maxW: number, iconBox: string, iconSize: string) => (
     logoUrl
@@ -164,16 +147,6 @@ export function Shell({
 
       <main className="lg:pl-60">
         <div className="px-3 py-4 lg:px-6 lg:py-6">
-          {/* полоса модуля: где я нахожусь и что это за раздел */}
-          <div className={`no-print mb-4 flex items-center gap-3 rounded-xl border bg-white px-4 py-3 shadow-sm ${acc.border}`}>
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${acc.chip}`}>
-              <ModIcon className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-stone-900">{mod.title}</div>
-              <div className="text-xs text-stone-500">{mod.sub}</div>
-            </div>
-          </div>
           {children}
         </div>
       </main>

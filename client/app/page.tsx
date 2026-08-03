@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { Login } from '@/components/Login';
 import { Shell, type ViewKey } from '@/components/Shell';
 import { RequestsView } from '@/components/RequestsView';
+import { BankView } from '@/components/BankView';
 import { RequestDetail } from '@/components/RequestDetail';
 import { NewRequest } from '@/components/NewRequest';
 import { OrdersView } from '@/components/OrdersView';
@@ -32,7 +33,7 @@ export default function Home() {
   const [newReq, setNewReq] = useState(false);
   const [openOrd, setOpenOrd] = useState<string | null>(null);
   const [newOrd, setNewOrd] = useState(false);
-  const [printDoc, setPrintDoc] = useState<{ kind: 'request' | 'order'; data: any } | null>(null);
+  const [printDoc, setPrintDoc] = useState<{ kind: 'request' | 'order' | 'order-summary'; data: any } | null>(null);
   const [batchIds, setBatchIds] = useState<string[] | null>(null);
   const [repeatFrom, setRepeatFrom] = useState<any>(null);
   const [appSettings, setAppSettings] = useState<any>(null);   // логотип, лимит «Срочно»
@@ -145,22 +146,28 @@ export default function Home() {
   const curReq = openReq ? requests.find((r) => r.id === openReq) : null;
   const curOrd = openOrd ? orders.find((o) => o.id === openOrd) : null;
 
+  // общий экран карточки заявки: используется и из «Снабжения», и из «Банка» —
+  // view не переключается при открытии, поэтому подсветка в меню и «Назад» остаются на исходном разделе
+  const requestDetailNode = curReq && (
+    <RequestDetail me={me} boot={boot} r={curReq} onBack={() => setOpenReq(null)}
+                   onUpdated={replaceReq} onPrint={() => setPrintDoc({ kind: 'request', data: curReq })}
+                   onOpenRequest={(id) => setOpenReq(id)}
+                   onRepeat={(r) => { setRepeatFrom({ type: r.type, note: r.note || '', objectId: r.objectId || '', priority: 'NORMAL', due: '', fields: r.fields || {}, items: (r.items || []).map((i: any) => ({ name: i.name, unit: i.unit, qty: i.qty, note: i.note || '' })) }); setOpenReq(null); setView('requests'); setNewReq(true); }} />
+  );
+
   let content: any = null;
   if (view === 'requests') {
     content = newReq ? (
       <NewRequest me={me} boot={boot} initial={repeatFrom} settings={appSettings}
                   onBack={() => { setNewReq(false); setRepeatFrom(null); }}
                   onCreated={(r) => { setRequests((p) => [r, ...p]); setNewReq(false); setRepeatFrom(null); setOpenReq(r.id); }} />
-    ) : curReq ? (
-      <RequestDetail me={me} boot={boot} r={curReq} onBack={() => setOpenReq(null)}
-                     onUpdated={replaceReq} onPrint={() => setPrintDoc({ kind: 'request', data: curReq })}
-                     onOpenRequest={(id) => setOpenReq(id)}
-                     onRepeat={(r) => { setRepeatFrom({ type: r.type, note: r.note || '', objectId: r.objectId || '', priority: 'NORMAL', due: '', fields: r.fields || {}, items: (r.items || []).map((i: any) => ({ name: i.name, unit: i.unit, qty: i.qty, note: i.note || '' })) }); setOpenReq(null); setNewReq(true); }} />
-    ) : (
+    ) : curReq ? requestDetailNode : (
       <RequestsView me={me} boot={boot} requests={requests} onOpen={setOpenReq} onNew={() => setNewReq(true)}
                     onConsolidated={(r) => { setRequests((p) => [r, ...p.map((x) => (r.sourceIds || []).includes(x.id) ? x : x)]); loadAll(false); setOpenReq(r.id); }}
-                    onBatchPrint={(ids) => setBatchIds(ids)} onReloadAll={() => loadAll(false)} />
+                    onBatchPrint={(ids) => setBatchIds(ids)} onReloadAll={() => loadAll(false)} onReplace={replaceReq} />
     );
+  } else if (view === 'bank') {
+    content = curReq ? requestDetailNode : <BankView me={me} boot={boot} requests={requests} onOpen={setOpenReq} />;
   } else if (view === 'orders') {
     content = newOrd ? (
       <NewOrder me={me} boot={boot} onBack={() => setNewOrd(false)}
@@ -169,7 +176,8 @@ export default function Home() {
       <OrderDetail me={me} boot={boot} o={curOrd} onBack={() => setOpenOrd(null)}
                    onUpdated={replaceOrd} onPrint={() => setPrintDoc({ kind: 'order', data: curOrd })} />
     ) : (
-      <OrdersView me={me} boot={boot} orders={orders} onOpen={setOpenOrd} onNew={() => setNewOrd(true)} />
+      <OrdersView me={me} boot={boot} orders={orders} onOpen={setOpenOrd} onNew={() => setNewOrd(true)}
+                  onSummary={(period) => setPrintDoc({ kind: 'order-summary', data: { period, orders: orders.filter((o) => o.period === period && o.status !== 'REJECTED') } })} />
     );
   } else if (view === 'comms') {
     content = <CommsView me={me} />;

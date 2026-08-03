@@ -17,7 +17,7 @@ import {
 /* Чтобы включить ОБЩИЙ доступ для всех сотрудников — впишите адрес вашего сервера,
    например "https://naryady.example.com" (без "/" в конце). Сервер: папка interstroy-server.
    Пусто = прежний режим: данные хранятся только в этом браузере/устройстве. */
-const SERVER_URL = "";
+const SERVER_URL = (typeof window !== "undefined" && (window).__SRV__) || "";
 
 const HAS_STORAGE = typeof window !== "undefined" && window.storage;
 const KEY = "supply:v11";
@@ -303,8 +303,8 @@ function delAtt(id) {
   if (HAS_STORAGE) { try { sDel(attKey(id)).catch(() => {}); } catch (_) {} }
 }
 /* сессия (токен) — в этом браузере, чтобы не входить каждый раз */
-function saveSession(sess) { if (HAS_STORAGE) { try { sSet(SESSION_KEY, JSON.stringify(sess || null)).catch(() => {}); } catch (_) {} } }
-async function loadSession() { if (HAS_STORAGE) { try { const r = await sGet(SESSION_KEY); return r && r.value ? JSON.parse(r.value) : null; } catch (_) {} } return null; }
+function saveSession(sess) { if (HAS_STORAGE) { try { sSet(SESSION_KEY, JSON.stringify(sess || null)).catch(() => {}); } catch (_) {} } else { try { window.localStorage.setItem(SESSION_KEY, JSON.stringify(sess || null)); } catch (_) {} } }
+async function loadSession() { if (HAS_STORAGE) { try { const r = await sGet(SESSION_KEY); return r && r.value ? JSON.parse(r.value) : null; } catch (_) {} return null; } try { const v = window.localStorage.getItem(SESSION_KEY); return v ? JSON.parse(v) : null; } catch (_) {} return null; }
 
 /* ─── Утилиты ─── */
 const uid = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));

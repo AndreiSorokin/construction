@@ -3,7 +3,8 @@ import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { Plus, Search } from 'lucide-react';
 import { Badge, Card, Empty, btnPrimary, inputCls, btnGhost, pillCls, DueBadge, ObjectDot, BulkBar, appConfirm, appPrompt } from './ui';
-import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, STAGE_RU, fmtDate } from '@/lib/format';
+import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, fmtDate } from '@/lib/format';
+import { SupplyBoard } from './SupplyBoard';
 
 const PRI_BORDER: Record<string, string> = {
   URGENT: 'border-l-rose-400', HIGH: 'border-l-amber-400', NORMAL: 'border-l-stone-300', LOW: 'border-l-stone-200',
@@ -35,8 +36,8 @@ function ReqCard({ r, boot, onOpen, selectable, selected }: { r: any; boot: any;
   );
 }
 
-export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated, onBatchPrint, onReloadAll }: {
-  me: any; boot: any; requests: any[]; onOpen: (id: string) => void; onNew: () => void; onConsolidated?: (r: any) => void; onBatchPrint?: (ids: string[]) => void; onReloadAll?: () => void;
+export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated, onBatchPrint, onReloadAll, onReplace }: {
+  me: any; boot: any; requests: any[]; onOpen: (id: string) => void; onNew: () => void; onConsolidated?: (r: any) => void; onBatchPrint?: (ids: string[]) => void; onReloadAll?: () => void; onReplace?: (r: any) => void;
 }) {
   const isSupply = me.role === 'SUPPLY';
   const tabs = useMemo(() => {
@@ -143,24 +144,26 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
         ))}
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
-          <input className={`${inputCls} w-56 pl-8`} placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />
+      {!supplyBoard && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
+            <input className={`${inputCls} w-56 pl-8`} placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
+          {tab === 'all' && (<>
+            <input type="date" className={`${inputCls} w-40`} value={dFrom} onChange={(e) => setDFrom(e.target.value)} title="С даты" />
+            <input type="date" className={`${inputCls} w-40`} value={dTo} onChange={(e) => setDTo(e.target.value)} title="По дату" />
+          </>)}
+          <select className={`${inputCls} w-44`} value={fobj} onChange={(e) => setFobj(e.target.value)}>
+            <option value="">Все объекты</option>
+            {boot.objects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+          <select className={`${inputCls} w-44`} value={ftype} onChange={(e) => setFtype(e.target.value)}>
+            <option value="">Все типы</option>
+            {Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
         </div>
-        {tab === 'all' && (<>
-          <input type="date" className={`${inputCls} w-40`} value={dFrom} onChange={(e) => setDFrom(e.target.value)} title="С даты" />
-          <input type="date" className={`${inputCls} w-40`} value={dTo} onChange={(e) => setDTo(e.target.value)} title="По дату" />
-        </>)}
-        <select className={`${inputCls} w-44`} value={fobj} onChange={(e) => setFobj(e.target.value)}>
-          <option value="">Все объекты</option>
-          {boot.objects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
-        </select>
-        <select className={`${inputCls} w-44`} value={ftype} onChange={(e) => setFtype(e.target.value)}>
-          <option value="">Все типы</option>
-          {Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-      </div>
+      )}
 
       {selecting && tab === 'inbox' && (
         <BulkBar count={selected.length} busy={bulkBusy}
@@ -168,42 +171,10 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
           onApprove={() => bulkDecide('approve')} onReject={() => bulkDecide('reject')} />
       )}
       {supplyBoard ? (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {([['NEW', 'bg-stone-400'], ['INWORK', 'bg-sky-500'], ['ORDERED', 'bg-amber-500'], ['ARRIVED', 'bg-emerald-500']] as const).map(([st, dot]) => {
-            const col = filtered.filter((r) => r.status === 'SUPPLY' && !r.postponed && (st === 'NEW' ? (r.supplyStage === 'NEW' || !r.assigneeId) : r.supplyStage === st && r.assigneeId));
-            return (
-              <div key={st} className="flex flex-1 flex-col rounded-xl border border-stone-200 bg-stone-50 p-2" style={{ minWidth: 230 }}>
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-700">
-                    <span className={`h-2 w-2 rounded-full ${dot}`} /> {STAGE_RU[st]}
-                  </div>
-                  <span className="font-mono text-xs text-stone-400">{col.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {col.map((r) => <ReqCard key={r.id} r={r} boot={boot} onOpen={() => (selecting ? toggleSel(r.id) : onOpen(r.id))} selectable={selecting} selected={selected.includes(r.id)} />)}
-                  {col.length === 0 && <div className="rounded-lg border border-dashed border-stone-200 py-6 text-center text-xs text-stone-400">пусто</div>}
-                </div>
-              </div>
-            );
-          })}
-          {(() => {
-            const post = filtered.filter((r) => r.status === 'SUPPLY' && r.postponed);
-            return (
-              <div className="flex flex-1 flex-col rounded-xl border border-stone-200 bg-stone-50 p-2" style={{ minWidth: 230 }}>
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-stone-700">
-                    <span className="h-2 w-2 rounded-full bg-violet-500" /> На паузе
-                  </div>
-                  <span className="font-mono text-xs text-stone-400">{post.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {post.map((r) => <ReqCard key={r.id} r={r} boot={boot} onOpen={() => (selecting ? toggleSel(r.id) : onOpen(r.id))} selectable={selecting} selected={selected.includes(r.id)} />)}
-                  {post.length === 0 && <div className="rounded-lg border border-dashed border-stone-200 py-6 text-center text-xs text-stone-400">пусто</div>}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
+        <SupplyBoard me={me} boot={boot} requests={requests} onOpen={onOpen}
+          onReplace={onReplace || (() => { if (onReloadAll) onReloadAll(); })}
+          onReloadAll={onReloadAll || (() => {})}
+          selecting={selecting} selected={selected} onToggleSel={toggleSel} selectableCheck={consolidatable} />
       ) : (
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((r) => <ReqCard key={r.id} r={r} boot={boot} onOpen={() => (selecting ? toggleSel(r.id) : onOpen(r.id))} selectable={selecting} selected={selected.includes(r.id)} />)}

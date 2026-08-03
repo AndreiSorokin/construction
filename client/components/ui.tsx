@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { TYPE_CLS } from '@/lib/requestHelpers';
+import { TYPE_RU } from '@/lib/format';
 
 /* Единый визуальный язык — 1-в-1 с эталоном прототипа. */
 export const inputCls =
@@ -219,6 +221,11 @@ export function DueBadge({ due, status }: { due?: string | null; status?: string
 /** Цветная точка объекта (палитра объектов есть в safelist Tailwind). */
 export function ObjectDot({ color }: { color?: string | null }) {
   return <span className={`inline-block h-2 w-2 shrink-0 rounded-full bg-${color || 'stone'}-400`} />;
+}
+
+/** Бейдж типа заявки (ТМЦ/Транспорт/…), единый для «Снабжения», доски и «Банка». */
+export function TypeBadge({ type }: { type: string }) {
+  return <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${TYPE_CLS[type] || TYPE_CLS.TMC}`}>{TYPE_RU[type]}</span>;
 }
 
 /** Нижняя панель массовых действий согласующего. */
