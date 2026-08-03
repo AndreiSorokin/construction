@@ -111,7 +111,7 @@ export function DialogHost() {
 }
 
 /* ──────────────────────────── История: кнопка + всплывающее окно ──────────────────────────── */
-const HIST_LABELS: Record<string, string> = {
+export const HIST_LABELS: Record<string, string> = {
   CREATED: 'создал(а)', APPROVED: 'согласовал(а)', REJECTED: 'отклонил(а)', RETURNED: 'вернул(а) в снабжение',
   STOCK: 'отметка склада', FULFILLED: 'выполнено', CONFIRMED: 'подтвердил(а) получение',
   EDITED: 'изменил(а)', RESUBMITTED: 'отправил(а) повторно', WITHDRAWN: 'отозвал(а)',

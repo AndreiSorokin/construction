@@ -10,13 +10,10 @@ import { NewRequest } from '@/components/NewRequest';
 import { OrdersView } from '@/components/OrdersView';
 import { NewOrder } from '@/components/NewOrder';
 import { OrderDetail } from '@/components/OrderDetail';
-import { Notebook } from '@/components/Notebook';
-import { SettingsView } from '@/components/SettingsView';
-import { CommsView } from '@/components/CommsView';
-import { SettingsApp } from '@/components/SettingsApp';
+import { PersonalHub } from '@/components/PersonalHub';
+import { useTheme } from '@/components/ThemeProvider';
 import { DialogHost, NotifBell } from '@/components/ui';
 import { PrintDoc } from '@/components/PrintDoc';
-import { ReportsView } from '@/components/ReportsView';
 import { BatchPrint } from '@/components/BatchPrint';
 
 export default function Home() {
@@ -39,6 +36,7 @@ export default function Home() {
   const [appSettings, setAppSettings] = useState<any>(null);   // логотип, лимит «Срочно»
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [commsUnread, setCommsUnread] = useState(0);
+  const { syncTheme } = useTheme();
 
   const showOrders = !!me && (me.role === 'ADMIN' || me.ordersAccess ||
     orders.some((o) => o.chainSteps?.some((s: any) => s.approverId === me.id)));
@@ -63,15 +61,14 @@ export default function Home() {
       ]).then(([anns, msgs]: any[]) => {
         setCommsUnread((anns || []).filter((a: any) => !a.readByMe).length + (msgs || []).filter((m: any) => !m.readAt).length);
       }).catch(() => undefined);
-      // тема пользователя (упрощённый тёмный режим)
-      document.documentElement.classList.toggle('dark', b.me.theme === 'dark');
+      syncTheme(b.me.theme === 'dark');
       setRequests(rs);
       setOrders(os);
       if (ns) setNotes(ns);
     } catch (e: any) {
       setLoadErr(e?.message || 'Не удалось загрузить данные');
     }
-  }, []);
+  }, [syncTheme]);
 
   // восстановление сессии по refresh-cookie
   useEffect(() => {
@@ -106,7 +103,7 @@ export default function Home() {
     if (!me) return {};
     const reqTurn = requests.filter((r) => r.status === 'APPROVAL' && r.chainSteps?.[r.currentStageIndex]?.approverId === me.id).length;
     const ordTurn = orders.filter((o) => o.status === 'APPROVAL' && o.chainSteps?.find((s: any) => s.order_ === o.currentStageIndex)?.approverId === me.id).length;
-    return { requests: reqTurn, orders: ordTurn, comms: commsUnread } as Partial<Record<ViewKey, number>>;
+    return { requests: reqTurn, orders: ordTurn, personal: commsUnread } as Partial<Record<ViewKey, number>>;
   }, [requests, orders, me, commsUnread]);
 
   // события по МОИМ заявкам: что сделали другие за последние две недели
@@ -179,16 +176,15 @@ export default function Home() {
       <OrdersView me={me} boot={boot} orders={orders} onOpen={setOpenOrd} onNew={() => setNewOrd(true)}
                   onSummary={(period) => setPrintDoc({ kind: 'order-summary', data: { period, orders: orders.filter((o) => o.period === period && o.status !== 'REJECTED') } })} />
     );
-  } else if (view === 'comms') {
-    content = <CommsView me={me} />;
-  } else if (view === 'profile') {
-    content = <SettingsApp me={me} />;
-  } else if (view === 'reports') {
-    content = <ReportsView requests={requests} orders={orders} boot={boot} />;
-  } else if (view === 'notebook') {
-    content = <Notebook notes={notes} setNotes={setNotes} />;
-  } else if (view === 'settings') {
-    content = <SettingsView boot={boot} me={me} reload={() => loadAll(false)} />;
+  } else if (view === 'personal') {
+    content = (
+      <PersonalHub me={me} boot={boot} requests={requests} orders={orders} notes={notes} setNotes={setNotes}
+                   avatarUrl={avatarUrl} onAvatarChange={setAvatarUrl}
+                   onOpenReq={(id) => { setView('requests'); setOpenReq(id); }}
+                   onOpenReqInBank={(id) => { setView('bank'); setOpenReq(id); }}
+                   onOpenOrder={(id) => { setView('orders'); setOpenOrd(id); }}
+                   reload={() => loadAll(false)} />
+    );
   }
 
   return (

@@ -7,28 +7,25 @@ const card = 'rounded-2xl border border-stone-200 bg-white shadow-sm';
 const btn = 'rounded-lg bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50';
 const btnGhost = 'rounded-lg border border-stone-300 px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50';
 
-/** Связь без сокетов: односторонние сообщения админу, анонимка, объявления, календарь.
+/** «Мессенджер»: односторонние сообщения админу, анонимка, объявления (без сокетов — решение заказчика).
  *  Данные подтягиваются при открытии вкладки; кнопка «Обновить» перечитывает списки. */
 export function CommsView({ me }: { me: any }) {
   const isAdmin = me.role === 'ADMIN';
-  const [tab, setTab] = useState<'msg' | 'ann' | 'cal'>('msg');
+  const [tab, setTab] = useState<'msg' | 'ann'>('msg');
   const [text, setText] = useState('');
   const [anon, setAnon] = useState('');
   const [sent, setSent] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [anons, setAnons] = useState<any[]>([]);
   const [anns, setAnns] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
   const [annText, setAnnText] = useState('');
-  const [evDate, setEvDate] = useState('');
-  const [evTitle, setEvTitle] = useState('');
   const [err, setErr] = useState('');
 
   const load = async () => {
     setErr('');
     try {
-      const [a, e] = await Promise.all([api.comms.announcements(), api.comms.events()]);
-      setAnns(a); setEvents(e);
+      const a = await api.comms.announcements();
+      setAnns(a);
       if (isAdmin) {
         const [m, an] = await Promise.all([api.comms.messages(), api.comms.anonList()]);
         setMessages(m); setAnons(an);
@@ -42,7 +39,7 @@ export function CommsView({ me }: { me: any }) {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {([['msg', 'Сообщения'], ['ann', 'Объявления'], ['cal', 'Календарь']] as const).map(([k, t]) => (
+        {([['msg', 'Сообщения'], ['ann', 'Объявления']] as const).map(([k, t]) => (
           <button key={k} onClick={() => setTab(k)}
             className={pillCls(tab === k)}>{t}</button>
         ))}
@@ -133,31 +130,6 @@ export function CommsView({ me }: { me: any }) {
                   </span>
                 </div>
                 <div className="mt-1 whitespace-pre-wrap text-sm text-stone-800">{a.text}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === 'cal' && (
-        <div className={`p-4 ${card}`}>
-          <div className="mb-4 flex flex-wrap gap-2">
-            <input type="date" value={evDate} onChange={(e) => setEvDate(e.target.value)}
-              className="rounded-lg border border-stone-300 px-3 py-2 text-sm" />
-            <input value={evTitle} onChange={(e) => setEvTitle(e.target.value)} placeholder="Событие…"
-              className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
-            <button className={btn} disabled={!evDate || !evTitle.trim()}
-              onClick={async () => { await api.comms.addEvent(evDate, evTitle.trim()); setEvTitle(''); load(); }}>Добавить</button>
-          </div>
-          <div className="space-y-2">
-            {events.length === 0 && <p className="text-sm text-stone-400">Событий нет.</p>}
-            {events.map((e) => (
-              <div key={e.id} className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 px-3 py-2 text-sm">
-                <span><span className="font-mono text-stone-500">{e.date}</span> · {e.title} <span className="text-xs text-stone-400">({e.byName})</span></span>
-                {(isAdmin || e.byId === me.id) && (
-                  <button className="text-xs text-rose-600 underline"
-                    onClick={async () => { if (await appConfirm('Удалить событие «' + e.title + '»?', { okText: 'Удалить', danger: true })) { await api.comms.delEvent(e.id); load(); } }}>удалить</button>
-                )}
               </div>
             ))}
           </div>

@@ -29,7 +29,7 @@ export function SettingsView({ boot, me, reload }: { boot: any; me?: any; reload
         ))}
       </div>
       {tab === 'users' && <SettingsUsers boot={boot} reload={reload} />}
-      {tab === 'app' && <SettingsApp me={me || boot.me || {}} isAdminTab />}
+      {tab === 'app' && <SettingsApp me={me || boot.me || {}} />}
       {tab === 'dicts' && <SettingsDicts boot={boot} reload={reload} />}
       {tab === 'chains' && <SettingsChains boot={boot} reload={reload} />}
       {tab === 'works' && <SettingsWorks boot={boot} reload={reload} />}

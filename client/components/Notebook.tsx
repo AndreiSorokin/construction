@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
-import { Card, Empty, btnPrimary, inputCls, PageHeader } from './ui';
+import { Card, Empty, btnPrimary, inputCls } from './ui';
 
 export function Notebook({ notes, setNotes }: { notes: any[]; setNotes: (n: any[]) => void }) {
   const [selId, setSelId] = useState<string | null>(notes[0]?.id || null);
@@ -35,8 +35,10 @@ export function Notebook({ notes, setNotes }: { notes: any[]; setNotes: (n: any[
 
   return (
     <div>
-      <PageHeader title="Блокнот" sub="Личные заметки — видите только вы." accent="violet"
-        right={<button onClick={create} className={btnPrimary}><Plus className="h-4 w-4" /> Заметка</button>} />
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-sm text-stone-500">Личные заметки — видите только вы.</p>
+        <button onClick={create} className={btnPrimary}><Plus className="h-4 w-4" /> Заметка</button>
+      </div>
       {notes.length === 0 ? <Empty text="Заметок пока нет." /> : (
         <div className="grid gap-3 md:grid-cols-3">
           <Card className="!p-2 md:col-span-1">

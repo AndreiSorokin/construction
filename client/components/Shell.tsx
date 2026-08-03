@@ -1,11 +1,11 @@
 'use client';
 import type { ReactNode } from 'react';
 import {
-  Boxes, ScrollText, NotebookPen, MessagesSquare, BarChart3, CircleUser, Layers,
-  Settings, LogOut, RefreshCw, Building2,
+  Boxes, ScrollText, CircleUser, Layers,
+  LogOut, RefreshCw, Building2,
 } from 'lucide-react';
 
-export type ViewKey = 'requests' | 'bank' | 'orders' | 'notebook' | 'comms' | 'reports' | 'profile' | 'settings';
+export type ViewKey = 'requests' | 'bank' | 'orders' | 'personal';
 
 /* Акценты модулей. Классы записаны статически: Tailwind собирается заранее
    и НЕ увидит строку вида `bg-${accent}-600`. */
@@ -25,26 +25,19 @@ export function Shell({
   onLogout: () => void; onReload: () => void; children: ReactNode;
   logoUrl?: string | null; avatarUrl?: string | null; notif?: ReactNode;
 }) {
-  const isAdmin = me.role === 'ADMIN';
-  const canReports = isAdmin || me.role === 'SUPPLY';
-
   const allGroups: { title: string; accent: AccentKey; items: { k: ViewKey; label: string; icon: any }[] }[] = [
     {
       title: 'Снабжение', accent: 'amber', items: [
         { k: 'requests', label: 'Снабжение', icon: Boxes },
         { k: 'bank', label: 'Банк', icon: Layers },
-        ...(canReports ? [{ k: 'reports' as ViewKey, label: 'Отчёты', icon: BarChart3 }] : []),
       ],
     },
     { title: 'Наряды', accent: 'sky', items: showOrders ? [{ k: 'orders', label: 'Наряды', icon: ScrollText }] : [] },
     {
       title: 'Личное', accent: 'violet', items: [
-        { k: 'notebook', label: 'Блокнот', icon: NotebookPen },
-        { k: 'comms', label: 'Связь', icon: MessagesSquare },
-        { k: 'profile', label: 'Профиль', icon: CircleUser },
+        { k: 'personal', label: 'Личный кабинет', icon: CircleUser },
       ],
     },
-    { title: 'Система', accent: 'stone', items: isAdmin ? [{ k: 'settings', label: 'Настройки', icon: Settings }] : [] },
   ];
   const groups = allGroups.filter((g) => g.items.length > 0);
 
