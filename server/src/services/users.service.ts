@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { hashPassword } from '../common/password.util';
 import { CreateUserDto, UpdateUserDto } from '../dto/user.dto';
+import { AuthUser } from '../decorators/current-user.decorator';
 
 const pub = {
   id: true, login: true, name: true, role: true, departmentId: true,
@@ -43,7 +44,13 @@ export class UsersService {
     });
   }
 
-  async update(id: string, dto: UpdateUserDto) {
+  async update(id: string, dto: UpdateUserDto, current: AuthUser) {
+    // админ не может понизить/сменить себе роль или деактивировать сам себя —
+    // иначе можно случайно потерять доступ к админке без возможности вернуть его
+    if (id === current.id) {
+      if (dto.role && dto.role !== current.role) throw new ForbiddenException('Нельзя изменить собственную роль');
+      if (dto.isActive === false) throw new ForbiddenException('Нельзя деактивировать самого себя');
+    }
     if (dto.login) {
       const dup = await this.prisma.user.findFirst({
         where: { login: { equals: dto.login, mode: 'insensitive' }, NOT: { id } },
@@ -58,7 +65,9 @@ export class UsersService {
    * При этом: убирается из маршрутов согласования, снимается как исполнитель,
    * зависшие на нём этапы согласования заявок И нарядов перескакивают дальше — ничего не виснет.
    */
-  async deactivate(id: string, byName: string) {
+  async deactivate(id: string, current: AuthUser) {
+    if (id === current.id) throw new ForbiddenException('Нельзя уволить самого себя');
+    const byName = current.name;
     await this.prisma.$transaction(async (tx) => {
       await tx.supplyChainStep.deleteMany({ where: { approverId: id } });
       await tx.orderChainStep.deleteMany({ where: { approverId: id } });

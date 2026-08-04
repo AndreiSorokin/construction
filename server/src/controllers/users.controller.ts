@@ -16,8 +16,8 @@ export class UsersController {
 
   @Post() create(@Body() dto: CreateUserDto) { return this.users.create(dto); }
 
-  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.users.update(id, dto);
+  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() u: AuthUser) {
+    return this.users.update(id, dto, u);
   }
 
   @Post(':id/password') reset(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
@@ -26,6 +26,6 @@ export class UsersController {
 
   /** увольнение: деактивация + вычистка из маршрутов; зависшие этапы перескакивают */
   @Delete(':id') remove(@Param('id') id: string, @CurrentUser() u: AuthUser) {
-    return this.users.deactivate(id, u.name);
+    return this.users.deactivate(id, u);
   }
 }

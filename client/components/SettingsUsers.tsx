@@ -60,15 +60,18 @@ export function SettingsUsers({ boot, reload }: { boot: any; reload: () => void 
             </tr>
           </thead>
           <tbody>
-            {boot.users.map((u: any) => (
+            {boot.users.map((u: any) => {
+              const isSelf = u.id === boot.me?.id;
+              return (
               <tr key={u.id} className="border-b border-stone-100 last:border-0">
                 <td className="p-2 pl-3">
                   <input className="w-full bg-transparent font-medium outline-none" defaultValue={u.name}
                          onBlur={(e) => e.target.value !== u.name && act(() => api.users.update(u.id, { name: e.target.value }))} />
-                  <span className="font-mono text-xs text-stone-400">{u.login}</span>
+                  <span className="font-mono text-xs text-stone-400">{u.login}{isSelf ? ' · это вы' : ''}</span>
                 </td>
                 <td className="p-2">
-                  <select className="rounded border border-stone-200 px-1 py-0.5 text-xs" value={u.role}
+                  <select className="rounded border border-stone-200 px-1 py-0.5 text-xs disabled:opacity-50" value={u.role}
+                          disabled={isSelf} title={isSelf ? 'Нельзя изменить собственную роль' : undefined}
                           onChange={(e) => act(() => api.users.update(u.id, { role: e.target.value }))}>
                     {ROLES.map((r) => <option key={r} value={r}>{ROLE_RU[r]}</option>)}
                   </select>
@@ -87,7 +90,8 @@ export function SettingsUsers({ boot, reload }: { boot: any; reload: () => void 
                   {u.role === 'SUPPLY' && <input type="checkbox" checked={u.isLead} onChange={(e) => act(() => api.users.update(u.id, { isLead: e.target.checked }))} />}
                 </td>
                 <td className="p-2 text-center">
-                  <input type="checkbox" checked={u.isActive} onChange={(e) => act(() => api.users.update(u.id, { isActive: e.target.checked }))} />
+                  <input type="checkbox" checked={u.isActive} disabled={isSelf} title={isSelf ? 'Нельзя деактивировать самого себя' : undefined}
+                    onChange={(e) => act(() => api.users.update(u.id, { isActive: e.target.checked }))} />
                   <label className="ml-3 inline-flex items-center gap-1 text-xs text-stone-500" title="Право менять ЦЕНЫ в нарядах">
                     <input type="checkbox" checked={!!u.canPrice} onChange={(e) => act(() => api.users.update(u.id, { canPrice: e.target.checked }))} /> цены
                   </label>
@@ -96,14 +100,16 @@ export function SettingsUsers({ boot, reload }: { boot: any; reload: () => void 
                   <button onClick={() => resetPw(u)} className={`${btnGhost} !px-2 !py-1 text-xs`} title="Сбросить пароль">
                     <KeyRound className="h-3.5 w-3.5" />
                   </button>
-                  <button className={`${btnGhost} !px-2 !py-1 text-xs text-rose-600`} title="Уволить: деактивация + вычистка из маршрутов; зависшие этапы перескочат"
+                  <button className={`${btnGhost} !px-2 !py-1 text-xs text-rose-600 disabled:opacity-40`}
+                    disabled={isSelf} title={isSelf ? 'Нельзя уволить самого себя' : 'Уволить: деактивация + вычистка из маршрутов; зависшие этапы перескочат'}
                     onClick={async () => {
                       if (await appConfirm(`Уволить «${u.name}»? Он исчезнет из маршрутов согласования, назначенные заявки освободятся, зависшие на нём этапы перескочат дальше. Вход будет закрыт.`, { okText: 'Уволить', danger: true }))
                         act(() => api.users.remove(u.id));
                     }}>Уволить</button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </Card>

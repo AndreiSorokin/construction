@@ -1,11 +1,11 @@
 'use client';
 import { useRef, useState } from 'react';
 import {
-  Archive, AlertTriangle, BarChart3, BookOpen, Camera, CalendarDays, LayoutDashboard,
+  Archive, AlertTriangle, BarChart3, BookOpen, Camera, CalendarDays, KeyRound, LayoutDashboard,
   MessageSquare, Moon, NotebookPen, Settings as SettingsIcon, Sun,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { pillCls, overdueDays } from './ui';
+import { pillCls, overdueDays, btnGhost, btnPrimary, inputCls, labelCls, ErrorBox } from './ui';
 import { ROLE_RU, TYPE_RU } from '@/lib/format';
 import { reqTitle } from '@/lib/requestHelpers';
 import { useTheme } from './ThemeProvider';
@@ -138,6 +138,57 @@ function DashboardTab({ requests, boot, onOpen }: { requests: any[]; boot: any; 
   );
 }
 
+/** Смена собственного пароля — доступна всем ролям (раньше пароль мог сбросить только админ). */
+function ChangePasswordCard({ onClose }: { onClose: () => void }) {
+  const [oldPw, setOldPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setErr(''); setMsg('');
+    if (!oldPw) { setErr('Введите текущий пароль.'); return; }
+    if (newPw.length < 4) { setErr('Новый пароль — минимум 4 символа.'); return; }
+    if (newPw !== confirmPw) { setErr('Новый пароль и подтверждение не совпадают.'); return; }
+    setBusy(true);
+    try {
+      await api.changePassword(oldPw, newPw);
+      setOldPw(''); setNewPw(''); setConfirmPw('');
+      setMsg('Пароль изменён.');
+      setTimeout(onClose, 1200);
+    } catch (e: any) { setErr(e?.message || 'Не удалось изменить пароль'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className={`mb-4 p-4 ${card}`}>
+      <div className="mb-2 text-sm font-semibold text-stone-700">Смена пароля</div>
+      <ErrorBox msg={err} />
+      {msg && <div className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{msg}</div>}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label className={labelCls}>Текущий пароль</label>
+          <input type="password" className={inputCls} value={oldPw} onChange={(e) => setOldPw(e.target.value)} autoComplete="current-password" />
+        </div>
+        <div>
+          <label className={labelCls}>Новый пароль</label>
+          <input type="password" className={inputCls} value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" />
+        </div>
+        <div>
+          <label className={labelCls}>Повторите новый пароль</label>
+          <input type="password" className={inputCls} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" />
+        </div>
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button onClick={submit} disabled={busy} className={btnPrimary}>{busy ? 'Сохранение…' : 'Сохранить'}</button>
+        <button onClick={onClose} className={btnGhost}>Отмена</button>
+      </div>
+    </div>
+  );
+}
+
 type TabKey = 'notes' | 'calendar' | 'messenger' | 'dashboard' | 'reports' | 'archive' | 'log' | 'settings';
 
 export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avatarUrl, onAvatarChange, onOpenReq, onOpenReqInBank, onOpenOrder, reload }: {
@@ -151,6 +202,7 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
   const dept = boot.departments.find((d: any) => d.id === me.departmentId);
   const avaRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<TabKey>('notes');
+  const [pwOpen, setPwOpen] = useState(false);
 
   const uploadAvatar = async (f: File | undefined) => {
     if (!f) return;
@@ -184,6 +236,10 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
           {dept && <div className="mt-0.5 text-xs text-stone-500">{dept.name}</div>}
         </div>
         <div className="flex shrink-0 items-center gap-2 self-center">
+          <button onClick={() => setPwOpen((v) => !v)} title="Сменить пароль"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50">
+            <KeyRound className="h-4 w-4" /> Пароль
+          </button>
           <button onClick={toggleTheme} title="Переключить тему"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50">
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}{dark ? 'День' : 'Ночь'}
@@ -191,6 +247,8 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
           <span className="rounded-md bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{ROLE_RU[me.role] || me.role}</span>
         </div>
       </div>
+
+      {pwOpen && <ChangePasswordCard onClose={() => setPwOpen(false)} />}
 
       <div className="mb-4 flex flex-wrap gap-1.5 overflow-x-auto pb-1">
         {tabs.map((t) => (
