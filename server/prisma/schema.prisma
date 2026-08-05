@@ -208,6 +208,13 @@ model Ip {
   orders Order[]
 }
 
+// справочник техники — подсказки в заявках «Транспорт»/«Топливо»
+model Vehicle {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+}
+
 // ──────────────────────────── Заявки (снабжение) ────────────────────────────
 
 model Request {

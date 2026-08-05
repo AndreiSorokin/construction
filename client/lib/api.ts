@@ -148,6 +148,12 @@ export const api = {
     remove: (id: string) => DEL(`/api/ips/${id}`),
   },
 
+  vehicles: {
+    create: (name: string) => POST('/api/vehicles', { name }),
+    update: (id: string, name: string) => PATCH(`/api/vehicles/${id}`, { name }),
+    remove: (id: string) => DEL(`/api/vehicles/${id}`),
+  },
+
   workCatalogs: {
     create: (dto: any) => POST('/api/work-catalogs', dto),
     rename: (id: string, name: string) => PATCH(`/api/work-catalogs/${id}`, { name }),

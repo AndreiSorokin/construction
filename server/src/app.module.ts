@@ -17,6 +17,7 @@ import { ObjectsModule } from './modules/objects.module';
 import { CatalogModule } from './modules/catalog.module';
 import { WorkCatalogsModule } from './modules/work-catalogs.module';
 import { IpsModule } from './modules/ips.module';
+import { VehiclesModule } from './modules/vehicles.module';
 import { ChainsModule } from './modules/chains.module';
 import { MetaModule } from './modules/meta.module';
 import { CommsModule } from './modules/comms.module';
@@ -41,6 +42,7 @@ import { DeltaModule } from './modules/delta.module';
     CatalogModule,
     WorkCatalogsModule,
     IpsModule,
+    VehiclesModule,
     ChainsModule,
     MetaModule,
     CommsModule,
