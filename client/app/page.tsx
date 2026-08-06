@@ -16,14 +16,8 @@ import { DialogHost, NotifBell } from '@/components/ui';
 import { PrintDoc } from '@/components/PrintDoc';
 import { BatchPrint } from '@/components/BatchPrint';
 
-// Активный авторизованный пользователь на этом адресе не работает — уводим на основной сайт.
-// Кроме localhost/127.0.0.1 — там редирект мешал бы своей же локальной разработке/тестам.
-const EXTERNAL_SITE = 'https://ck.interstil.kz/';
-const isLocalHost = () => typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
-
 export default function Home() {
   const [checking, setChecking] = useState(true);
-  const [redirecting, setRedirecting] = useState(false);
   const [me, setMe] = useState<any>(null);
   const [boot, setBoot] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
@@ -76,15 +70,12 @@ export default function Home() {
     }
   }, [syncTheme]);
 
-  // восстановление сессии по refresh-cookie: активного авторизованного пользователя
-  // сразу уводим на основной сайт — этот адрес не для повседневной работы
+  // восстановление сессии по refresh-cookie
   useEffect(() => {
     api.me()
       .then(async (u) => {
         if (u.isActive === false) { await api.logout().catch(() => {}); setChecking(false); return; }
-        if (isLocalHost()) { setMe(u); await loadAll(); setChecking(false); return; }
-        setRedirecting(true);
-        window.location.replace(EXTERNAL_SITE);
+        setMe(u); await loadAll(); setChecking(false);
       })
       .catch(() => setChecking(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -100,11 +91,7 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [me]);
 
-  // бэкенд не пускает деактивированных — успешный вход всегда от активного пользователя
-  const onLogin = async (u: any) => {
-    if (isLocalHost()) { setMe(u); await loadAll(); return; }
-    setRedirecting(true); window.location.replace(EXTERNAL_SITE);
-  };
+  const onLogin = async (u: any) => { setMe(u); await loadAll(); };
   const onLogout = async () => {
     await api.logout();
     setMe(null); setBoot(null); setRequests([]); setOrders([]); setNotes([]);
@@ -142,7 +129,7 @@ export default function Home() {
     return out.sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 30);
   }, [requests, me]);
 
-  if (checking || redirecting) return <main className="flex min-h-screen items-center justify-center text-stone-400">Загрузка…</main>;
+  if (checking) return <main className="flex min-h-screen items-center justify-center text-stone-400">Загрузка…</main>;
   if (!me) return <><Login onDone={onLogin} /><DialogHost /></>;
   if (!boot) {
     return (
