@@ -1,9 +1,11 @@
 'use client';
 import { useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { btnGhost, btnPrimary, inputCls } from './ui';
 
-/** Редактор шагов маршрута согласования (заявок или нарядов) — общий для нескольких вкладок настроек. */
+/** Редактор шагов маршрута согласования (заявок или нарядов) — общий для нескольких вкладок настроек.
+ *  Раскладка карточки шага — как в эталоне (AdminChains): название этапа и согласующий в сетке,
+ *  на телефоне сетка в один столбец, поэтому у select всегда есть место показать выбранное имя. */
 export function StepsEditor({ steps, approvers, onSave }: {
   steps: { approverId: string; label: string }[];
   approvers: any[];
@@ -18,25 +20,35 @@ export function StepsEditor({ steps, approvers, onSave }: {
   };
   return (
     <div>
-      {local.map((s, i) => (
-        <div key={i} className="mb-1.5 flex items-center gap-1.5">
-          <span className="w-5 text-center text-xs text-stone-400">{i + 1}</span>
-          <select className={`${inputCls} flex-1`} value={s.approverId}
-                  onChange={(e) => upd(local.map((x, j) => (j === i ? { ...x, approverId: e.target.value } : x)))}>
-            {approvers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
-          <input className={`${inputCls} w-36`} value={s.label} placeholder="этап"
-                 onChange={(e) => upd(local.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
-          <button className="text-stone-400" onClick={() => move(i, -1)}><ArrowUp className="h-4 w-4" /></button>
-          <button className="text-stone-400" onClick={() => move(i, 1)}><ArrowDown className="h-4 w-4" /></button>
-          <button className="text-stone-300 hover:text-rose-600" onClick={() => upd(local.filter((_, j) => j !== i))}>
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
-      <div className="mt-2 flex gap-2">
-        <button className={btnGhost} onClick={() => approvers[0] && upd([...local, { approverId: approvers[0].id, label: 'Согласование' }])}>
-          <Plus className="h-4 w-4" /> Этап
+      <div className="space-y-2">
+        {local.map((s, i) => (
+          <div key={i} className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white p-3">
+            <div className="flex shrink-0 flex-col">
+              <button onClick={() => move(i, -1)} disabled={i === 0}
+                className="rounded p-0.5 text-stone-400 hover:bg-stone-100 disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+              <button onClick={() => move(i, 1)} disabled={i === local.length - 1}
+                className="rounded p-0.5 text-stone-400 hover:bg-stone-100 disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+            </div>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-900 font-mono text-xs font-bold text-white">{i + 1}</span>
+            <div className="grid flex-1 gap-2 sm:grid-cols-2">
+              <input className={inputCls} value={s.label} placeholder="Название этапа"
+                     onChange={(e) => upd(local.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+              <select className={inputCls} value={s.approverId}
+                      onChange={(e) => upd(local.map((x, j) => (j === i ? { ...x, approverId: e.target.value } : x)))}>
+                <option value="">— согласующий —</option>
+                {approvers.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </div>
+            <button onClick={() => upd(local.filter((_, j) => j !== i))}
+              className="shrink-0 rounded-md p-2 text-stone-400 hover:bg-stone-100 hover:text-rose-600">
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <button className={btnGhost} onClick={() => upd([...local, { approverId: '', label: '' }])}>
+          <Plus className="h-4 w-4" /> Добавить этап
         </button>
         {dirty && <button className={btnPrimary} onClick={() => { onSave(local); setDirty(false); }}>Сохранить</button>}
       </div>

@@ -62,8 +62,8 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
       </Card>
 
       <Section title={`Работы · ${o.lines?.length || 0}`}>
-        <Card className="!p-0">
-          <table className="w-full text-sm">
+        <Card className="!p-0 overflow-x-auto">
+          <table className="w-full text-sm" style={{ minWidth: 560 }}>
             <thead>
               <tr className="border-b border-stone-200 text-left text-xs text-stone-400">
                 <th className="p-2 pl-3">Наименование</th>

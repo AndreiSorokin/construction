@@ -56,6 +56,8 @@ export class AuthService {
       isLead: u.isLead,
       ordersAccess: u.ordersAccess,
       email: u.email,
+      isActive: u.isActive,
+      theme: u.theme,
     };
   }
 }

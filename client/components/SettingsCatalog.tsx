@@ -23,7 +23,7 @@ export function SettingsCatalog({ boot, reload }: { boot: any; reload: () => voi
       <Card className="!p-0">
         <div className="max-h-[28rem] overflow-y-auto p-3">
           {boot.catalogItems.map((c: any) => (
-            <div key={c.id} className="mb-1 flex items-center gap-2">
+            <div key={c.id} className="mb-1 flex flex-wrap items-center gap-2">
               <input className={`${inputCls} flex-1`} defaultValue={c.name}
                      onBlur={(e) => e.target.value !== c.name && act(() => api.catalogItems.update(c.id, { name: e.target.value }))} />
               <input className={`${inputCls} w-24`} defaultValue={c.unit}

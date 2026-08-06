@@ -223,7 +223,7 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
 
   return (
     <div>
-      <div className={`mb-4 flex items-center gap-3 p-4 ${card}`}>
+      <div className={`mb-4 flex flex-wrap items-center gap-3 p-4 ${card}`}>
         <input ref={avaRef} type="file" accept="image/*" className="hidden" onChange={(e) => { uploadAvatar(e.target.files?.[0]); e.target.value = ''; }} />
         <button onClick={() => avaRef.current?.click()} className="group relative shrink-0 rounded-full" title="Изменить фото">
           {avatarUrl
@@ -235,7 +235,7 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
           <div className="truncate text-sm font-semibold leading-tight text-stone-900">{me.name}</div>
           {dept && <div className="mt-0.5 text-xs text-stone-500">{dept.name}</div>}
         </div>
-        <div className="flex shrink-0 items-center gap-2 self-center">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
           <button onClick={() => setPwOpen((v) => !v)} title="Сменить пароль"
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50">
             <KeyRound className="h-4 w-4" /> Пароль
@@ -244,7 +244,7 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-50">
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}{dark ? 'День' : 'Ночь'}
           </button>
-          <span className="rounded-md bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{ROLE_RU[me.role] || me.role}</span>
+          <span className="shrink-0 rounded-md bg-stone-100 px-2 py-1 text-xs font-medium text-stone-600">{ROLE_RU[me.role] || me.role}</span>
         </div>
       </div>
 

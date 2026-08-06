@@ -107,8 +107,8 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
 
       <input className={`${inputCls} mb-2 w-72`} placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />
       <Card className="!p-0">
-        <div className="max-h-[28rem] overflow-y-auto">
-          <table className="w-full text-sm">
+        <div className="max-h-[28rem] overflow-x-auto overflow-y-auto">
+          <table className="w-full text-sm" style={{ minWidth: 480 }}>
             <thead className="sticky top-0 bg-white">
               <tr className="border-b border-stone-200 text-left text-xs text-stone-400">
                 <th className="p-2 pl-3">Наименование</th><th className="p-2">Ед.</th>
