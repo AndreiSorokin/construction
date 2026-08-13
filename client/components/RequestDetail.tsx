@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  ArrowLeft, Check, CheckCircle2, CornerUpLeft, Paperclip, Printer, Send, Trash2, Warehouse, X,
+  ArrowLeft, Check, CheckCircle2, Circle, CornerUpLeft, Paperclip, Printer, Send, Trash2, Warehouse, X,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { appConfirm, appPrompt, HistoryModal } from './ui';
@@ -146,10 +146,16 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
       {editMode && (
         <Section title="Правка заявки">
           <Card>
+            <datalist id="catalog-names-edit">
+              {boot.catalogItems.map((c: any) => <option key={c.id} value={c.name} />)}
+            </datalist>
             {eItems.map((it, i) => (
               <div key={it.id || i} className="mb-2 flex flex-wrap items-center gap-2">
-                <input className={`${inputCls} min-w-40 flex-1`} placeholder="Наименование" value={it.name}
-                  onChange={(e) => setEItems(eItems.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+                <input className={`${inputCls} min-w-40 flex-1`} placeholder="Наименование" list="catalog-names-edit" value={it.name}
+                  onChange={(e) => {
+                    const c = boot.catalogItems.find((x: any) => x.name === e.target.value);
+                    setEItems(eItems.map((x, j) => (j === i ? { ...x, name: e.target.value, ...(c ? { unit: c.unit } : {}) } : x)));
+                  }} />
                 <input className={`${inputCls} w-20`} placeholder="Ед." value={it.unit}
                   onChange={(e) => setEItems(eItems.map((x, j) => (j === i ? { ...x, unit: e.target.value } : x)))} />
                 <input className={`${inputCls} w-24`} placeholder="Кол-во" value={it.qty}
@@ -222,13 +228,13 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                   <th className="p-2">Наличие</th>
                   {(r.status === 'SUPPLY' || r.status === 'FULFILLED') && <th className="p-2">Получено</th>}
                   {r.status === 'SUPPLY' && <th className="p-2">Срок пост.</th>}
-                  <th className="p-2 pr-3 text-right">Вып.</th>
+                  <th className="p-2 pr-3 text-center">Вып.</th>
                 </tr>
               </thead>
               <tbody>
                 {r.items.map((it: any) => (
                   <tr key={it.id} className="border-b border-stone-100 last:border-0">
-                    <td className="p-2 pl-3">
+                    <td className={`p-2 pl-3 ${it.fulfilled ? 'text-stone-400 line-through' : ''}`}>
                       {it.name}
                       {it.note && <span className="text-stone-400"> · {it.note}</span>}
                     </td>
@@ -266,11 +272,17 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                         ) : (it.eta ? <span>{String(it.eta).slice(0, 10)}</span> : <span className="text-stone-300">—</span>)}
                       </td>
                     )}
-                    <td className="p-2 pr-3 text-right">
+                    <td className="p-2 pr-3">
                       {canWorkSupply ? (
-                        <input type="checkbox" checked={it.fulfilled} disabled={busy}
-                          onChange={(e) => act(() => api.requests.fulfilled(r.id, it.id, e.target.checked))} />
-                      ) : it.fulfilled ? <Check className="ml-auto h-4 w-4 text-emerald-600" /> : <span className="text-stone-300">—</span>}
+                        <button disabled={busy} title={it.fulfilled ? 'Снять отметку' : 'Отметить выполненной'}
+                          onClick={() => act(() => api.requests.fulfilled(r.id, it.id, !it.fulfilled))} className="mx-auto flex">
+                          {it.fulfilled ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-stone-300" />}
+                        </button>
+                      ) : (
+                        <div className="mx-auto flex w-fit">
+                          {it.fulfilled ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-stone-300" />}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
