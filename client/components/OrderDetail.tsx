@@ -159,7 +159,7 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
           <div className="flex flex-wrap gap-2">
             {(o.attachments || []).map((a: any) => (
               <button key={a.id} className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-700 hover:bg-stone-50"
-                onClick={async () => { const { url } = await api.files.url(a.id); window.open(url, '_blank'); }}>
+                onClick={() => api.files.open(a.id)}>
                 {a.filename}{a.fromConsolidated ? ` · из ${a.fromConsolidated}` : ''}
               </button>
             ))}

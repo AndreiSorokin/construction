@@ -107,6 +107,14 @@ export const api = {
     },
     url: (id: string) => GET(`/api/files/${id}/url`) as Promise<{ url: string }>,
     remove: (id: string) => DEL(`/api/files/${id}`),
+    // файл через собственный домен (не прямая ссылка на S3-бакет — её блокируют некоторые антивирусы)
+    async open(id: string) {
+      const res = await authFetch(`/api/files/${id}/download`);
+      if (!res.ok) throw new Error('Не удалось открыть файл');
+      const blobUrl = URL.createObjectURL(await res.blob());
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+    },
   },
 
   notes: {

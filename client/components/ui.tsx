@@ -260,7 +260,7 @@ export function NotifBell({ items, onOpen, dark }: {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button onClick={() => setOpen((v) => !v)} title="События"
+      <button onClick={() => setOpen(true)} title="События"
         className={dark
           ? 'relative inline-flex items-center justify-center rounded-lg bg-stone-800 p-2 text-stone-300 hover:bg-stone-700'
           : 'relative inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white p-2 text-stone-600 hover:bg-stone-50'}>
@@ -272,11 +272,15 @@ export function NotifBell({ items, onOpen, dark }: {
         )}
       </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-stone-200 bg-white text-stone-900 shadow-xl" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
-            <div className="border-b border-stone-100 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400">События по вашим заявкам</div>
-            <div className="max-h-96 overflow-y-auto">
+        // окно всегда по центру экрана — независимо от того, где стоит колокольчик
+        // (в шапке телефона, в сайдбаре ПК), так надёжнее, чем подгонять позицию под кнопку
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={() => setOpen(false)}>
+          <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white text-stone-900 shadow-xl" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-4 py-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">События по вашим заявкам</div>
+              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
               {items.length === 0 ? (
                 <div className="px-3 py-8 text-center text-sm text-stone-400">Пока событий нет.</div>
               ) : items.map((e) => (
@@ -291,7 +295,7 @@ export function NotifBell({ items, onOpen, dark }: {
               ))}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

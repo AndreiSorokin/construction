@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { Login } from '@/components/Login';
 import { Shell, type ViewKey } from '@/components/Shell';
@@ -79,6 +79,20 @@ export default function Home() {
       })
       .catch(() => setChecking(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // диплинк на конкретную заявку (?request=ID) — например ссылка «открыть в новой вкладке»
+  // из карточки сводной заявки; открываем через «Банк», т.к. он не завязан на текущий раздел
+  const deepLinkHandled = useRef(false);
+  useEffect(() => {
+    if (deepLinkHandled.current || !boot) return;
+    const id = new URLSearchParams(window.location.search).get('request');
+    if (id) {
+      deepLinkHandled.current = true;
+      setView('bank');
+      setOpenReq(id);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [boot]);
 
   // фоновое обновление списков раз в 30 c (когда вкладка видима)
   useEffect(() => {

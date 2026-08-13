@@ -46,6 +46,11 @@ export class FilesService {
     return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: this.bucket, Key: key }), { expiresIn });
   }
 
+  /** объект из S3 напрямую (для проксирования через свой домен вместо отдачи подписанной ссылки браузеру) */
+  getObject(key: string) {
+    return this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+  }
+
   async remove(key: string) {
     await this.s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }

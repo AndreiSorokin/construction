@@ -6,12 +6,14 @@ import {
   Get,
   Param,
   Post,
+  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Role } from '@prisma/client';
+import type { Response } from 'express';
 import { FilesService } from '../services/files.service';
 import { PrismaService } from '../services/prisma.service';
 import { CurrentUser, AuthUser } from '../decorators/current-user.decorator';
@@ -76,6 +78,26 @@ export class FilesController {
     if (!att) throw new BadRequestException('Нет вложения');
     await this.assertReadAccess(att, u);
     return { url: await this.files.signedGetUrl(att.key) };
+  }
+
+  // отдаёт файл через собственный домен (а не прямую подписанную ссылку на S3-бакет):
+  // некоторые антивирусы (напр. AVG) помечают длинные подписанные S3-URL как подозрительные
+  @Get(':id/download')
+  async download(@Param('id') id: string, @CurrentUser() u: AuthUser, @Res() res: Response) {
+    const att = await this.prisma.attachment.findUnique({
+      where: { id },
+      include: {
+        request: { include: { chainSteps: true } },
+        order: { include: { chainSteps: true } },
+      },
+    });
+    if (!att) throw new BadRequestException('Нет вложения');
+    await this.assertReadAccess(att, u);
+    const obj = await this.files.getObject(att.key);
+    res.set('Content-Type', att.mime || 'application/octet-stream');
+    res.set('Content-Disposition', `inline; filename="${encodeURIComponent(att.filename)}"`);
+    if (obj.ContentLength) res.set('Content-Length', String(obj.ContentLength));
+    (obj.Body as NodeJS.ReadableStream).pipe(res);
   }
 
   // доступ к файлу — тем, кто вообще видит документ: автор, согласующие в его цепочке,

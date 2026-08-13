@@ -17,6 +17,10 @@ const FULL = {
   events: { orderBy: { at: 'asc' as const } },
   supplyNotes: { orderBy: { at: 'asc' as const } },
   attachments: true,
+  // исходные заявки сводной — без этого «Из исходных заявок» в карточке всегда пустая
+  consolidatedFrom: {
+    include: { supplyNotes: { orderBy: { at: 'asc' as const } }, attachments: true },
+  },
 };
 
 @Injectable()

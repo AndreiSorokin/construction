@@ -79,7 +79,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
   };
 
   const openAtt = async (id: string) => {
-    try { const { url } = await api.files.url(id); window.open(url, '_blank'); }
+    try { await api.files.open(id); }
     catch (e: any) { setErr(e?.message || 'Не удалось открыть'); }
   };
 
@@ -195,7 +195,20 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
             <div key={k}><span className="text-stone-400">{FIELD_RU[k] || k}: </span>{String(v)}</div>
           ))}
         </div>
-        {r.note && <p className="mt-2 rounded-lg bg-stone-50 p-2 text-sm">{r.note}</p>}
+        {r.isConsolidated && (r.consolidatedFrom || []).length > 0 ? (
+          <p className="mt-2 rounded-lg bg-stone-50 p-2 text-sm">
+            <span className="text-stone-400">Сводная из: </span>
+            {r.consolidatedFrom.map((src: any, i: number) => (
+              <span key={src.id}>
+                {i > 0 && ', '}
+                <a href={`?request=${src.id}`} target="_blank" rel="noopener noreferrer"
+                   className="font-mono font-medium text-stone-900 underline decoration-stone-300 hover:decoration-stone-900">
+                  {src.number}
+                </a>
+              </span>
+            ))}
+          </p>
+        ) : r.note && <p className="mt-2 rounded-lg bg-stone-50 p-2 text-sm">{r.note}</p>}
       </Card>
 
       {r.items?.length > 0 && (
@@ -328,10 +341,12 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                 <button disabled={busy} onClick={() => act(() => api.requests.postpone(r.id, !r.postponed))} className={btnGhost}>
                   {r.postponed ? 'Вернуть в работу' : 'Отложить'}
                 </button>
-                <button disabled={busy} className={btnGhost} onClick={() => {
-                  const next: any = { URGENT: 'HIGH', HIGH: 'NORMAL', NORMAL: 'LOW', LOW: 'URGENT' };
-                  act(() => api.requestsX.priority(r.id, next[r.priority] || 'NORMAL'));
-                }}>Приоритет: {({ URGENT: 'Срочно', HIGH: 'Высокий', NORMAL: 'Обычный', LOW: 'Низкий' } as any)[r.priority] || r.priority}</button>
+                <label className="flex items-center gap-1 text-sm text-stone-500">Приоритет:
+                  <select className={inputCls} value={r.priority} disabled={busy}
+                          onChange={(e) => act(() => api.requestsX.priority(r.id, e.target.value))}>
+                    {Object.entries(PRIORITY_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </label>
                 <label className="flex items-center gap-1 text-sm text-stone-500">Срок:
                   <input type="date" className={inputCls} value={r.due ? String(r.due).slice(0, 10) : ''} disabled={busy}
                     onChange={(e) => act(() => api.requestsX.due(r.id, e.target.value || null))} />
@@ -431,7 +446,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {src.attachments.map((a: any) => (
                       <button key={a.id} className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-700 hover:bg-stone-50"
-                        onClick={async () => { const { url } = await api.files.url(a.id); window.open(url, '_blank'); }}>
+                        onClick={() => api.files.open(a.id)}>
                         📎 {a.filename}
                       </button>
                     ))}
