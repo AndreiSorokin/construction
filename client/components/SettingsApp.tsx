@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, apiUrl } from '@/lib/api';
 import { appConfirm } from './ui';
 
 const card = 'rounded-2xl border border-stone-200 bg-white p-4 shadow-sm';
@@ -28,7 +28,7 @@ export function SettingsApp({ me }: { me: any }) {
         <p className="mb-2 text-xs text-stone-500">PNG с прозрачным фоном, SVG или JPG — любой ширины: рендер по пропорциям, без подложки.</p>
         <div className="flex items-center gap-3">
           {logo.logoUrl
-            ? <img src={logo.logoUrl} alt="Логотип" className="object-contain" style={{ height: 56, width: 'auto', maxWidth: 280 }} />
+            ? <img src={apiUrl(logo.logoUrl)} alt="Логотип" className="object-contain" style={{ height: 56, width: 'auto', maxWidth: 280 }} />
             : <div className="text-sm text-stone-400">Логотип не загружен</div>}
           <button className={btnGhost} onClick={() => logoRef.current?.click()}>Загрузить</button>
           {logo.logoUrl && (

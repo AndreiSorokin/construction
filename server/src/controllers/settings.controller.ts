@@ -1,8 +1,9 @@
 import {
-  BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseInterceptors,
+  BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Res, UploadedFile, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import type { Response } from 'express';
 import { SettingsService } from '../services/settings.service';
 import { Public } from '../decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../decorators/current-user.decorator';
@@ -36,6 +37,19 @@ export class SettingsController {
 
   @Delete('logo')
   clearLogo(@CurrentUser() u: AuthUser) { return this.settings.clearLogo(u); }
+
+  // отдаёт файл логотипа через собственный домен, а не подписанную ссылку на S3-бакет —
+  // публичный: логотип виден и на странице входа, до авторизации
+  @Public()
+  @Get('logo/file')
+  async logoFile(@Res() res: Response) {
+    const logo = await this.settings.getLogoObject();
+    if (!logo) throw new NotFoundException('Логотип не загружен');
+    res.set('Content-Type', logo.object.ContentType || 'application/octet-stream');
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    if (logo.object.ContentLength) res.set('Content-Length', String(logo.object.ContentLength));
+    (logo.object.Body as NodeJS.ReadableStream).pipe(res);
+  }
 
   @Patch('theme')
   theme(@Body('theme') theme: string, @CurrentUser() u: AuthUser) { return this.settings.setTheme(u, theme); }

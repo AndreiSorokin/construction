@@ -12,7 +12,7 @@ import { NewOrder } from '@/components/NewOrder';
 import { OrderDetail } from '@/components/OrderDetail';
 import { PersonalHub } from '@/components/PersonalHub';
 import { useTheme } from '@/components/ThemeProvider';
-import { DialogHost, NotifBell } from '@/components/ui';
+import { DialogHost, NotifBell, appConfirm } from '@/components/ui';
 import { PrintDoc } from '@/components/PrintDoc';
 import { BatchPrint } from '@/components/BatchPrint';
 
@@ -36,6 +36,7 @@ export default function Home() {
   const [appSettings, setAppSettings] = useState<any>(null);   // логотип, лимит «Срочно»
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [commsUnread, setCommsUnread] = useState(0);
+  const [reloading, setReloading] = useState(false);
   const { syncTheme } = useTheme();
 
   const showOrders = !!me && (me.role === 'ADMIN' || me.ordersAccess ||
@@ -65,10 +66,21 @@ export default function Home() {
       setRequests(rs);
       setOrders(os);
       if (ns) setNotes(ns);
+      return true;
     } catch (e: any) {
       setLoadErr(e?.message || 'Не удалось загрузить данные');
+      return false;
     }
   }, [syncTheme]);
+
+  // ручное «Обновить» в шапке/сайдбаре: без спиннера и ошибки клик выглядел так, будто
+  // ничего не происходит (loadErr после первой загрузки нигде больше не показывается)
+  const handleManualReload = async () => {
+    setReloading(true);
+    const ok = await loadAll();
+    setReloading(false);
+    if (!ok) appConfirm('Не удалось обновить данные. Проверьте соединение и попробуйте ещё раз.', { okText: 'Понятно' });
+  };
 
   // восстановление сессии по refresh-cookie
   useEffect(() => {
@@ -205,7 +217,7 @@ export default function Home() {
 
   return (
     <Shell me={me} view={view} setView={(v) => { setView(v); setOpenReq(null); setOpenOrd(null); setNewReq(false); setNewOrd(false); }}
-           badges={badges} showOrders={showOrders} onLogout={onLogout} onReload={() => loadAll()} logoUrl={appSettings?.logoUrl || null} avatarUrl={avatarUrl}
+           badges={badges} showOrders={showOrders} onLogout={onLogout} onReload={handleManualReload} reloading={reloading} logoUrl={appSettings?.logoUrl || null} avatarUrl={avatarUrl}
            notif={<NotifBell items={notifItems} dark onOpen={(id) => { setView('requests'); setOpenReq(id); }} />}>
       {content}
       <DialogHost />

@@ -20,8 +20,17 @@ export class SettingsService {
       urgentLimit: s.urgentLimit,
       urgentToday,
       logoW: s.logoW, logoH: s.logoH,
-      logoUrl: s.logoKey ? await this.files.signedGetUrl(s.logoKey) : null,
+      // отдаём через свой домен, а не подписанную ссылку на S3 (та ещё и истекает через 5 минут —
+      // логотип в шапке успевал бы перестать грузиться); ?v= меняется при каждой загрузке — не кешируем старую версию
+      logoUrl: s.logoKey ? `/api/settings/logo/file?v=${encodeURIComponent(s.logoKey)}` : null,
     };
+  }
+
+  /** объект логотипа в S3 для проксирующего эндпоинта (публичный, нужен на странице входа) */
+  async getLogoObject() {
+    const s = await this.ensure();
+    if (!s.logoKey) return null;
+    return { key: s.logoKey, object: await this.files.getObject(s.logoKey) };
   }
 
   async setUrgentLimit(u: AuthUser, n: number) {

@@ -6,9 +6,10 @@ import { btnGhost, btnPrimary, inputCls } from './ui';
 /** Редактор шагов маршрута согласования (заявок или нарядов) — общий для нескольких вкладок настроек.
  *  Раскладка карточки шага — как в эталоне (AdminChains): название этапа и согласующий в сетке,
  *  на телефоне сетка в один столбец, поэтому у select всегда есть место показать выбранное имя. */
-export function StepsEditor({ steps, approvers, onSave }: {
+export function StepsEditor({ steps, approvers, labelOptions, onSave }: {
   steps: { approverId: string; label: string }[];
   approvers: any[];
+  labelOptions?: string[];
   onSave: (s: { approverId: string; label: string }[]) => void;
 }) {
   const [local, setLocal] = useState(steps);
@@ -20,6 +21,11 @@ export function StepsEditor({ steps, approvers, onSave }: {
   };
   return (
     <div>
+      {labelOptions && labelOptions.length > 0 && (
+        <datalist id="step-label-suggest">
+          {labelOptions.map((l) => <option key={l} value={l} />)}
+        </datalist>
+      )}
       <div className="space-y-2">
         {local.map((s, i) => (
           <div key={i} className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white p-3">
@@ -31,7 +37,7 @@ export function StepsEditor({ steps, approvers, onSave }: {
             </div>
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-900 font-mono text-xs font-bold text-white">{i + 1}</span>
             <div className="grid flex-1 gap-2 sm:grid-cols-2">
-              <input className={inputCls} value={s.label} placeholder="Название этапа"
+              <input className={inputCls} value={s.label} placeholder="Название этапа" list={labelOptions ? 'step-label-suggest' : undefined}
                      onChange={(e) => upd(local.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
               <select className={inputCls} value={s.approverId}
                       onChange={(e) => upd(local.map((x, j) => (j === i ? { ...x, approverId: e.target.value } : x)))}>

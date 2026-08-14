@@ -21,14 +21,14 @@ export class OrdersExtraService {
     return o;
   }
 
-  /** править состав может: текущий согласующий · админ · автор ОТКЛОНЁННОГО наряда */
+  /** править состав может: текущий согласующий · админ · автор ОТКЛОНЁННОГО наряда ·
+   *  автор, пока наряд ещё ни разу не решался (аналог правки заявок до первого решения) */
   private async canEditLines(o: Awaited<ReturnType<OrdersExtraService['getOne']>>, u: AuthUser) {
     if (u.role === Role.ADMIN) return true;
     if (o.status === OrderStatus.REJECTED && o.requesterId === u.id) return true;
-    return (
-      o.status === OrderStatus.APPROVAL &&
-      o.chainSteps.some((s) => s.order_ === o.currentStageIndex && s.approverId === u.id)
-    );
+    if (o.status !== OrderStatus.APPROVAL) return false;
+    if (o.chainSteps.some((s) => s.order_ === o.currentStageIndex && s.approverId === u.id)) return true;
+    return o.requesterId === u.id && o.chainSteps.every((s) => !s.decision);
   }
 
   /** кол-во — любой, кто вправе править; ЦЕНУ — только canPrice или админ. Значения клампятся к ≥ 0. */

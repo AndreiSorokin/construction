@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Building2, KeyRound, RefreshCw } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, apiUrl } from '@/lib/api';
 import { inputCls, labelCls, btnPrimary, ErrorBox } from './ui';
 
 export function Login({ onDone }: { onDone: (user: any) => void }) {
@@ -25,7 +25,7 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center justify-center gap-2.5">
           {logoUrl ? (
-            <img src={logoUrl} alt="Логотип" className="object-contain" style={{ height: 72, width: 'auto', maxWidth: 320 }} />
+            <img src={apiUrl(logoUrl)} alt="Логотип" className="object-contain" style={{ height: 72, width: 'auto', maxWidth: 320 }} />
           ) : (
             <div className="flex items-center gap-2.5">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-stone-900">

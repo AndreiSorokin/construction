@@ -1,10 +1,44 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Check, Warehouse, X } from 'lucide-react';
 import { TYPE_CLS } from '@/lib/requestHelpers';
 import { TYPE_RU } from '@/lib/format';
 
 /* Единый визуальный язык — 1-в-1 с эталоном прототипа. */
+
+/** Визуализация маршрута согласования — шаги с соединительными линиями, как в эталоне (StageTrack).
+ *  Общая для заявок и нарядов: поля шага (id/label/approverName/role/decision) совпадают у обеих моделей. */
+export function StageTrack({ steps, currentIndex, status }: { steps: any[]; currentIndex: number; status: string }) {
+  return (
+    <div className="flex items-stretch gap-1 overflow-x-auto pb-1">
+      {steps.map((s: any, i: number) => {
+        const passed = s.decision === 'APPROVED';
+        const rejected = s.decision === 'REJECTED';
+        const cur = status === 'APPROVAL' && i === currentIndex;
+        let dot: string, line: string, ic: ReactNode;
+        if (passed) { dot = 'bg-emerald-500 text-white border-emerald-500'; line = 'bg-emerald-400'; ic = <Check className="h-4 w-4" />; }
+        else if (rejected) { dot = 'bg-rose-500 text-white border-rose-500'; line = 'bg-rose-300'; ic = <X className="h-4 w-4" />; }
+        else if (cur) { dot = 'bg-amber-400 text-stone-900 border-amber-400 ring-4 ring-amber-100 animate-pulse motion-reduce:animate-none'; line = 'bg-stone-200'; ic = <span className="font-mono text-xs font-bold">{i + 1}</span>; }
+        else { dot = 'bg-white text-stone-400 border-stone-300'; line = 'bg-stone-200'; ic = <span className="font-mono text-xs font-bold">{i + 1}</span>; }
+        return (
+          <div key={s.id} className="flex w-24 flex-1 flex-col items-center text-center">
+            <div className="flex w-full items-center">
+              <div className={`h-0.5 flex-1 ${i === 0 ? 'bg-transparent' : line}`} />
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${dot}`}>{ic}</div>
+              <div className={`h-0.5 flex-1 ${i === steps.length - 1 ? 'bg-transparent' : line}`} />
+            </div>
+            <div className="mt-1.5 flex items-center gap-1 px-0.5 text-xs font-medium leading-tight text-stone-700">
+              {s.role === 'WAREHOUSE' && <Warehouse className="h-3 w-3 shrink-0 text-teal-600" />}
+              <span className="truncate">{s.label || s.approverName}</span>
+            </div>
+            <div className="truncate text-xs leading-tight text-stone-400">{s.approverName}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 export const inputCls =
   'w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-100';
 export const labelCls = 'mb-1 block text-xs font-medium text-stone-600';

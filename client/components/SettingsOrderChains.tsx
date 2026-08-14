@@ -16,6 +16,10 @@ export function SettingsOrderChains({ boot, reload }: { boot: any; reload: () =>
     .filter((s: any) => s.departmentId === stroyDept?.id)
     .sort((a: any, b: any) => a.order - b.order)
     .map((s: any) => ({ approverId: s.approverId, label: s.label }));
+  // подсказки для «Название этапа»: все должности, уже встречавшиеся в любых маршрутах (заявок и нарядов)
+  const labelOptions = useMemo(() => Array.from(new Set(
+    [...boot.supplySteps, ...boot.orderSteps].map((s: any) => s.label).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b, 'ru')), [boot]);
 
   const act = async (fn: () => Promise<any>) => {
     setErr('');
@@ -31,7 +35,7 @@ export function SettingsOrderChains({ boot, reload }: { boot: any; reload: () =>
       </p>
       <Card>
         {stroyDept ? (
-          <StepsEditor key={`ord:${orderSteps.length}`} steps={orderSteps} approvers={approvers}
+          <StepsEditor key={`ord:${orderSteps.length}`} steps={orderSteps} approvers={approvers} labelOptions={labelOptions}
                        onSave={(s) => act(() => api.chains.setOrder(stroyDept.id, s))} />
         ) : <p className="text-sm text-stone-400">Нет отделов.</p>}
       </Card>

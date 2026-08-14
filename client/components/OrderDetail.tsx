@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { ArrowLeft, Check, Printer, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ORDER_STATUS_CLS, ORDER_STATUS_RU, fmtDateTime, lineDsu, lineSum, money, periodLabel } from '@/lib/format';
-import { Badge, Card, ErrorBox, Section, btnDanger, btnGhost, btnPrimary, inputCls, appConfirm, appPrompt, HistoryModal } from './ui';
+import { Badge, Card, ErrorBox, Section, StageTrack, btnDanger, btnGhost, btnPrimary, inputCls, appConfirm, appPrompt, HistoryModal } from './ui';
 import { useRef } from 'react';
 
 export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
@@ -17,9 +17,12 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
   const curStep = o.status === 'APPROVAL' ? o.chainSteps?.find((s: any) => s.order_ === o.currentStageIndex) : null;
   const myTurn = !!curStep && curStep.approverId === me.id;
   const meFull = boot.users.find((u: any) => u.id === me.id) || me;
-  const canEditLines = me.role === 'ADMIN' || myTurn || (o.status === 'REJECTED' && o.requesterId === me.id);
+  const noDecisions = (o.chainSteps || []).every((s: any) => !s.decision);
+  const canEditLines = me.role === 'ADMIN' || myTurn || (o.status === 'REJECTED' && o.requesterId === me.id)
+    || (o.requesterId === me.id && o.status === 'APPROVAL' && noDecisions);
   const canPrice = me.role === 'ADMIN' || !!meFull.canPrice;
   const [showHist, setShowHist] = useState(false);
+  const [editLines, setEditLines] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const total = (o.lines || []).reduce((s: number, l: any) => s + lineSum(l), 0);
@@ -61,7 +64,12 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
         {o.note && <p className="mt-2 rounded-lg bg-stone-50 p-2 text-sm">{o.note}</p>}
       </Card>
 
-      <Section title={`Работы · ${o.lines?.length || 0}`}>
+      <Section title={`Работы · ${o.lines?.length || 0}`}
+        right={canEditLines && (o.lines?.length || 0) > 0 && (
+          <button className={editLines ? `${btnGhost} !border-stone-900 !text-stone-900` : btnGhost} onClick={() => setEditLines((v) => !v)}>
+            {editLines ? 'Готово' : 'Редактировать'}
+          </button>
+        )}>
         <Card className="!p-0 overflow-x-auto">
           <table className="w-full text-sm" style={{ minWidth: 560 }}>
             <thead>
@@ -71,6 +79,7 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
                 <th className="p-2 text-right">Кол-во</th>
                 <th className="p-2 text-right">Сумма</th>
                 <th className="p-2 pr-3 text-right">ДСУ</th>
+                {canEditLines && editLines && <th className="p-2 pr-3" />}
               </tr>
             </thead>
             <tbody>
@@ -83,7 +92,7 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
                   <td className="whitespace-nowrap p-2 pr-3 text-right text-stone-500">
                     {l.dsu ? `${money(lineDsu(l))} (${l.dsu}%)` : '—'}
                   </td>
-                  {canEditLines && (
+                  {canEditLines && editLines && (
                     <td className="whitespace-nowrap p-2 pr-3 text-right text-xs">
                       <button className="text-stone-500 underline" disabled={busy} onClick={async () => {
                         const q = await appPrompt(`Кол-во для «${l.name}»:`, { initial: String(l.qty || '') });
@@ -118,23 +127,17 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
       <Section title="Маршрут согласования">
         <Card>
           {o.chainSteps?.length ? (
-            <ol className="space-y-1.5">
-              {o.chainSteps.map((s: any, i: number) => (
-                <li key={s.id} className="flex items-center gap-2 text-sm">
-                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${
-                    s.decision === 'APPROVED' ? 'bg-emerald-100 text-emerald-700'
-                    : s.decision === 'REJECTED' ? 'bg-rose-100 text-rose-700'
-                    : i === o.currentStageIndex && o.status === 'APPROVAL' ? 'bg-amber-100 text-amber-700'
-                    : 'bg-stone-100 text-stone-400'}`}>
-                    {s.decision === 'APPROVED' ? '✓' : s.decision === 'REJECTED' ? '✕' : i + 1}
-                  </span>
-                  <span className="font-medium">{s.label}</span>
-                  <span className="text-stone-400">· {s.approverName}</span>
-                  {s.decidedAt && <span className="ml-auto text-xs text-stone-400">{fmtDateTime(s.decidedAt)}</span>}
-                  {s.comment && <span className="text-xs text-stone-500">«{s.comment}»</span>}
-                </li>
-              ))}
-            </ol>
+            <>
+              <StageTrack steps={o.chainSteps} currentIndex={o.currentStageIndex} status={o.status} />
+              {o.chainSteps.some((s: any) => s.comment) && (
+                <ul className="mt-3 space-y-1 border-t border-stone-100 pt-3 text-xs text-stone-500">
+                  {o.chainSteps.filter((s: any) => s.comment).map((s: any) => (
+                    <li key={s.id}><span className="font-medium text-stone-700">{s.approverName}</span> · «{s.comment}»
+                      {s.decidedAt && <span className="text-stone-400"> · {fmtDateTime(s.decidedAt)}</span>}</li>
+                  ))}
+                </ul>
+              )}
+            </>
           ) : <p className="text-sm text-stone-400">Маршрут пуст — наряд утверждён сразу.</p>}
 
           {myTurn && (

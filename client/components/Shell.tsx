@@ -4,6 +4,7 @@ import {
   Boxes, ScrollText, CircleUser, Layers,
   LogOut, RefreshCw, Building2,
 } from 'lucide-react';
+import { apiUrl } from '@/lib/api';
 
 export type ViewKey = 'requests' | 'bank' | 'orders' | 'personal';
 
@@ -18,11 +19,11 @@ const ACCENT = {
 type AccentKey = keyof typeof ACCENT;
 
 export function Shell({
-  me, view, setView, badges, showOrders, onLogout, onReload, children, logoUrl, avatarUrl, notif,
+  me, view, setView, badges, showOrders, onLogout, onReload, reloading, children, logoUrl, avatarUrl, notif,
 }: {
   me: any; view: ViewKey; setView: (v: ViewKey) => void;
   badges: Partial<Record<ViewKey, number>>; showOrders: boolean;
-  onLogout: () => void; onReload: () => void; children: ReactNode;
+  onLogout: () => void; onReload: () => void; reloading?: boolean; children: ReactNode;
   logoUrl?: string | null; avatarUrl?: string | null; notif?: ReactNode;
 }) {
   const allGroups: { title: string; accent: AccentKey; items: { k: ViewKey; label: string; icon: any }[] }[] = [
@@ -67,7 +68,7 @@ export function Shell({
 
   const logo = (h: number, maxW: number, iconBox: string, iconSize: string) => (
     logoUrl
-      ? <img src={logoUrl} alt="Логотип" className="shrink-0 object-contain" style={{ height: h, width: 'auto', maxWidth: maxW }} />
+      ? <img src={apiUrl(logoUrl)} alt="Логотип" className="shrink-0 object-contain" style={{ height: h, width: 'auto', maxWidth: maxW }} />
       : <div className={`flex shrink-0 items-center justify-center rounded-xl bg-amber-500 text-stone-900 ${iconBox}`}><Building2 className={iconSize} /></div>
   );
 
@@ -83,8 +84,8 @@ export function Shell({
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               {notif}
-              <button onClick={onReload} title="Обновить"
-                className="inline-flex items-center rounded-lg bg-stone-800 p-1.5 text-stone-300 hover:bg-stone-700"><RefreshCw className="h-3.5 w-3.5" /></button>
+              <button onClick={onReload} disabled={reloading} title="Обновить"
+                className="inline-flex items-center rounded-lg bg-stone-800 p-1.5 text-stone-300 hover:bg-stone-700 disabled:opacity-60"><RefreshCw className={`h-3.5 w-3.5 ${reloading ? 'animate-spin' : ''}`} /></button>
               <button onClick={onLogout}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-stone-800 px-2.5 py-1.5 text-xs text-stone-300 hover:bg-stone-700"><LogOut className="h-3.5 w-3.5" /> Выйти</button>
             </div>
@@ -129,8 +130,8 @@ export function Shell({
         </nav>
         <div className="space-y-1 border-t border-stone-800 p-3">
           {notif && <div className="mb-1 px-1">{notif}</div>}
-          <button onClick={onReload} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-stone-400 hover:bg-stone-800 hover:text-stone-200">
-            <RefreshCw className="h-5 w-5" /> Обновить
+          <button onClick={onReload} disabled={reloading} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-stone-400 hover:bg-stone-800 hover:text-stone-200 disabled:opacity-60">
+            <RefreshCw className={`h-5 w-5 ${reloading ? 'animate-spin' : ''}`} /> {reloading ? 'Обновляем…' : 'Обновить'}
           </button>
           <button onClick={onLogout} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-stone-300 hover:bg-stone-800">
             <LogOut className="h-5 w-5" /> Выйти

@@ -2,6 +2,10 @@ import { getAccessToken, setAccessToken, refresh, isAccessFresh, clearAuth } fro
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+/** абсолютный URL для относительных путей с бэкенда (например logoUrl из /api/settings) —
+ *  нужен там, где путь идёт напрямую в src="", а не через authFetch */
+export const apiUrl = (path: string) => (path.startsWith('http') ? path : API + path);
+
 /** fetch с авто-обновлением access-токена и одним повтором на 401 */
 export async function authFetch(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
   if (!isAccessFresh()) await refresh(API);

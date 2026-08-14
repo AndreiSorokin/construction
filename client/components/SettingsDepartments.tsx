@@ -28,6 +28,10 @@ export function SettingsDepartments({ boot, reload }: { boot: any; reload: () =>
     .filter((s: any) => s.departmentId === curDeptId && s.type === type)
     .sort((a: any, b: any) => a.order - b.order)
     .map((s: any) => ({ approverId: s.approverId, label: s.label }));
+  // подсказки для «Название этапа»: все должности, уже встречавшиеся в любых маршрутах (заявок и нарядов)
+  const labelOptions = useMemo(() => Array.from(new Set(
+    [...boot.supplySteps, ...boot.orderSteps].map((s: any) => s.label).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b, 'ru')), [boot]);
 
   return (
     <div>
@@ -69,7 +73,7 @@ export function SettingsDepartments({ boot, reload }: { boot: any; reload: () =>
             </button>
           ))}
         </div>
-        <StepsEditor key={`${curDeptId}:${type}:${supplySteps.length}`} steps={supplySteps} approvers={approvers}
+        <StepsEditor key={`${curDeptId}:${type}:${supplySteps.length}`} steps={supplySteps} approvers={approvers} labelOptions={labelOptions}
                      onSave={(s) => act(() => api.chains.setSupply(curDeptId, type, s))} />
         {approvers.length === 0 && <p className="mt-2 text-xs text-amber-700">Нет согласующих — добавьте их во вкладке «Люди».</p>}
       </Card>
