@@ -131,7 +131,7 @@ export function DialogHost() {
         <div className="text-sm leading-relaxed text-stone-800">{dlg.text}</div>
         {dlg.kind === 'prompt' && (
           <input autoFocus value={val} onChange={(e) => setVal(e.target.value)}
-            className="mt-3 w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+            className="mt-3 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900" />
         )}
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-lg px-3 py-1.5 text-sm text-stone-600 hover:bg-stone-100"

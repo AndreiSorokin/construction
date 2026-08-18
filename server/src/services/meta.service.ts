@@ -3,7 +3,7 @@ import { PrismaService } from './prisma.service';
 
 const PUB_USER = {
   id: true, login: true, name: true, role: true, departmentId: true,
-  isLead: true, ordersAccess: true, isActive: true, email: true,
+  isLead: true, ordersAccess: true, isActive: true, email: true, theme: true,
 } as const;
 
 @Injectable()
