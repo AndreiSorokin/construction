@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { appConfirm, pillCls } from './ui';
+import { appConfirm, inputCls, pillCls } from './ui';
 
 const card = 'rounded-2xl border border-stone-200 bg-white shadow-sm';
 const btn = 'rounded-lg bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700 disabled:opacity-50';
@@ -53,7 +53,7 @@ export function CommsView({ me }: { me: any }) {
             <h2 className="mb-1 text-base font-semibold text-stone-900">Написать администратору</h2>
             <p className="mb-2 text-xs text-stone-500">Односторонний канал: сообщение попадёт в список администратора. Ответ — лично или объявлением.</p>
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" placeholder="Текст сообщения…" />
+              className={inputCls} placeholder="Текст сообщения…" />
             <div className="mt-2 flex items-center gap-2">
               <button className={btn} disabled={!text.trim()}
                 onClick={async () => { await api.comms.send(text.trim()); setText(''); setSent('Сообщение отправлено администратору.'); setTimeout(() => setSent(''), 4000); if (isAdmin) load(); }}>
@@ -67,7 +67,7 @@ export function CommsView({ me }: { me: any }) {
             <h2 className="mb-1 text-base font-semibold text-stone-900">Анонимно руководству</h2>
             <p className="mb-2 text-xs text-stone-500">Автор не сохраняется нигде — ни в сообщении, ни в журналах.</p>
             <textarea value={anon} onChange={(e) => setAnon(e.target.value)} rows={2}
-              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm" placeholder="Анонимное сообщение…" />
+              className={inputCls} placeholder="Анонимное сообщение…" />
             <button className={`${btn} mt-2`} disabled={!anon.trim()}
               onClick={async () => { await api.comms.anonSend(anon.trim()); setAnon(''); setSent('Отправлено анонимно.'); setTimeout(() => setSent(''), 4000); if (isAdmin) load(); }}>
               Отправить анонимно
@@ -112,7 +112,7 @@ export function CommsView({ me }: { me: any }) {
           {isAdmin && (
             <div className="mb-4 flex gap-2">
               <input value={annText} onChange={(e) => setAnnText(e.target.value)} placeholder="Текст объявления…"
-                className="flex-1 rounded-lg border border-stone-300 px-3 py-2 text-sm" />
+                className={`flex-1 ${inputCls}`} />
               <button className={btn} disabled={!annText.trim()}
                 onClick={async () => { await api.comms.addAnnouncement(annText.trim()); setAnnText(''); load(); }}>Опубликовать</button>
             </div>

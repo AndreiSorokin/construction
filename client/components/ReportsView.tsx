@@ -58,7 +58,7 @@ export function ReportsView({ requests, orders, boot }: { requests: any[]; order
       <PageHeader title="Отчёты за месяц" sub="Заявки по типам и объектам, наряды по подрядчикам." accent="amber"
         right={<div className="flex items-center gap-2">
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
-            className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm" />
+            className="rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-900" />
           <button className={btnGhost} onClick={() => window.print()}><Printer className="h-4 w-4" /> Печать</button>
         </div>} />
 

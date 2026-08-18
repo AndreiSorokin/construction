@@ -106,7 +106,7 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
           {tab === 'inbox' && !selecting && filtered.length > 0 && (
             <button className={btnGhost} onClick={() => setSelecting(true)} title="Отметить несколько заявок и решить по ним разом">Выбрать</button>
           )}
-          {(me.role === 'SUPPLY' || me.role === 'ADMIN' || tab === 'inbox') && (
+          {tab === 'board' && (
             selecting ? (
               <>
                 <span className="text-sm text-stone-500">Выбрано: {selected.length}</span>
