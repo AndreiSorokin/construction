@@ -19,6 +19,7 @@ export class UpdateUserDto {
   @IsOptional() @IsEnum(Role) role?: Role;
   @IsOptional() @IsString() departmentId?: string | null;
   @IsOptional() @IsBoolean() ordersAccess?: boolean;
+  @IsOptional() @IsBoolean() canPrice?: boolean;
   @IsOptional() @IsBoolean() isLead?: boolean;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsEmail() email?: string;

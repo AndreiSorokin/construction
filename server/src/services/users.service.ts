@@ -72,6 +72,7 @@ export class UsersService {
       await tx.supplyChainStep.deleteMany({ where: { approverId: id } });
       await tx.orderChainStep.deleteMany({ where: { approverId: id } });
       await tx.request.updateMany({ where: { assigneeId: id }, data: { assigneeId: null } });
+      await tx.objectAccess.deleteMany({ where: { userId: id } });
 
       // заявки на согласовании, ждущие ЕГО решения
       const reqs = await tx.request.findMany({

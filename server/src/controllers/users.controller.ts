@@ -24,7 +24,7 @@ export class UsersController {
     return this.users.resetPassword(id, dto.newPassword);
   }
 
-  /** увольнение: деактивация + вычистка из маршрутов; зависшие этапы перескакивают */
+  /** увольнение: деактивация + вычистка из маршрутов и доступа к объектам; зависшие этапы перескакивают */
   @Delete(':id') remove(@Param('id') id: string, @CurrentUser() u: AuthUser) {
     return this.users.deactivate(id, u);
   }

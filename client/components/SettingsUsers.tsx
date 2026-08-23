@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { KeyRound, Plus, Trash2 } from 'lucide-react';
+import { KeyRound, Plus, UserX } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ROLE_RU } from '@/lib/format';
 import { Card, ErrorBox, btnGhost, btnPrimary, inputCls, labelCls, appConfirm, appPrompt } from './ui';
@@ -116,19 +116,19 @@ export function SettingsUsers({ boot, reload }: { boot: any; reload: () => void 
                        title={isSelf ? 'Нельзя деактивировать самого себя' : undefined}>
                   <input type="checkbox" checked={u.isActive} disabled={isSelf} className="accent-stone-900"
                          onChange={(e) => act(() => api.users.update(u.id, { isActive: e.target.checked }))} />
-                  Активен — вход разрешён
+                  Активен - вход разрешён
                 </label>
               </div>
 
               <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2">
                 <span className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">{ROLE_RU[u.role] || u.role}</span>
-                <button disabled={isSelf} title={isSelf ? 'Нельзя уволить самого себя' : 'Уволить: деактивация + вычистка из маршрутов; зависшие этапы перескочат'}
+                <button disabled={isSelf} title={isSelf ? 'Нельзя деактивировать самого себя' : 'Деактивировать: вход закрывается, вычистка из маршрутов и доступа к объектам; зависшие этапы перескочат'}
                   className="inline-flex items-center gap-1 text-xs text-stone-400 hover:text-rose-600 disabled:opacity-30"
                   onClick={async () => {
-                    if (await appConfirm(`Уволить «${u.name}»? Он исчезнет из маршрутов согласования, назначенные заявки освободятся, зависшие на нём этапы перескочат дальше. Вход будет закрыт.`, { okText: 'Уволить', danger: true }))
+                    if (await appConfirm(`Деактивировать «${u.name}»? Он исчезнет из маршрутов согласования и доступа к объектам, назначенные заявки освободятся, зависшие на нём этапы перескочат дальше. Вход будет закрыт.`, { okText: 'Деактивировать', danger: true }))
                       act(() => api.users.remove(u.id));
                   }}>
-                  <Trash2 className="h-3.5 w-3.5" /> {isSelf ? 'это вы' : 'уволить'}
+                  <UserX className="h-3.5 w-3.5" /> {isSelf ? 'это вы' : 'деактивировать'}
                 </button>
               </div>
             </Card>
