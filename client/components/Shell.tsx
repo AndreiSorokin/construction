@@ -18,14 +18,20 @@ const ACCENT = {
 } as const;
 type AccentKey = keyof typeof ACCENT;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 export function Shell({
-  me, view, setView, badges, showOrders, onLogout, onReload, reloading, children, logoUrl, avatarUrl, notif,
+  me, view, setView, badges, showOrders, onLogout, onReload, reloading, children, logoUrl, avatarUrl, notif, announcements,
 }: {
   me: any; view: ViewKey; setView: (v: ViewKey) => void;
   badges: Partial<Record<ViewKey, number>>; showOrders: boolean;
   onLogout: () => void; onReload: () => void; reloading?: boolean; children: ReactNode;
-  logoUrl?: string | null; avatarUrl?: string | null; notif?: ReactNode;
+  logoUrl?: string | null; avatarUrl?: string | null; notif?: ReactNode; announcements?: any[];
 }) {
+  // объявление висит сутки с публикации; закреплённое — пока его не открепят/не удалят вручную
+  const activeAnnouncements = (announcements || []).filter(
+    (a) => a.pinned || Date.now() - new Date(a.createdAt).getTime() < DAY_MS,
+  );
   const allGroups: { title: string; accent: AccentKey; items: { k: ViewKey; label: string; icon: any }[] }[] = [
     {
       title: 'Снабжение', accent: 'amber', items: [
@@ -141,6 +147,17 @@ export function Shell({
 
       <main className="lg:pl-60">
         <div className="px-3 py-4 lg:px-6 lg:py-6">
+          {activeAnnouncements.length > 0 && (
+            <div className="no-print mb-4 space-y-1.5">
+              {activeAnnouncements.map((a: any) => (
+                <div key={a.id} className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {a.pinned && <span className="shrink-0" title="Закреплено">📌</span>}
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap">{a.text}</span>
+                  <span className="shrink-0 text-xs text-amber-700">{a.byName}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {children}
         </div>
       </main>

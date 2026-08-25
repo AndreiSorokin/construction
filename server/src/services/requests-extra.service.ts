@@ -4,14 +4,7 @@ import { PrismaService } from './prisma.service';
 import { MailService } from './mail.service';
 import { AuthUser } from '../decorators/current-user.decorator';
 import { ConsolidateDto, EditRequestDto, ItemPatchDto } from '../dto/request-extra.dto';
-
-const FULL = {
-  items: true,
-  chainSteps: { orderBy: { order: 'asc' as const } },
-  events: { orderBy: { at: 'asc' as const } },
-  supplyNotes: { orderBy: { at: 'asc' as const } },
-  attachments: true,
-};
+import { FULL } from './requests.service';
 
 const ITEM_TYPES = new Set(['TMC', 'QUARRY', 'FUEL']); // типы «с позициями» — только их можно объединять
 
@@ -203,8 +196,8 @@ export class RequestsExtraService {
           requesterId: u.id,
           status: RequestStatus.SUPPLY,
           isConsolidated: true,
-          assigneeId: u.id,
-          supplyStage: SupplyStage.INWORK,
+          // без назначения — сводная, как и любая новая заявка в снабжении, попадает
+          // в общий пул «Входящие», а не сразу «в мои» у того, кто её собрал
           note: `Сводная из: ${good.map((g) => g.number).join(', ')}`,
           items: {
             create: [...agg.values()].map((a) => ({

@@ -11,7 +11,9 @@ const PREFIX: Record<RequestType, string> = {
   TMC: 'ТМЦ', TRANSPORT: 'ТР', QUARRY: 'КАР', FUNDS: 'ДС', FUEL: 'ТОП', TRAVEL: 'КМ', PRODUCTION: 'ПР',
 };
 
-const FULL = {
+// общий include для заявки: используется и здесь, и в requests-extra.service.ts —
+// один источник, чтобы «полная» форма заявки не расходилась между сервисами
+export const FULL = {
   items: true,
   chainSteps: { orderBy: { order: 'asc' as const } },
   events: { orderBy: { at: 'asc' as const } },

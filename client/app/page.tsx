@@ -36,6 +36,7 @@ export default function Home() {
   const [appSettings, setAppSettings] = useState<any>(null);   // логотип, лимит «Срочно»
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [commsUnread, setCommsUnread] = useState(0);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [reloading, setReloading] = useState(false);
   const { syncTheme } = useTheme();
 
@@ -61,6 +62,7 @@ export default function Home() {
         b.me.role === 'ADMIN' ? api.comms.messages().catch(() => []) : Promise.resolve([]),
       ]).then(([anns, msgs]: any[]) => {
         setCommsUnread((anns || []).filter((a: any) => !a.readByMe).length + (msgs || []).filter((m: any) => !m.readAt).length);
+        setAnnouncements(anns || []);
       }).catch(() => undefined);
       syncTheme(b.me.theme === 'dark');
       setRequests(rs);
@@ -176,7 +178,7 @@ export default function Home() {
   const requestDetailNode = curReq && (
     <RequestDetail me={me} boot={boot} r={curReq} onBack={() => setOpenReq(null)}
                    onUpdated={replaceReq} onPrint={() => setPrintDoc({ kind: 'request', data: curReq })}
-                   onOpenRequest={(id) => setOpenReq(id)}
+                   onOpenRequest={(id) => setOpenReq(id)} onReloadAll={() => loadAll(false)}
                    onRepeat={(r) => { setRepeatFrom({ type: r.type, note: r.note || '', objectId: r.objectId || '', priority: 'NORMAL', due: '', fields: r.fields || {}, items: (r.items || []).map((i: any) => ({ name: i.name, unit: i.unit, qty: i.qty, note: i.note || '' })) }); setOpenReq(null); setView('requests'); setNewReq(true); }} />
   );
 
@@ -188,7 +190,12 @@ export default function Home() {
                   onCreated={(r) => { setRequests((p) => [r, ...p]); setNewReq(false); setRepeatFrom(null); setOpenReq(r.id); }} />
     ) : curReq ? requestDetailNode : (
       <RequestsView me={me} boot={boot} requests={requests} onOpen={setOpenReq} onNew={() => setNewReq(true)}
-                    onConsolidated={(r) => { setRequests((p) => [r, ...p.map((x) => (r.sourceIds || []).includes(x.id) ? x : x)]); loadAll(false); setOpenReq(r.id); }}
+                    onConsolidated={(r) => {
+                      const srcIds = (r.consolidatedFrom || []).map((s: any) => s.id);
+                      setRequests((p) => [r, ...p.map((x) => (srcIds.includes(x.id) ? { ...x, consolidatedIntoId: r.id, postponed: true } : x))]);
+                      loadAll(false);
+                      setOpenReq(r.id);
+                    }}
                     onBatchPrint={(ids) => setBatchIds(ids)} onReloadAll={() => loadAll(false)} onReplace={replaceReq} />
     );
   } else if (view === 'bank') {
@@ -218,6 +225,7 @@ export default function Home() {
   return (
     <Shell me={me} view={view} setView={(v) => { setView(v); setOpenReq(null); setOpenOrd(null); setNewReq(false); setNewOrd(false); }}
            badges={badges} showOrders={showOrders} onLogout={onLogout} onReload={handleManualReload} reloading={reloading} logoUrl={appSettings?.logoUrl || null} avatarUrl={avatarUrl}
+           announcements={announcements}
            notif={<NotifBell items={notifItems} dark onOpen={(id) => { setView('requests'); setOpenReq(id); }} />}>
       {content}
       <DialogHost />

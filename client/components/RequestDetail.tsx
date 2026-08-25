@@ -10,9 +10,9 @@ import {
 } from '@/lib/format';
 import { Badge, Card, ErrorBox, Section, btnDanger, btnGhost, btnPrimary, inputCls } from './ui';
 
-export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepeat, onOpenRequest }: {
+export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepeat, onOpenRequest, onReloadAll }: {
   me: any; boot: any; r: any; onBack: () => void; onUpdated: (r: any) => void; onPrint: () => void;
-  onRepeat?: (r: any) => void; onOpenRequest?: (id: string) => void;
+  onRepeat?: (r: any) => void; onOpenRequest?: (id: string) => void; onReloadAll?: () => void;
 }) {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -92,7 +92,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
             <button disabled={busy} className={btnGhost} onClick={async () => {
               const n = (r.attachments || []).length;
               if (await appConfirm('Разъединить сводную? Исходные заявки вернутся в работу.' + (n ? ` Файлы сводной (${n}) будут перенесены в первую исходную — не потеряются.` : ''), { okText: 'Разъединить', danger: true }))
-                { await api.requestsX.unconsolidate(r.id); onBack(); }
+                { await api.requestsX.unconsolidate(r.id); onReloadAll?.(); onBack(); }
             }}>Разъединить</button>
           )}
           <button onClick={onPrint} className={btnGhost}><Printer className="h-4 w-4" /> Печать</button>
