@@ -235,20 +235,24 @@ export function SupplyBoard({ me, boot, requests, onOpen, onReplace, onReloadAll
             <button onClick={() => setView('board')} className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm ${view === 'board' ? 'bg-stone-900 text-white' : 'text-stone-500 hover:text-stone-800'}`} title="Доска"><Columns className="h-4 w-4" /> Доска</button>
           </div>}
         </div>
-        <div className={`${filtersOpen ? 'block' : 'hidden'} space-y-1.5`}>
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:flex lg:flex-wrap lg:items-center">
-            <select value={sort} onChange={(e) => setSort(e.target.value as any)} className={`${selectCls} w-full lg:w-auto`}>
-              <option value="priority">По приоритету</option><option value="created">По дате</option><option value="due">По сроку</option><option value="overdue">По просрочке</option><option value="object">По объекту</option>
-            </select>
-            <select value={deptF} onChange={(e) => setDeptF(e.target.value)} className={`${selectCls} w-full lg:w-auto`}><option value="all">Все отделы</option>{boot.departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
-            <select value={typeF} onChange={(e) => setTypeF(e.target.value)} className={`${selectCls} w-full lg:w-auto`}><option value="all">Все типы</option>{Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-            <select value={objF} onChange={(e) => setObjF(e.target.value)} className={`${selectCls} w-full lg:w-auto`}><option value="all">Все объекты</option>{boot.objects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
-          </div>
-          <div className="flex items-center gap-2">
-            <input type="date" className={selectCls} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="С даты" />
-            <span className="text-xs text-stone-400">–</span>
-            <input type="date" className={selectCls} value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="По дату" />
-            {activeFilters > 0 && <button onClick={() => { setDeptF('all'); setTypeF('all'); setObjF('all'); setDateFrom(''); setDateTo(''); }} className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>}
+        <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div className="overflow-hidden">
+            <div className="space-y-1.5 pt-0.5">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:flex lg:flex-wrap lg:items-center">
+                <select value={sort} onChange={(e) => setSort(e.target.value as any)} className={`${selectCls} w-full lg:w-auto`}>
+                  <option value="priority">По приоритету</option><option value="created">По дате</option><option value="due">По сроку</option><option value="overdue">По просрочке</option><option value="object">По объекту</option>
+                </select>
+                <select value={deptF} onChange={(e) => setDeptF(e.target.value)} className={`${selectCls} w-full lg:w-auto`}><option value="all">Все отделы</option>{boot.departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                <select value={typeF} onChange={(e) => setTypeF(e.target.value)} className={`${selectCls} w-full lg:w-auto`}><option value="all">Все типы</option>{Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                <select value={objF} onChange={(e) => setObjF(e.target.value)} className={`${selectCls} w-full lg:w-auto`}><option value="all">Все объекты</option>{boot.objects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="date" className={selectCls} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="С даты" />
+                <span className="text-xs text-stone-400">–</span>
+                <input type="date" className={selectCls} value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="По дату" />
+                {activeFilters > 0 && <button onClick={() => { setDeptF('all'); setTypeF('all'); setObjF('all'); setDateFrom(''); setDateTo(''); }} className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>}
+              </div>
+            </div>
           </div>
         </div>
       </div>

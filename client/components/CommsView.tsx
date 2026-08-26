@@ -47,6 +47,7 @@ export function CommsView({ me }: { me: any }) {
       </div>
       {err && <div className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">{err}</div>}
 
+      <div key={tab} className="anim-tab-in">
       {tab === 'msg' && (
         <>
           <div className={`p-4 ${card}`}>
@@ -135,6 +136,7 @@ export function CommsView({ me }: { me: any }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -148,11 +148,14 @@ export default function Home() {
     const out: any[] = [];
     for (const r of requests) {
       if (r.requesterId !== me.id) continue;
+      // по одной заявке — только последнее событие, иначе экран засоряется историей одной и той же заявки
+      let latest: any = null;
       for (const e of r.events || []) {
         if (e.byId === me.id || !TXT[e.action]) continue;
         if (new Date(e.at).getTime() < since) continue;
-        out.push({ id: e.id, reqId: r.id, number: r.number, text: `${TXT[e.action]} · ${e.byName}`, at: e.at });
+        if (!latest || new Date(e.at).getTime() > new Date(latest.at).getTime()) latest = e;
       }
+      if (latest) out.push({ id: latest.id, reqId: r.id, number: r.number, text: `${TXT[latest.action]} · ${latest.byName}`, at: latest.at });
     }
     return out.sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, 30);
   }, [requests, me]);

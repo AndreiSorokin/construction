@@ -3,9 +3,12 @@ import { useState } from 'react';
 import {
   Search, Filter, ChevronUp, ChevronDown, AlertTriangle, Paperclip, ListChecks, ClipboardList,
 } from 'lucide-react';
-import { inputCls, ObjectDot, TypeBadge } from './ui';
+import { ObjectDot, TypeBadge } from './ui';
 import { STATUS_RU, TYPE_RU, fmtDate } from '@/lib/format';
 import { STATUS_RANK, reqTitle, itemProgress, inDateRange, holderOf, HAS_ITEMS, TYPE_BORDER } from '@/lib/requestHelpers';
+
+// компактный стиль дропдаунов фильтра — как в «Доске снабжения» (SupplyBoard), для единого вида везде
+const selectCls = 'rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-stone-600 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-100';
 
 const overdueDaysOf = (r: any) => {
   if (!r.due || (r.status !== 'APPROVAL' && r.status !== 'SUPPLY')) return 0;
@@ -55,32 +58,39 @@ export function BankView({ me, boot, requests, onOpen }: { me: any; boot: any; r
       </div>
       <p className="mb-3 text-xs text-stone-500">Все активные заявки компании — по всем отделам и объектам, независимо от того, кто их подал или ведёт.</p>
 
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
-          <input className={`${inputCls} w-56 pl-8`} placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="mb-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1.5" style={{ minWidth: 170 }}>
+            <Search className="h-4 w-4 shrink-0 text-stone-400" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск" className="w-full min-w-0 bg-transparent text-sm focus:outline-none" />
+          </div>
+          <button onClick={() => setFiltersOpen((v) => !v)}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${filtersOpen || activeFilters ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}>
+            <Filter className="h-4 w-4" /> Фильтры
+            {activeFilters > 0 && <span className={`rounded-full px-1.5 text-xs font-bold ${filtersOpen ? 'bg-white text-stone-900' : 'bg-amber-400 text-stone-900'}`}>{activeFilters}</span>}
+          </button>
         </div>
-        <button onClick={() => setFiltersOpen((v) => !v)}
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${filtersOpen || activeFilters ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}>
-          <Filter className="h-4 w-4" /> Фильтры
-          {activeFilters > 0 && <span className={`rounded-full px-1.5 text-xs font-bold ${filtersOpen ? 'bg-white text-stone-900' : 'bg-amber-400 text-stone-900'}`}>{activeFilters}</span>}
-        </button>
-      </div>
-      <div className={`${filtersOpen ? 'flex' : 'hidden'} mb-4 flex-wrap items-center gap-2`}>
-        <select className={`${inputCls} w-44`} value={deptF} onChange={(e) => setDeptF(e.target.value)}>
-          <option value="all">Все отделы</option>
-          {boot.departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
-        </select>
-        <select className={`${inputCls} w-44`} value={typeF} onChange={(e) => setTypeF(e.target.value)}>
-          <option value="all">Все типы</option>
-          {Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-        <input type="date" className={`${inputCls} w-40`} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="С даты" />
-        <input type="date" className={`${inputCls} w-40`} value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="По дату" />
-        {activeFilters > 0 && (
-          <button onClick={() => { setDeptF('all'); setTypeF('all'); setDateFrom(''); setDateTo(''); }}
-            className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>
-        )}
+        <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div className="overflow-hidden">
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <select className={selectCls} value={deptF} onChange={(e) => setDeptF(e.target.value)}>
+                <option value="all">Все отделы</option>
+                {boot.departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+              <select className={selectCls} value={typeF} onChange={(e) => setTypeF(e.target.value)}>
+                <option value="all">Все типы</option>
+                {Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <input type="date" className={selectCls} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="С даты" />
+              <span className="text-xs text-stone-400">–</span>
+              <input type="date" className={selectCls} value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="По дату" />
+              {activeFilters > 0 && (
+                <button onClick={() => { setDeptF('all'); setTypeF('all'); setDateFrom(''); setDateTo(''); }}
+                  className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {rows.length === 0 ? (

@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  IsArray, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, ArrayMinSize, MinLength, ValidateNested,
+  IsArray, IsIn, IsNumber, IsOptional, IsString, Matches, ArrayMinSize, MinLength, ValidateNested,
 } from 'class-validator';
 
 export class OrderLineDto {
@@ -8,7 +8,6 @@ export class OrderLineDto {
   @IsString() @MinLength(1) name: string;
   @IsString() unit: string;
   @IsNumber() price: number;
-  @IsOptional() @IsInt() dsu?: number | null;
   @IsString() qty: string;
 }
 

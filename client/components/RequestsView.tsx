@@ -1,14 +1,17 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { Plus, Search } from 'lucide-react';
-import { Badge, Card, Empty, btnPrimary, inputCls, btnGhost, pillCls, DueBadge, ObjectDot, BulkBar, appConfirm, appPrompt } from './ui';
+import { Filter, Plus, Search } from 'lucide-react';
+import { Badge, Card, Empty, btnPrimary, btnGhost, pillCls, DueBadge, ObjectDot, BulkBar, appConfirm, appPrompt } from './ui';
 import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, fmtDate } from '@/lib/format';
 import { SupplyBoard } from './SupplyBoard';
 
 const PRI_BORDER: Record<string, string> = {
   URGENT: 'border-l-rose-400', HIGH: 'border-l-amber-400', NORMAL: 'border-l-stone-300', LOW: 'border-l-stone-200',
 };
+
+// компактный стиль дропдаунов фильтра — как в «Доске снабжения» (SupplyBoard), для единого вида везде
+const selectCls = 'rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-xs text-stone-600 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-100';
 
 function ReqCard({ r, boot, onOpen, selectable, selected }: { r: any; boot: any; onOpen: () => void; selectable?: boolean; selected?: boolean }) {
   const obj = boot.objects.find((o: any) => o.id === r.objectId);
@@ -75,6 +78,8 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
   const [fobj, setFobj] = useState('');
   const [dFrom, setDFrom] = useState('');
   const [dTo, setDTo] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters = (ftype ? 1 : 0) + (fobj ? 1 : 0) + ((dFrom || dTo) ? 1 : 0);
 
   const filtered = useMemo(() => {
     let rs = requests;
@@ -145,23 +150,41 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
       </div>
 
       {!supplyBoard && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
-            <input className={`${inputCls} w-56 pl-8`} placeholder="Поиск…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <div className="mb-3 space-y-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-stone-300 px-2.5 py-1.5" style={{ minWidth: 170 }}>
+              <Search className="h-4 w-4 shrink-0 text-stone-400" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск" className="w-full min-w-0 bg-transparent text-sm focus:outline-none" />
+            </div>
+            <button onClick={() => setFiltersOpen((v) => !v)}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition ${filtersOpen || activeFilters ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}>
+              <Filter className="h-4 w-4" /> Фильтры
+              {activeFilters > 0 && <span className={`rounded-full px-1.5 text-xs font-bold ${filtersOpen ? 'bg-white text-stone-900' : 'bg-amber-400 text-stone-900'}`}>{activeFilters}</span>}
+            </button>
           </div>
-          {tab === 'all' && (<>
-            <input type="date" className={`${inputCls} w-40`} value={dFrom} onChange={(e) => setDFrom(e.target.value)} title="С даты" />
-            <input type="date" className={`${inputCls} w-40`} value={dTo} onChange={(e) => setDTo(e.target.value)} title="По дату" />
-          </>)}
-          <select className={`${inputCls} w-44`} value={fobj} onChange={(e) => setFobj(e.target.value)}>
-            <option value="">Все объекты</option>
-            {boot.objects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
-          <select className={`${inputCls} w-44`} value={ftype} onChange={(e) => setFtype(e.target.value)}>
-            <option value="">Все типы</option>
-            {Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+            <div className="overflow-hidden">
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {tab === 'all' && (<>
+                  <input type="date" className={selectCls} value={dFrom} onChange={(e) => setDFrom(e.target.value)} title="С даты" />
+                  <span className="text-xs text-stone-400">–</span>
+                  <input type="date" className={selectCls} value={dTo} onChange={(e) => setDTo(e.target.value)} title="По дату" />
+                </>)}
+                <select className={selectCls} value={fobj} onChange={(e) => setFobj(e.target.value)}>
+                  <option value="">Все объекты</option>
+                  {boot.objects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                <select className={selectCls} value={ftype} onChange={(e) => setFtype(e.target.value)}>
+                  <option value="">Все типы</option>
+                  {Object.entries(TYPE_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                {activeFilters > 0 && (
+                  <button onClick={() => { setFtype(''); setFobj(''); setDFrom(''); setDTo(''); }}
+                    className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -170,17 +193,19 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
           onCancel={() => { setSelecting(false); setSelected([]); }}
           onApprove={() => bulkDecide('approve')} onReject={() => bulkDecide('reject')} />
       )}
-      {supplyBoard ? (
-        <SupplyBoard me={me} boot={boot} requests={requests} onOpen={onOpen}
-          onReplace={onReplace || (() => { if (onReloadAll) onReloadAll(); })}
-          onReloadAll={onReloadAll || (() => {})}
-          selecting={selecting} selected={selected} onToggleSel={toggleSel} selectableCheck={consolidatable} />
-      ) : (
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((r) => <ReqCard key={r.id} r={r} boot={boot} onOpen={() => (selecting ? toggleSel(r.id) : onOpen(r.id))} selectable={selecting} selected={selected.includes(r.id)} />)}
-          {filtered.length === 0 && <div className="md:col-span-2 xl:col-span-3"><Empty text="Заявок нет." /></div>}
-        </div>
-      )}
+      <div key={tab} className="anim-tab-in">
+        {supplyBoard ? (
+          <SupplyBoard me={me} boot={boot} requests={requests} onOpen={onOpen}
+            onReplace={onReplace || (() => { if (onReloadAll) onReloadAll(); })}
+            onReloadAll={onReloadAll || (() => {})}
+            selecting={selecting} selected={selected} onToggleSel={toggleSel} selectableCheck={consolidatable} />
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((r) => <ReqCard key={r.id} r={r} boot={boot} onOpen={() => (selecting ? toggleSel(r.id) : onOpen(r.id))} selectable={selecting} selected={selected.includes(r.id)} />)}
+            {filtered.length === 0 && <div className="md:col-span-2 xl:col-span-3"><Empty text="Заявок нет." /></div>}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

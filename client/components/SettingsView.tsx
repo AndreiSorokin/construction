@@ -4,28 +4,22 @@ import { SettingsUsers } from './SettingsUsers';
 import { SettingsApp } from './SettingsApp';
 import { SettingsDepartments } from './SettingsDepartments';
 import { SettingsObjects } from './SettingsObjects';
-import { SettingsVehicles } from './SettingsVehicles';
 import { SettingsWorks } from './SettingsWorks';
 import { SettingsOrderChains } from './SettingsOrderChains';
-import { SettingsIps } from './SettingsIps';
 import { SettingsAnnouncements } from './SettingsAnnouncements';
-import { SettingsCatalog } from './SettingsCatalog';
 import { pillCls, PageHeader } from './ui';
 
-// Порядок и состав вкладок — как в эталоне (SettingsHub): Люди / Отделы и маршруты / Объекты /
-// Техника / Списки работ / Маршруты нарядов / ИП / Объявления / Данные. «Номенклатура» — сверх
-// эталона (там не выведена отдельной вкладкой), но справочник используется в форме заявки.
+// Порядок и состав вкладок — как в эталоне (SettingsHub), за вычетом ИП / Техника / Номенклатура —
+// эти справочники по-прежнему используются в формах (наряды, заявки), просто без отдельного
+// экрана управления в настройках.
 const TABS = [
   { key: 'users', label: 'Люди' },
   { key: 'chains', label: 'Отделы и маршруты' },
   { key: 'objects', label: 'Объекты' },
-  { key: 'vehicles', label: 'Техника' },
   { key: 'works', label: 'Списки работ' },
   { key: 'ochains', label: 'Маршруты нарядов' },
-  { key: 'ips', label: 'ИП' },
   { key: 'ann', label: 'Объявления' },
   { key: 'data', label: 'Данные' },
-  { key: 'catalog', label: 'Номенклатура' },
 ];
 
 export function SettingsView({ boot, me, reload }: { boot: any; me?: any; reload: () => void }) {
@@ -41,16 +35,15 @@ export function SettingsView({ boot, me, reload }: { boot: any; me?: any; reload
           </button>
         ))}
       </div>
-      {tab === 'users' && <SettingsUsers boot={boot} reload={reload} />}
-      {tab === 'chains' && <SettingsDepartments boot={boot} reload={reload} />}
-      {tab === 'objects' && <SettingsObjects boot={boot} reload={reload} />}
-      {tab === 'vehicles' && <SettingsVehicles boot={boot} reload={reload} />}
-      {tab === 'works' && <SettingsWorks boot={boot} reload={reload} />}
-      {tab === 'ochains' && <SettingsOrderChains boot={boot} reload={reload} />}
-      {tab === 'ips' && <SettingsIps boot={boot} reload={reload} />}
-      {tab === 'ann' && <SettingsAnnouncements />}
-      {tab === 'data' && <SettingsApp me={me || boot.me || {}} />}
-      {tab === 'catalog' && <SettingsCatalog boot={boot} reload={reload} />}
+      <div key={tab} className="anim-tab-in">
+        {tab === 'users' && <SettingsUsers boot={boot} reload={reload} />}
+        {tab === 'chains' && <SettingsDepartments boot={boot} reload={reload} />}
+        {tab === 'objects' && <SettingsObjects boot={boot} reload={reload} />}
+        {tab === 'works' && <SettingsWorks boot={boot} reload={reload} />}
+        {tab === 'ochains' && <SettingsOrderChains boot={boot} reload={reload} />}
+        {tab === 'ann' && <SettingsAnnouncements />}
+        {tab === 'data' && <SettingsApp me={me || boot.me || {}} />}
+      </div>
     </div>
   );
 }

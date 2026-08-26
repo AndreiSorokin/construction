@@ -158,7 +158,7 @@ export function Shell({
               ))}
             </div>
           )}
-          {children}
+          <div key={view} className="anim-tab-in">{children}</div>
         </div>
       </main>
       <footer className="no-print mt-2 border-t border-stone-200 px-4 pb-8 pt-4 text-center text-xs text-stone-400 lg:pl-60">

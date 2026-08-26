@@ -69,7 +69,7 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
       const o = await api.orders.create({
         departmentId: stroyDept.id, period, ipId, objectId: objectId || undefined, catalogId, note,
         lines: selected.map((i: any) => ({
-          workId: i.id, name: i.name, unit: i.unit, price: Number(i.price), dsu: i.dsu, qty: qty[i.id],
+          workId: i.id, name: i.name, unit: i.unit, price: Number(i.price), qty: qty[i.id],
         })),
       });
       onCreated(o);
@@ -140,7 +140,7 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
                 <div key={w.id} className={`flex items-center gap-2 rounded-lg border p-2 transition ${on ? 'border-sky-300 bg-sky-50' : 'border-stone-200 bg-white'}`}>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-stone-800">{w.name}</span>
-                    <span className="text-xs text-stone-400">{money(Number(w.price))} ₸ / {w.unit}{w.dsu ? ` · ДСУ ${w.dsu}%` : ''}{on ? <span className="ml-1 font-medium text-sky-600">· в наряде</span> : ''}</span>
+                    <span className="text-xs text-stone-400">{money(Number(w.price))} ₸ / {w.unit}{on ? <span className="ml-1 font-medium text-sky-600">· в наряде</span> : ''}</span>
                   </span>
                   {on ? (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-sky-50 px-2.5 py-1.5 text-xs font-medium text-sky-700">В наряде</span>

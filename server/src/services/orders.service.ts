@@ -61,7 +61,6 @@ export class OrdersService {
             name: l.name,
             unit: l.unit,
             price: String(l.price),
-            dsu: l.dsu ?? null,
             qty: l.qty ?? '',
           })),
         },

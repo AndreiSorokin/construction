@@ -258,14 +258,16 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
         ))}
       </div>
 
-      {tab === 'notes' && <Notebook notes={notes} setNotes={setNotes} />}
-      {tab === 'calendar' && <CalendarPane me={me} />}
-      {tab === 'messenger' && <CommsView me={me} />}
-      {tab === 'dashboard' && isSupplyOrAdmin && <DashboardTab requests={requests} boot={boot} onOpen={onOpenReq} />}
-      {tab === 'reports' && isSupplyOrAdmin && <ReportsView requests={requests} orders={orders} boot={boot} />}
-      {tab === 'archive' && <ArchiveTab me={me} boot={boot} requests={requests} onOpen={onOpenReq} />}
-      {tab === 'log' && isAdmin && <ActionLog requests={requests} orders={orders} boot={boot} onOpenReq={onOpenReqInBank} onOpenOrder={onOpenOrder} />}
-      {tab === 'settings' && isAdmin && <SettingsView boot={boot} me={me} reload={reload} />}
+      <div key={tab} className="anim-tab-in">
+        {tab === 'notes' && <Notebook notes={notes} setNotes={setNotes} />}
+        {tab === 'calendar' && <CalendarPane me={me} />}
+        {tab === 'messenger' && <CommsView me={me} />}
+        {tab === 'dashboard' && isSupplyOrAdmin && <DashboardTab requests={requests} boot={boot} onOpen={onOpenReq} />}
+        {tab === 'reports' && isSupplyOrAdmin && <ReportsView requests={requests} orders={orders} boot={boot} />}
+        {tab === 'archive' && <ArchiveTab me={me} boot={boot} requests={requests} onOpen={onOpenReq} />}
+        {tab === 'log' && isAdmin && <ActionLog requests={requests} orders={orders} boot={boot} onOpenReq={onOpenReqInBank} onOpenOrder={onOpenOrder} />}
+        {tab === 'settings' && isAdmin && <SettingsView boot={boot} me={me} reload={reload} />}
+      </div>
     </div>
   );
 }

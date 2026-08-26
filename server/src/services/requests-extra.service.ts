@@ -30,10 +30,36 @@ export class RequestsExtraService {
     return r.requesterId === u.id && r.status === RequestStatus.APPROVAL && noDecisions;
   }
 
+  /** человекочитаемое описание правки — что именно поменялось, для истории заявки */
+  private describeEdit(r: Awaited<ReturnType<RequestsExtraService['getOne']>>, dto: EditRequestDto): string | null {
+    const changes: string[] = [];
+    if (dto.note !== undefined && (dto.note ?? '') !== (r.note ?? '')) changes.push('примечание');
+    if (dto.due !== undefined) {
+      const newDue = dto.due ? new Date(dto.due).getTime() : null;
+      const oldDue = r.due ? r.due.getTime() : null;
+      if (newDue !== oldDue) changes.push('срок');
+    }
+    if (dto.objectId !== undefined && (dto.objectId || null) !== (r.objectId || null)) changes.push('объект');
+    if (dto.fields !== undefined && JSON.stringify(dto.fields) !== JSON.stringify(r.fields)) changes.push('поля');
+    if (dto.items) {
+      const added = dto.items.filter((i) => !i.id).length;
+      const removed = r.items.filter((old) => !dto.items!.some((i) => i.id === old.id)).length;
+      const modified = dto.items.filter((i) => {
+        if (!i.id) return false;
+        const old = r.items.find((o) => o.id === i.id);
+        return !!old && (old.name !== i.name || old.unit !== i.unit || (old.qty || '') !== (i.qty || '') || (old.note || '') !== (i.note || ''));
+      }).length;
+      const parts = [added && `+${added}`, removed && `-${removed}`, modified && `~${modified}`].filter(Boolean);
+      if (parts.length) changes.push(`позиции (${parts.join(', ')})`);
+    }
+    return changes.length ? `Изменено: ${changes.join(', ')}` : null;
+  }
+
   /** правка состава/полей; «получено N» (deliveredQty) у существующих позиций НЕ трогаем */
   async edit(id: string, u: AuthUser, dto: EditRequestDto) {
     const r = await this.getOne(id);
     if (!this.canEdit(r, u)) throw new ForbiddenException('Сейчас заявку править нельзя');
+    const editSummary = this.describeEdit(r, dto);
     await this.prisma.$transaction(async (tx) => {
       await tx.request.update({
         where: { id },
@@ -61,7 +87,7 @@ export class RequestsExtraService {
         }
       }
       await tx.requestEvent.create({
-        data: { requestId: id, action: DecisionAction.EDITED, byId: u.id, byName: u.name, comment: dto.comment ?? null },
+        data: { requestId: id, action: DecisionAction.EDITED, byId: u.id, byName: u.name, comment: dto.comment || editSummary },
       });
     });
     return this.getOne(id);

@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import {
-  IsArray, IsEnum, IsIn, IsInt, IsNumber, IsOptional, IsString, MinLength, ValidateNested,
+  IsArray, IsEnum, IsIn, IsNumber, IsOptional, IsString, MinLength, ValidateNested,
 } from 'class-validator';
 import { WorkKind } from '@prisma/client';
 
@@ -17,14 +17,12 @@ export class WorkItemDto {
   @IsString() @MinLength(1) name: string;
   @IsString() unit: string;
   @IsNumber() price: number;
-  @IsOptional() @IsInt() dsu?: number | null;
 }
 
 export class UpdateWorkItemDto {
   @IsOptional() @IsString() @MinLength(1) name?: string;
   @IsOptional() @IsString() unit?: string;
   @IsOptional() @IsNumber() price?: number;
-  @IsOptional() @IsInt() dsu?: number | null;
 }
 
 export class ImportWorksDto {

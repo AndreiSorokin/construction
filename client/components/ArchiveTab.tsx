@@ -43,17 +43,21 @@ export function ArchiveTab({ me, boot, requests, onOpen }: { me: any; boot: any;
           <Filter className="h-4 w-4" /> Фильтры{active > 0 && <span className={`rounded-full px-1.5 text-xs font-bold ${filtersOpen ? 'bg-white text-stone-900' : 'bg-amber-400 text-stone-900'}`}>{active}</span>}
         </button>
       </div>
-      <div className={`${filtersOpen ? 'flex' : 'hidden'} mb-4 flex-wrap items-center gap-2`}>
-        <div className="flex gap-1.5">
-          {([['all', 'Все'], ['DONE', 'Завершённые'], ['REJECTED', 'Отклонённые']] as const).map(([k, t]) => (
-            <button key={k} onClick={() => setF(k)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${f === k ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}>{t}</button>
-          ))}
+      <div className={`mb-4 grid transition-[grid-template-rows] duration-200 ease-out ${filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+        <div className="overflow-hidden">
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <div className="flex gap-1.5">
+              {([['all', 'Все'], ['DONE', 'Завершённые'], ['REJECTED', 'Отклонённые']] as const).map(([k, t]) => (
+                <button key={k} onClick={() => setF(k)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${f === k ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}>{t}</button>
+              ))}
+            </div>
+            <input type="date" className={selectCls} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="С даты" />
+            <span className="text-xs text-stone-400">–</span>
+            <input type="date" className={selectCls} value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="По дату" />
+            {active > 0 && <button onClick={() => { setF('all'); setDateFrom(''); setDateTo(''); }} className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>}
+          </div>
         </div>
-        <input type="date" className={selectCls} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} title="С даты" />
-        <span className="text-xs text-stone-400">–</span>
-        <input type="date" className={selectCls} value={dateTo} onChange={(e) => setDateTo(e.target.value)} title="По дату" />
-        {active > 0 && <button onClick={() => { setF('all'); setDateFrom(''); setDateTo(''); }} className="shrink-0 text-xs font-medium text-stone-500 underline hover:text-stone-800">Сбросить</button>}
       </div>
 
       {list.length === 0 ? (

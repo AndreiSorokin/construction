@@ -194,7 +194,6 @@ model WorkItem {
   name      String
   unit      String
   price     Decimal     @db.Decimal(14, 2)
-  dsu       Int? // % ДСУ; null если «--»
 
   @@index([catalogId])
 }
@@ -357,7 +356,6 @@ model OrderLine {
   name    String
   unit    String
   price   Decimal @db.Decimal(14, 2)
-  dsu     Int?
   qty     String  @default("")
 }
 

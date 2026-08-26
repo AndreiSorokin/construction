@@ -126,8 +126,8 @@ export function DialogHost() {
   if (!dlg) return null;
   const close = (v: any) => { const r = dlg.resolve; setDlg(null); r(v); };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={() => close(dlg.kind === 'confirm' ? false : null)}>
-      <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+    <div className="anim-fade-in fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={() => close(dlg.kind === 'confirm' ? false : null)}>
+      <div className="anim-pop-in w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="text-sm leading-relaxed text-stone-800">{dlg.text}</div>
         {dlg.kind === 'prompt' && (
           <input autoFocus value={val} onChange={(e) => setVal(e.target.value)}
@@ -156,8 +156,8 @@ export function HistoryModal({ title, items, onClose }: {
 }) {
   const list = [...(items || [])].reverse();
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={onClose}>
-      <div className="flex w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-w-lg sm:rounded-2xl" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+    <div className="anim-fade-in fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={onClose}>
+      <div className="anim-pop-in flex w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:max-w-lg sm:rounded-2xl" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-4 py-3">
           <div className="text-sm font-semibold text-stone-800">{title} <span className="font-normal text-stone-400">· {list.length}</span></div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700">✕</button>
@@ -308,8 +308,8 @@ export function NotifBell({ items, onOpen, dark }: {
       {open && (
         // окно всегда по центру экрана — независимо от того, где стоит колокольчик
         // (в шапке телефона, в сайдбаре ПК), так надёжнее, чем подгонять позицию под кнопку
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={() => setOpen(false)}>
-          <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white text-stone-900 shadow-xl" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+        <div className="anim-fade-in fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.55)' }} onClick={() => setOpen(false)}>
+          <div className="anim-pop-in flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white text-stone-900 shadow-xl" style={{ maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-4 py-3">
               <div className="text-xs font-semibold uppercase tracking-wide text-stone-400">События по вашим заявкам</div>
               <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700">✕</button>

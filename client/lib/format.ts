@@ -46,5 +46,3 @@ export const qtyNum = (q: string) => {
   return isNaN(n) ? 0 : n;
 };
 export const lineSum = (l: { price: any; qty: string }) => qtyNum(l.qty) * Number(l.price);
-export const lineDsu = (l: { price: any; qty: string; dsu?: number | null }) =>
-  l.dsu ? (lineSum(l) * l.dsu) / 100 : 0;

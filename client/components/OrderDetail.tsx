@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { ArrowLeft, Check, Printer, X } from 'lucide-react';
 import { api } from '@/lib/api';
-import { ORDER_STATUS_CLS, ORDER_STATUS_RU, fmtDateTime, lineDsu, lineSum, money, periodLabel } from '@/lib/format';
+import { ORDER_STATUS_CLS, ORDER_STATUS_RU, fmtDateTime, lineSum, money, periodLabel } from '@/lib/format';
 import { Badge, Card, ErrorBox, Section, StageTrack, btnDanger, btnGhost, btnPrimary, inputCls, appConfirm, appPrompt, HistoryModal } from './ui';
 import { useRef } from 'react';
 
@@ -26,7 +26,6 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const total = (o.lines || []).reduce((s: number, l: any) => s + lineSum(l), 0);
-  const dsuTotal = (o.lines || []).reduce((s: number, l: any) => s + lineDsu(l), 0);
 
   const act = async (fn: () => Promise<any>) => {
     setErr(''); setBusy(true);
@@ -77,8 +76,7 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
                 <th className="p-2 pl-3">Наименование</th>
                 <th className="p-2 text-right">Цена</th>
                 <th className="p-2 text-right">Кол-во</th>
-                <th className="p-2 text-right">Сумма</th>
-                <th className="p-2 pr-3 text-right">ДСУ</th>
+                <th className="p-2 pr-3 text-right">Сумма</th>
                 {canEditLines && editLines && <th className="p-2 pr-3" />}
               </tr>
             </thead>
@@ -88,10 +86,7 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
                   <td className="p-2 pl-3">{l.name}</td>
                   <td className="whitespace-nowrap p-2 text-right">{money(Number(l.price))} / {l.unit}</td>
                   <td className="p-2 text-right">{l.qty}</td>
-                  <td className="whitespace-nowrap p-2 text-right font-medium">{money(lineSum(l))}</td>
-                  <td className="whitespace-nowrap p-2 pr-3 text-right text-stone-500">
-                    {l.dsu ? `${money(lineDsu(l))} (${l.dsu}%)` : '—'}
-                  </td>
+                  <td className="whitespace-nowrap p-2 pr-3 text-right font-medium">{money(lineSum(l))}</td>
                   {canEditLines && editLines && (
                     <td className="whitespace-nowrap p-2 pr-3 text-right text-xs">
                       <button className="text-stone-500 underline" disabled={busy} onClick={async () => {
@@ -116,8 +111,7 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
             <tfoot>
               <tr className="border-t border-stone-200 font-semibold">
                 <td className="p-2 pl-3" colSpan={3}>Итого</td>
-                <td className="p-2 text-right">{money(total)} ₸</td>
-                <td className="p-2 pr-3 text-right text-stone-500">{dsuTotal ? money(dsuTotal) : '—'}</td>
+                <td className="p-2 pr-3 text-right">{money(total)} ₸</td>
               </tr>
             </tfoot>
           </table>

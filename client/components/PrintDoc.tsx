@@ -1,7 +1,7 @@
 'use client';
 import { Printer, X } from 'lucide-react';
 import {
-  FIELD_RU, PRIORITY_RU, TYPE_RU, fmtDate, fmtDateTime, lineDsu, lineSum, money, periodLabel,
+  FIELD_RU, PRIORITY_RU, TYPE_RU, fmtDate, fmtDateTime, lineSum, money, periodLabel,
 } from '@/lib/format';
 import { btnGhost, btnPrimary } from './ui';
 
@@ -145,7 +145,7 @@ export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'ord
             </div>
             <table className="mt-3 w-full border-collapse text-sm">
               <thead>
-                <tr>{['№', 'Наименование работ', 'Ед.', 'Цена', 'Кол-во', 'Сумма', 'ДСУ'].map((h) => (
+                <tr>{['№', 'Наименование работ', 'Ед.', 'Цена', 'Кол-во', 'Сумма'].map((h) => (
                   <th key={h} className="border border-black p-1 text-left">{h}</th>))}
                 </tr>
               </thead>
@@ -158,16 +158,12 @@ export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'ord
                     <td className="border border-black p-1 text-right">{money(Number(l.price))}</td>
                     <td className="border border-black p-1 text-right">{l.qty}</td>
                     <td className="border border-black p-1 text-right">{money(lineSum(l))}</td>
-                    <td className="border border-black p-1 text-right">{l.dsu ? `${money(lineDsu(l))} (${l.dsu}%)` : '—'}</td>
                   </tr>
                 ))}
                 <tr className="font-bold">
                   <td className="border border-black p-1" colSpan={5}>Итого</td>
                   <td className="border border-black p-1 text-right">
                     {money((d.lines || []).reduce((s: number, l: any) => s + lineSum(l), 0))}
-                  </td>
-                  <td className="border border-black p-1 text-right">
-                    {money((d.lines || []).reduce((s: number, l: any) => s + lineDsu(l), 0))}
                   </td>
                 </tr>
               </tbody>

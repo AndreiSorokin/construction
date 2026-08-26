@@ -35,7 +35,7 @@ export class WorkCatalogsService {
   async addItem(catalogId: string, dto: WorkItemDto) {
     await this.mustExist(catalogId);
     return this.prisma.workItem.create({
-      data: { catalogId, name: dto.name, unit: dto.unit, price: String(dto.price), dsu: dto.dsu ?? null },
+      data: { catalogId, name: dto.name, unit: dto.unit, price: String(dto.price) },
     });
   }
 
@@ -59,7 +59,7 @@ export class WorkCatalogsService {
       if (dto.mode === 'replace') await tx.workItem.deleteMany({ where: { catalogId } });
       await tx.workItem.createMany({
         data: dto.items.map((i) => ({
-          catalogId, name: i.name, unit: i.unit, price: String(i.price), dsu: i.dsu ?? null,
+          catalogId, name: i.name, unit: i.unit, price: String(i.price),
         })),
       });
     });
