@@ -45,6 +45,8 @@ async function parseWorkbookFile(file: File): Promise<{ name: string; unit: stri
   return parsed;
 }
 
+const KIND_RU: Record<string, string> = { STROY: 'Строительные', ELEKTRO: 'Электромонтажные' };
+
 export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void }) {
   const [err, setErr] = useState('');
   const [catId, setCatId] = useState(boot.workCatalogs[0]?.id || '');
@@ -54,6 +56,18 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
   const [pendingImport, setPendingImport] = useState<{ name: string; unit: string; price: number }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCat, setNewCat] = useState({ name: '', kind: 'STROY' as 'STROY' | 'ELEKTRO' });
+
+  const createCatalog = () => {
+    if (!newCat.name.trim()) return;
+    act(async () => {
+      const c = await api.workCatalogs.create({ name: newCat.name.trim(), kind: newCat.kind });
+      setCatId(c.id);
+      setNewCat({ name: '', kind: 'STROY' });
+      setNewCatOpen(false);
+    });
+  };
 
   const cat = boot.workCatalogs.find((c: any) => c.id === catId) || boot.workCatalogs[0];
   const items = useMemo(() => {
@@ -96,7 +110,21 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
   };
 
   if (boot.workCatalogs.length === 0) {
-    return <p className="text-sm text-stone-400">Справочников работ ещё нет.</p>;
+    return (
+      <div>
+        <ErrorBox msg={err} />
+        <Card className="max-w-md">
+          <p className="mb-3 text-sm text-stone-500">Справочников работ ещё нет. Создайте первый — работы в него можно будет добавить вручную или загрузить таблицей.</p>
+          <div className="flex flex-wrap gap-2">
+            <input className={`${inputCls} flex-1`} placeholder="Название, напр. «Строительные работы»" value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} />
+            <select className={inputCls} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as any })}>
+              {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <button className={btnPrimary} disabled={busy || !newCat.name.trim()} onClick={createCatalog}><Plus className="h-4 w-4" /> Создать</button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -109,10 +137,27 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
             {c.name} · {c.items.length}
           </button>
         ))}
+        <button onClick={() => setNewCatOpen((v) => !v)}
+                className="rounded-lg border border-dashed border-stone-300 px-3 py-1.5 text-sm text-stone-500 hover:border-stone-400 hover:text-stone-700">
+          <Plus className="mr-1 inline h-3.5 w-3.5" />Новый список
+        </button>
         <span className="flex-1" />
         <button className={btnGhost} onClick={exportXlsx} disabled={!cat}><Download className="h-4 w-4" /> Экспорт в Excel</button>
         <button className={btnGhost} onClick={() => setImpOpen(!impOpen)}><Upload className="h-4 w-4" /> Импорт</button>
       </div>
+
+      {newCatOpen && (
+        <Card className="anim-pop-in mb-3">
+          <div className="flex flex-wrap gap-2">
+            <input className={`${inputCls} flex-1`} placeholder="Название нового списка" value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} />
+            <select className={inputCls} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as any })}>
+              {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <button className={btnPrimary} disabled={busy || !newCat.name.trim()} onClick={createCatalog}>Создать</button>
+            <button className={btnGhost} onClick={() => setNewCatOpen(false)}>Отмена</button>
+          </div>
+        </Card>
+      )}
 
       {impOpen && (
         <Card className="anim-pop-in mb-3">

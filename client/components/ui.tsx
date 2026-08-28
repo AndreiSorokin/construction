@@ -286,22 +286,38 @@ export function BulkBar({ count, onApprove, onReject, onCancel, busy }: {
   );
 }
 
-/** Колокольчик событий: что произошло по заявкам пользователя. */
+const NOTIF_SEEN_KEY = 'notif_last_seen_at';
+
+/** Колокольчик событий: что произошло по заявкам пользователя. Цифра на бейдже — только
+ *  непросмотренные (новее момента последнего открытия), а не все события за 14 дней сразу. */
 export function NotifBell({ items, onOpen, dark }: {
   items: { id: string; reqId: string; number: string; text: string; at: string }[];
   onOpen: (reqId: string) => void; dark?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [lastSeen, setLastSeen] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    try { return Number(localStorage.getItem(NOTIF_SEEN_KEY)) || 0; } catch { return 0; }
+  });
+  const unseenCount = items.filter((e) => new Date(e.at).getTime() > lastSeen).length;
+
+  const openPanel = () => {
+    setOpen(true);
+    const now = Date.now();
+    setLastSeen(now);
+    try { localStorage.setItem(NOTIF_SEEN_KEY, String(now)); } catch { /* приватный режим и т.п. — не критично */ }
+  };
+
   return (
     <div className="relative">
-      <button onClick={() => setOpen(true)} title="События"
+      <button onClick={openPanel} title="События"
         className={dark
           ? 'relative inline-flex items-center justify-center rounded-lg bg-stone-800 p-2 text-stone-300 hover:bg-stone-700'
           : 'relative inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white p-2 text-stone-600 hover:bg-stone-50'}>
         <span aria-hidden>🔔</span>
-        {items.length > 0 && (
+        {unseenCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-xs font-bold text-white">
-            {items.length > 9 ? '9+' : items.length}
+            {unseenCount > 9 ? '9+' : unseenCount}
           </span>
         )}
       </button>

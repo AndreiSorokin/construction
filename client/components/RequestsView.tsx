@@ -1,9 +1,10 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import { Filter, Plus, Search } from 'lucide-react';
-import { Badge, Card, Empty, btnPrimary, btnGhost, pillCls, DueBadge, ObjectDot, BulkBar, appConfirm, appPrompt } from './ui';
+import { ChevronDown, ChevronUp, Filter, Plus, Search } from 'lucide-react';
+import { Badge, Card, Empty, btnPrimary, btnGhost, pillCls, DueBadge, ObjectDot, TypeBadge, BulkBar, appConfirm, appPrompt } from './ui';
 import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, fmtDate } from '@/lib/format';
+import { reqTitle, PRI_RANK, PRI_SELECT_CLS } from '@/lib/requestHelpers';
 import { SupplyBoard } from './SupplyBoard';
 
 const PRI_BORDER: Record<string, string> = {
@@ -103,6 +104,27 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
   const supplyBoard = tab === 'board';
   const canCreate = me.role === 'REQUESTER' || me.role === 'APPROVER' || me.role === 'ADMIN';
 
+  // «Мои заявки»/«Все / архив» — та же таблица, что и в «Доске снабжения» (SupplyBoard),
+  // для единого визуального языка везде, где показывается список заявок
+  const objOf = (r: any) => boot.objects.find((o: any) => o.id === r.objectId);
+  const deptName = (r: any) => boot.departments.find((d: any) => d.id === r.departmentId)?.name || '';
+  const [tsort, setTsort] = useState<{ k: string; d: number }>({ k: 'created', d: -1 });
+  const TCOLS = [
+    { k: 'number', t: '№', get: (r: any) => r.number },
+    { k: 'title', t: 'Заявка', get: (r: any) => reqTitle(r, boot) },
+    { k: 'type', t: 'Тип', get: (r: any) => TYPE_RU[r.type] },
+    { k: 'dept', t: 'Отдел', get: deptName },
+    { k: 'object', t: 'Объект', get: (r: any) => objOf(r)?.name || '' },
+    { k: 'priority', t: 'Приоритет', get: (r: any) => PRIORITY_RU[r.priority], cmp: (a: any, b: any) => PRI_RANK[a.priority] - PRI_RANK[b.priority] },
+    { k: 'due', t: 'Срок', get: (r: any) => (r.due ? fmtDate(r.due) : '—'), cmp: (a: any, b: any) => (a.due ? +new Date(a.due) : 8.64e15) - (b.due ? +new Date(b.due) : 8.64e15) },
+    { k: 'status', t: 'Статус', get: (r: any) => STATUS_RU[r.status] || r.status },
+    { k: 'created', t: 'Создана', get: (r: any) => fmtDate(r.createdAt), cmp: (a: any, b: any) => +new Date(a.createdAt) - +new Date(b.createdAt) },
+    { k: 'spent', t: 'Потрачено', get: (r: any) => (r.spent != null ? r.spent : ''), cmp: (a: any, b: any) => (Number(a.spent) || 0) - (Number(b.spent) || 0) },
+  ];
+  const tcol = TCOLS.find((c) => c.k === tsort.k) || TCOLS[8];
+  const tRows = [...filtered].sort((a, b) => tsort.d * ((tcol as any).cmp ? (tcol as any).cmp(a, b) : String(tcol.get(a)).localeCompare(String(tcol.get(b)), 'ru')));
+  const thClick = (k: string) => setTsort((p) => (p.k === k ? { k, d: -p.d } : { k, d: 1 }));
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -199,6 +221,32 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
             onReplace={onReplace || (() => { if (onReloadAll) onReloadAll(); })}
             onReloadAll={onReloadAll || (() => {})}
             selecting={selecting} selected={selected} onToggleSel={toggleSel} selectableCheck={consolidatable} />
+        ) : tab === 'mine' || tab === 'all' ? (
+          tRows.length === 0 ? <Empty text="Заявок нет." /> : (
+            <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-sm">
+              <table className="w-full text-sm" style={{ minWidth: 920 }}>
+                <thead><tr className="border-b border-stone-200 bg-stone-50 text-left text-xs text-stone-500">
+                  {TCOLS.map((c) => <th key={c.k} className="px-3 py-2 font-semibold uppercase tracking-wide">
+                    <button onClick={() => thClick(c.k)} className={`inline-flex items-center gap-0.5 hover:text-stone-900 ${tsort.k === c.k ? 'text-stone-900' : ''}`}>{c.t}{tsort.k === c.k && (tsort.d === 1 ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}</button>
+                  </th>)}
+                </tr></thead>
+                <tbody>{tRows.map((r) => (
+                  <tr key={r.id} onClick={() => onOpen(r.id)} className="cursor-pointer border-b border-stone-100 transition hover:bg-stone-50">
+                    <td className="px-3 py-2 font-mono text-xs font-semibold text-stone-900">{r.number}</td>
+                    <td className="px-3 py-2 text-stone-800"><span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span></td>
+                    <td className="px-3 py-2"><TypeBadge type={r.type} /></td>
+                    <td className="px-3 py-2 text-xs text-stone-500">{deptName(r)}</td>
+                    <td className="px-3 py-2 text-xs text-stone-500">{objOf(r)?.name || '—'}</td>
+                    <td className="px-3 py-2"><span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs ${PRI_SELECT_CLS[r.priority]}`}>{PRIORITY_RU[r.priority]}</span></td>
+                    <td className="px-3 py-2 font-mono text-xs">{r.due ? fmtDate(r.due) : '—'}</td>
+                    <td className="px-3 py-2"><span className="rounded-full border px-2 py-0.5 text-xs">{STATUS_RU[r.status] || r.status}</span></td>
+                    <td className="px-3 py-2 font-mono text-xs text-stone-500">{fmtDate(r.createdAt)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-xs">{r.spent != null ? r.spent : '—'}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          )
         ) : (
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((r) => <ReqCard key={r.id} r={r} boot={boot} onOpen={() => (selecting ? toggleSel(r.id) : onOpen(r.id))} selectable={selecting} selected={selected.includes(r.id)} />)}

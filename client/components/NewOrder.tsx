@@ -2,31 +2,24 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Plus, Search, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { lineSum, money, periodLabel, qtyNum } from '@/lib/format';
+import { MONTHS_RU, lineSum, money, qtyNum } from '@/lib/format';
 import { Card, ErrorBox, btnGhost, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
-
-function monthsRange(back: number, fwd: number): string[] {
-  const now = new Date();
-  const out: string[] = [];
-  for (let d = -back; d <= fwd; d++) {
-    const dt = new Date(now.getFullYear(), now.getMonth() + d, 1);
-    out.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
-  }
-  return out.sort().reverse();
-}
-const curPeriod = () => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`; };
 
 export function NewOrder({ me, boot, onBack, onCreated }: {
   me: any; boot: any; onBack: () => void; onCreated: (o: any) => void;
 }) {
-  const months = useMemo(() => monthsRange(18, 18), []);
+  const now = new Date();
+  // полноценный выбор года (±10 лет от текущего) и месяца — раньше был ограниченный список ±18 мес.
+  const years = useMemo(() => Array.from({ length: 21 }, (_, i) => now.getFullYear() - 10 + i), []); // eslint-disable-line react-hooks/exhaustive-deps
   const stroyDept = boot.departments.find((d: any) => /строит/i.test(d.name)) || boot.departments[0] || null;
   const chainSteps = [...(boot.orderSteps || [])]
     .filter((s: any) => s.departmentId === stroyDept?.id)
     .sort((a: any, b: any) => a.order - b.order);
   const stroyCat = boot.workCatalogs.find((c: any) => c.kind === 'STROY') || boot.workCatalogs[0] || null;
 
-  const [period, setPeriod] = useState(curPeriod());
+  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const period = `${year}-${String(month).padStart(2, '0')}`;
   const [ipName, setIpName] = useState('');
   const [objectId, setObjectId] = useState('');
   const [catalogId, setCatalogId] = useState(stroyCat?.id || '');
@@ -87,12 +80,17 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
 
       <Card className="mb-4">
         <ErrorBox msg={err} />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div>
+        <div className="grid gap-3 sm:grid-cols-4">
+          <div className="sm:col-span-2">
             <label className={labelCls}>За какой месяц</label>
-            <select className={inputCls} value={period} onChange={(e) => setPeriod(e.target.value)}>
-              {months.map((m) => <option key={m} value={m}>{periodLabel(m)}</option>)}
-            </select>
+            <div className="flex flex-wrap gap-2">
+              <select className={`${inputCls} min-w-[9rem] flex-1`} value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+                {MONTHS_RU.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+              </select>
+              <select className={`${inputCls} w-24`} value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
           </div>
           <div>
             <label className={labelCls}>На какое ИП закрыть</label>
