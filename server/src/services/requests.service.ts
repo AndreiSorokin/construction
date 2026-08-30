@@ -19,9 +19,15 @@ export const FULL = {
   events: { orderBy: { at: 'asc' as const } },
   supplyNotes: { orderBy: { at: 'asc' as const } },
   attachments: true,
-  // исходные заявки сводной — без этого «Из исходных заявок» в карточке всегда пустая
+  // исходные заявки сводной — полный набор, чтобы на странице сводной было видно то же самое,
+  // что было бы видно на странице каждой исходной заявки по отдельности
   consolidatedFrom: {
-    include: { supplyNotes: { orderBy: { at: 'asc' as const } }, attachments: true },
+    include: {
+      items: true,
+      chainSteps: { orderBy: { order: 'asc' as const } },
+      supplyNotes: { orderBy: { at: 'asc' as const } },
+      attachments: true,
+    },
   },
 };
 

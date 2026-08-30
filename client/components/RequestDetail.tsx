@@ -410,30 +410,91 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
 
       {r.isConsolidated && (r.consolidatedFrom || []).length > 0 && (
         <Section title={`Из исходных заявок · ${r.consolidatedFrom.length}`}>
-          <Card>
-            {r.consolidatedFrom.map((src: any) => (
-              <div key={src.id} className="mb-3 border-b border-stone-100 pb-3 last:mb-0 last:border-0 last:pb-0">
-                <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="font-mono font-semibold">{src.number}</span>
-                  {onOpenRequest && <button className="text-xs text-stone-500 underline" onClick={() => onOpenRequest(src.id)}>открыть</button>}
-                </div>
-                {src.note && <p className="mt-1 text-sm text-stone-600">{src.note}</p>}
-                {(src.supplyNotes || []).map((n: any) => (
-                  <p key={n.id} className="mt-1 text-xs text-stone-500">💬 {n.byName}: {n.text}</p>
-                ))}
-                {(src.attachments || []).length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {src.attachments.map((a: any) => (
-                      <button key={a.id} className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-700 hover:bg-stone-50"
-                        onClick={() => api.files.open(a.id)}>
-                        📎 {a.filename}
-                      </button>
+          <div className="space-y-3">
+            {r.consolidatedFrom.map((src: any) => {
+              const srcObj = boot.objects.find((o: any) => o.id === src.objectId);
+              const srcDept = boot.departments.find((d: any) => d.id === src.departmentId);
+              const srcRequester = boot.users.find((u: any) => u.id === src.requesterId);
+              const srcFields = Object.entries(src.fields || {}).filter(([, v]) => v !== '' && v != null);
+              return (
+                <Card key={src.id}>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-base font-bold">{src.number}</span>
+                      <Badge cls={STATUS_CLS[src.status]}>{STATUS_RU[src.status]}</Badge>
+                    </div>
+                    <a href={`?request=${src.id}`} target="_blank" rel="noopener noreferrer"
+                       className="text-xs text-stone-500 underline hover:text-stone-800">открыть в новой вкладке</a>
+                  </div>
+                  <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                    <div><span className="text-stone-400">Тип: </span>{TYPE_RU[src.type]}</div>
+                    <div><span className="text-stone-400">Отдел: </span>{srcDept?.name || '—'}</div>
+                    <div><span className="text-stone-400">Заявитель: </span>{srcRequester?.name || '—'}</div>
+                    <div><span className="text-stone-400">Объект: </span>{srcObj?.name || '—'}</div>
+                    <div><span className="text-stone-400">Приоритет: </span>{PRIORITY_RU[src.priority]}</div>
+                    <div><span className="text-stone-400">Срок: </span>{fmtDate(src.due)}</div>
+                    {srcFields.map(([k, v]: [string, any]) => (
+                      <div key={k}><span className="text-stone-400">{FIELD_RU[k] || k}: </span>{String(v)}</div>
                     ))}
                   </div>
-                )}
-              </div>
-            ))}
-          </Card>
+                  {src.note && <p className="mt-2 rounded-lg bg-stone-50 p-2 text-sm">{src.note}</p>}
+
+                  {(src.items || []).length > 0 && (
+                    <div className="mt-3 overflow-x-auto rounded-lg border border-stone-200">
+                      <table className="w-full text-sm" style={{ minWidth: 360 }}>
+                        <thead>
+                          <tr className="border-b border-stone-200 text-left text-xs text-stone-400">
+                            <th className="p-2 pl-3">Наименование</th>
+                            <th className="p-2">Кол-во</th>
+                            <th className="p-2 pr-3 text-center">Вып.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {src.items.map((it: any) => (
+                            <tr key={it.id} className="border-b border-stone-100 last:border-0">
+                              <td className={`p-2 pl-3 ${it.fulfilled ? 'text-stone-400 line-through' : ''}`}>
+                                {it.name}{it.note && <span className="text-stone-400"> · {it.note}</span>}
+                              </td>
+                              <td className="whitespace-nowrap p-2">{it.qty} {it.unit}</td>
+                              <td className="p-2 pr-3 text-center">
+                                {it.fulfilled ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" /> : <Circle className="mx-auto h-4 w-4 text-stone-300" />}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {(src.chainSteps || []).length > 0 && (
+                    <div className="mt-3">
+                      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-stone-400">Маршрут согласования</div>
+                      <StageTrack steps={src.chainSteps} currentIndex={src.currentStageIndex} status={src.status} />
+                    </div>
+                  )}
+
+                  {(src.supplyNotes || []).length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      {src.supplyNotes.map((n: any) => (
+                        <p key={n.id} className="text-xs text-stone-500">💬 {n.byName}: {n.text}</p>
+                      ))}
+                    </div>
+                  )}
+
+                  {(src.attachments || []).length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {src.attachments.map((a: any) => (
+                        <button key={a.id} className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-700 hover:bg-stone-50"
+                          onClick={() => api.files.open(a.id)}>
+                          📎 {a.filename}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
         </Section>
       )}
 
