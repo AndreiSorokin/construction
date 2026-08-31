@@ -6,10 +6,11 @@ import { SettingsDepartments } from './SettingsDepartments';
 import { SettingsObjects } from './SettingsObjects';
 import { SettingsWorks } from './SettingsWorks';
 import { SettingsOrderChains } from './SettingsOrderChains';
+import { SettingsIps } from './SettingsIps';
 import { SettingsAnnouncements } from './SettingsAnnouncements';
 import { pillCls, PageHeader } from './ui';
 
-// Порядок и состав вкладок — как в эталоне (SettingsHub), за вычетом ИП / Техника / Номенклатура —
+// Порядок и состав вкладок — как в эталоне (SettingsHub), за вычетом Техники и Номенклатуры —
 // эти справочники по-прежнему используются в формах (наряды, заявки), просто без отдельного
 // экрана управления в настройках.
 const TABS = [
@@ -18,6 +19,7 @@ const TABS = [
   { key: 'objects', label: 'Объекты' },
   { key: 'works', label: 'Списки работ' },
   { key: 'ochains', label: 'Маршруты нарядов' },
+  { key: 'ips', label: 'ИП' },
   { key: 'ann', label: 'Объявления' },
   { key: 'data', label: 'Данные' },
 ];
@@ -41,6 +43,7 @@ export function SettingsView({ boot, me, reload }: { boot: any; me?: any; reload
         {tab === 'objects' && <SettingsObjects boot={boot} reload={reload} />}
         {tab === 'works' && <SettingsWorks boot={boot} reload={reload} />}
         {tab === 'ochains' && <SettingsOrderChains boot={boot} reload={reload} />}
+        {tab === 'ips' && <SettingsIps boot={boot} reload={reload} />}
         {tab === 'ann' && <SettingsAnnouncements />}
         {tab === 'data' && <SettingsApp me={me || boot.me || {}} />}
       </div>

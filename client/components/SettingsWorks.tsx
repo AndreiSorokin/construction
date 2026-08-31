@@ -58,6 +58,9 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
   const fileRef = useRef<HTMLInputElement>(null);
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCat, setNewCat] = useState({ name: '', kind: 'STROY' as 'STROY' | 'ELEKTRO' });
+  const [showKind, setShowKind] = useState(false);
+
+  const hideKind = () => { setShowKind(false); setNewCat((c) => ({ ...c, kind: 'STROY' })); };
 
   const createCatalog = () => {
     if (!newCat.name.trim()) return;
@@ -65,6 +68,7 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
       const c = await api.workCatalogs.create({ name: newCat.name.trim(), kind: newCat.kind });
       setCatId(c.id);
       setNewCat({ name: '', kind: 'STROY' });
+      setShowKind(false);
       setNewCatOpen(false);
     });
   };
@@ -115,11 +119,18 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
         <ErrorBox msg={err} />
         <Card className="max-w-md">
           <p className="mb-3 text-sm text-stone-500">Справочников работ ещё нет. Создайте первый — работы в него можно будет добавить вручную или загрузить таблицей.</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input className={`${inputCls} flex-1`} placeholder="Название, напр. «Строительные работы»" value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} />
-            <select className={inputCls} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as any })}>
-              {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            {showKind ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <select className={inputCls} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as any })}>
+                  {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <button type="button" onClick={hideKind} title="Скрыть категорию" className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700">✕</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowKind(true)} className="shrink-0 text-xs text-stone-400 underline hover:text-stone-700">указать категорию</button>
+            )}
             <button className={btnPrimary} disabled={busy || !newCat.name.trim()} onClick={createCatalog}><Plus className="h-4 w-4" /> Создать</button>
           </div>
         </Card>
@@ -148,11 +159,18 @@ export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void 
 
       {newCatOpen && (
         <Card className="anim-pop-in mb-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input className={`${inputCls} flex-1`} placeholder="Название нового списка" value={newCat.name} onChange={(e) => setNewCat({ ...newCat, name: e.target.value })} />
-            <select className={inputCls} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as any })}>
-              {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+            {showKind ? (
+              <div className="flex shrink-0 items-center gap-1">
+                <select className={inputCls} value={newCat.kind} onChange={(e) => setNewCat({ ...newCat, kind: e.target.value as any })}>
+                  {Object.entries(KIND_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <button type="button" onClick={hideKind} title="Скрыть категорию" className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700">✕</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setShowKind(true)} className="shrink-0 text-xs text-stone-400 underline hover:text-stone-700">указать категорию</button>
+            )}
             <button className={btnPrimary} disabled={busy || !newCat.name.trim()} onClick={createCatalog}>Создать</button>
             <button className={btnGhost} onClick={() => setNewCatOpen(false)}>Отмена</button>
           </div>
