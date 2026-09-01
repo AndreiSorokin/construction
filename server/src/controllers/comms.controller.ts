@@ -16,9 +16,9 @@ export class CommsController {
   @Patch('messages/:id/read')
   markRead(@Param('id') id: string, @CurrentUser() u: AuthUser) { return this.comms.markMessageRead(u, id); }
 
-  // анонимка руководству — автор не сохраняется
+  // анонимка руководству — автор не сохраняется (только orgId — организация, не личность)
   @Post('anon')
-  anon(@Body() dto: AnonDto) { return this.comms.sendAnon(dto.text); }
+  anon(@Body() dto: AnonDto, @CurrentUser('orgId') orgId: string) { return this.comms.sendAnon(orgId, dto.text); }
   @Get('anon')
   listAnon(@CurrentUser() u: AuthUser) { return this.comms.listAnon(u); }
 

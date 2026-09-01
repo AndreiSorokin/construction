@@ -1,6 +1,12 @@
 export default () => ({
   port: parseInt(process.env.PORT || '4000', 10),
   webOrigin: (process.env.WEB_ORIGIN || 'http://localhost:3000').split(','),
+  org: {
+    // корневой домен, на котором раздаются поддомены организаций: {slug}.<rootDomain>
+    rootDomain: process.env.ORG_ROOT_DOMAIN || 'interstil.kz',
+    // фолбэк для локальной разработки (нет реальных поддоменов) — X-Org-Slug переопределяет
+    defaultSlug: process.env.ORG_DEFAULT_SLUG || 'interstil',
+  },
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || 'dev_access_secret_change_me',
     accessTtl: process.env.JWT_ACCESS_TTL || '15m',

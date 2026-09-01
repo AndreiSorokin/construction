@@ -8,14 +8,14 @@ import { User } from '@prisma/client';
 export class AuthService {
   constructor(private prisma: PrismaService, private tokens: TokenService) {}
 
-  async validateUser(login: string, password: string): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({ where: { login } });
+  async validateUser(organizationId: string, login: string, password: string): Promise<User | null> {
+    const user = await this.prisma.user.findFirst({ where: { organizationId, login } });
     if (!user || !user.isActive) return null;
     return (await verifyPassword(password, user.passwordHash)) ? user : null;
   }
 
-  async login(login: string, password: string, ctx: { userAgent?: string; ip?: string }) {
-    const user = await this.validateUser(login, password);
+  async login(organizationId: string, login: string, password: string, ctx: { userAgent?: string; ip?: string }) {
+    const user = await this.validateUser(organizationId, login, password);
     if (!user) throw new UnauthorizedException('Неверный логин или пароль');
     const pair = await this.tokens.issuePair(user, ctx);
     return { user: this.publicUser(user), ...pair };

@@ -1,10 +1,33 @@
 import { getAccessToken, setAccessToken, refresh, isAccessFresh, clearAuth } from './auth/refresh-client';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// Мультитенантность: один и тот же билд обслуживает любой {slug}.interstil.kz — бэкенд
+// живёт на том же домене за реверс-прокси, поэтому в браузере резолвим API из текущего origin.
+// NEXT_PUBLIC_API_URL (запечён в билд на этапе сборки) — только фолбэк для локальной разработки
+// и SSR, где своего window.location ещё нет.
+const API =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000');
 
 /** абсолютный URL для относительных путей с бэкенда (например logoUrl из /api/settings) —
  *  нужен там, где путь идёт напрямую в src="", а не через authFetch */
 export const apiUrl = (path: string) => (path.startsWith('http') ? path : API + path);
+
+// Мультитенантность: без реального поддомена (локальная разработка — client и API оба на
+// localhost) сервер не может определить организацию по Host и опирается на X-Org-Slug —
+// запоминаем slug организации после входа/регистрации, чтобы при следующем визите снова
+// попасть в ту же организацию. На бою с реальными поддоменами это просто игнорируется:
+// Host там уже однозначно определяет организацию.
+const ORG_SLUG_KEY = 'org_slug';
+export function getOrgSlug(): string | null {
+  try { return localStorage.getItem(ORG_SLUG_KEY); } catch { return null; }
+}
+function setOrgSlug(slug: string | null | undefined) {
+  try { if (slug) localStorage.setItem(ORG_SLUG_KEY, slug); } catch {}
+}
+function orgHeaders(): Record<string, string> {
+  const slug = getOrgSlug();
+  return slug ? { 'X-Org-Slug': slug } : {};
+}
 
 /** fetch с авто-обновлением access-токена и одним повтором на 401 */
 export async function authFetch(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
@@ -13,6 +36,7 @@ export async function authFetch(path: string, init: RequestInit = {}, retry = tr
   const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData;
   const headers: Record<string, string> = {
     ...(isForm ? {} : { 'Content-Type': 'application/json' }),
+    ...orgHeaders(),
     ...((init.headers as Record<string, string>) || {}),
   };
   const at = getAccessToken();
@@ -58,14 +82,31 @@ export const api = {
     const r = await fetch(API + '/api/auth/login', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...orgHeaders() },
       body: JSON.stringify({ login, password }),
     });
-    const data = await json<{ accessToken: string; user: any }>(r);
+    const data = await json<{ accessToken: string; user: any; org?: { slug: string } }>(r);
     setAccessToken(data.accessToken);
+    setOrgSlug(data.org?.slug);
     return data.user;
   },
   me: () => GET('/api/auth/me'),
+  async checkOrgSlug(slug: string) {
+    const r = await fetch(API + '/api/organizations/check-slug?slug=' + encodeURIComponent(slug));
+    return json<{ slug: string; available: boolean; reason?: 'empty' | 'reserved' | 'taken' }>(r);
+  },
+  async registerOrganization(dto: { orgName: string; slug?: string; adminEmail: string; adminPassword: string }) {
+    const r = await fetch(API + '/api/organizations/register', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    });
+    const data = await json<{ org: any; accessToken: string; user: any }>(r);
+    setAccessToken(data.accessToken);
+    setOrgSlug(data.org?.slug);
+    return data;
+  },
   async logout() {
     await authFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     clearAuth();

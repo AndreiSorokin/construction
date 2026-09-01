@@ -9,8 +9,8 @@ export class VehiclesService {
     return this.prisma.vehicle.findMany({ orderBy: { name: 'asc' } });
   }
 
-  create(name: string) {
-    return this.prisma.vehicle.create({ data: { name } });
+  create(organizationId: string, name: string) {
+    return this.prisma.vehicle.create({ data: { organizationId, name } });
   }
 
   update(id: string, name: string) {

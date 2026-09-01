@@ -14,8 +14,8 @@ export class WorkCatalogsService {
     return this.prisma.workCatalog.findMany({ include: WITH_ITEMS, orderBy: { name: 'asc' } });
   }
 
-  create(dto: CreateWorkCatalogDto) {
-    return this.prisma.workCatalog.create({ data: { name: dto.name, kind: dto.kind }, include: WITH_ITEMS });
+  create(organizationId: string, dto: CreateWorkCatalogDto) {
+    return this.prisma.workCatalog.create({ data: { organizationId, name: dto.name, kind: dto.kind }, include: WITH_ITEMS });
   }
 
   update(id: string, dto: UpdateWorkCatalogDto) {

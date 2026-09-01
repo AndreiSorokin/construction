@@ -21,12 +21,12 @@ type AccentKey = keyof typeof ACCENT;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function Shell({
-  me, view, setView, badges, showOrders, onLogout, onReload, reloading, children, logoUrl, avatarUrl, notif, announcements,
+  me, view, setView, badges, showOrders, onLogout, onReload, reloading, children, logoUrl, avatarUrl, notif, announcements, orgName,
 }: {
   me: any; view: ViewKey; setView: (v: ViewKey) => void;
   badges: Partial<Record<ViewKey, number>>; showOrders: boolean;
   onLogout: () => void; onReload: () => void; reloading?: boolean; children: ReactNode;
-  logoUrl?: string | null; avatarUrl?: string | null; notif?: ReactNode; announcements?: any[];
+  logoUrl?: string | null; avatarUrl?: string | null; notif?: ReactNode; announcements?: any[]; orgName?: string;
 }) {
   // объявление висит сутки с публикации; закреплённое — пока его не открепят/не удалят вручную
   const activeAnnouncements = (announcements || []).filter(
@@ -112,8 +112,8 @@ export function Shell({
         <div className="flex items-center gap-2.5 border-b border-stone-800 px-4 py-4">
           {logo(34, 175, 'h-9 w-9', 'h-6 w-6')}
           {!logoUrl && (
-            <div>
-              <div className="text-sm font-semibold leading-none">ТОО «Интерстиль»</div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold leading-none">{orgName || 'Интерстиль'}</div>
               <div className="mt-1 text-xs text-stone-400">Внутренняя система</div>
             </div>
           )}
@@ -162,7 +162,7 @@ export function Shell({
         </div>
       </main>
       <footer className="no-print mt-2 border-t border-stone-200 px-4 pb-8 pt-4 text-center text-xs text-stone-400 lg:pl-60">
-        ТОО «Интерстиль» · внутренняя система снабжения и нарядов
+        {orgName || 'Интерстиль'} · внутренняя система снабжения и нарядов
       </footer>
     </div>
   );

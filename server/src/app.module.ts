@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -6,6 +6,8 @@ import configuration from './config/configuration';
 import { HealthController } from './controllers/health.controller';
 import { PrismaModule } from './modules/prisma.module';
 import { AuthModule } from './modules/auth.module';
+import { OrganizationsModule } from './modules/organizations.module';
+import { OrgResolveMiddleware } from './middleware/org-resolve.middleware';
 import { UsersModule } from './modules/users.module';
 import { RequestsModule } from './modules/requests.module';
 import { OrdersModule } from './modules/orders.module';
@@ -31,6 +33,7 @@ import { DeltaModule } from './modules/delta.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     PrismaModule,
     AuthModule,
+    OrganizationsModule,
     UsersModule,
     RequestsModule,
     OrdersModule,
@@ -52,4 +55,8 @@ import { DeltaModule } from './modules/delta.module';
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(OrgResolveMiddleware).forRoutes('*');
+  }
+}

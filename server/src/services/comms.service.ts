@@ -14,7 +14,7 @@ export class CommsService {
 
   // ── сообщения администратору ──
   sendToAdmin(u: AuthUser, text: string) {
-    return this.prisma.adminMessage.create({ data: { fromId: u.id, fromName: u.name, text } });
+    return this.prisma.adminMessage.create({ data: { organizationId: u.orgId, fromId: u.id, fromName: u.name, text } });
   }
   listAdminMessages(u: AuthUser) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
@@ -27,8 +27,8 @@ export class CommsService {
   }
 
   // ── анонимка: автора НЕ пишем никуда (ни в поля, ни в логи) ──
-  sendAnon(text: string) {
-    return this.prisma.anonMessage.create({ data: { text }, select: { id: true, createdAt: true } });
+  sendAnon(organizationId: string, text: string) {
+    return this.prisma.anonMessage.create({ data: { organizationId, text }, select: { id: true, createdAt: true } });
   }
   listAnon(u: AuthUser) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
@@ -44,7 +44,7 @@ export class CommsService {
   }
   addAnnouncement(u: AuthUser, text: string) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
-    return this.prisma.announcement.create({ data: { text, byId: u.id, byName: u.name } });
+    return this.prisma.announcement.create({ data: { organizationId: u.orgId, text, byId: u.id, byName: u.name } });
   }
   async deleteAnnouncement(u: AuthUser, id: string) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
@@ -73,7 +73,7 @@ export class CommsService {
     return this.prisma.calendarEvent.findMany({ where, orderBy: { date: 'asc' } });
   }
   addEvent(u: AuthUser, date: string, title: string) {
-    return this.prisma.calendarEvent.create({ data: { date, title, byId: u.id, byName: u.name } });
+    return this.prisma.calendarEvent.create({ data: { organizationId: u.orgId, date, title, byId: u.id, byName: u.name } });
   }
   async deleteEvent(u: AuthUser, id: string) {
     const e = await this.prisma.calendarEvent.findUnique({ where: { id } });

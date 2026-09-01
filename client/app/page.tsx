@@ -228,7 +228,7 @@ export default function Home() {
   return (
     <Shell me={me} view={view} setView={(v) => { setView(v); setOpenReq(null); setOpenOrd(null); setNewReq(false); setNewOrd(false); }}
            badges={badges} showOrders={showOrders} onLogout={onLogout} onReload={handleManualReload} reloading={reloading} logoUrl={appSettings?.logoUrl || null} avatarUrl={avatarUrl}
-           announcements={announcements}
+           announcements={announcements} orgName={boot?.organization?.name}
            notif={<NotifBell items={notifItems} dark onOpen={(id) => { setView('requests'); setOpenReq(id); }} />}>
       {content}
       <DialogHost />

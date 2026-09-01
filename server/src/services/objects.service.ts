@@ -14,9 +14,9 @@ export class ObjectsService {
     return rows.map(({ access, ...o }) => ({ ...o, userIds: access.map((a) => a.userId) }));
   }
 
-  create(dto: CreateObjectDto) {
+  create(organizationId: string, dto: CreateObjectDto) {
     return this.prisma.objectSite.create({
-      data: { name: dto.name, color: dto.color || 'stone', departmentId: dto.departmentId || null },
+      data: { organizationId, name: dto.name, color: dto.color || 'stone', departmentId: dto.departmentId || null },
     });
   }
 

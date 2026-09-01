@@ -3,6 +3,7 @@ import { VehiclesService } from '../services/vehicles.service';
 import { NameDto } from '../dto/dict.dto';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
+import { CurrentUser } from '../decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('vehicles')
@@ -12,7 +13,7 @@ export class VehiclesController {
   @Get() list() { return this.vehicles.list(); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Post() create(@Body() dto: NameDto) { return this.vehicles.create(dto.name); }
+  @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: NameDto) { return this.vehicles.create(orgId, dto.name); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Patch(':id') update(@Param('id') id: string, @Body() dto: NameDto) { return this.vehicles.update(id, dto.name); }

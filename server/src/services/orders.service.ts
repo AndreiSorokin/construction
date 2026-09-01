@@ -17,10 +17,10 @@ const FULL = {
 export class OrdersService {
   constructor(private prisma: PrismaService, private mail: MailService) {}
 
-  private async nextNumber(): Promise<string> {
+  private async nextNumber(organizationId: string): Promise<string> {
     const c = await this.prisma.counter.upsert({
-      where: { key: 'order' },
-      create: { key: 'order', value: 1 },
+      where: { organizationId_key: { organizationId, key: 'order' } },
+      create: { organizationId, key: 'order', value: 1 },
       update: { value: { increment: 1 } },
     });
     return `Н-${String(c.value).padStart(4, '0')}`;
@@ -41,10 +41,11 @@ export class OrdersService {
     const approvers = await this.prisma.user.findMany({ where: { id: { in: steps.map((s) => s.approverId) } } });
     const nameOf = (id: string) => approvers.find((a) => a.id === id);
     const hasChain = steps.length > 0;
-    const number = await this.nextNumber();
+    const number = await this.nextNumber(user.orgId);
 
     const created = await this.prisma.order.create({
       data: {
+        organizationId: user.orgId,
         number,
         departmentId,
         requesterId: user.id,

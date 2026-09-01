@@ -9,8 +9,8 @@ export class DepartmentsService {
     return this.prisma.department.findMany({ orderBy: { createdAt: 'asc' } });
   }
 
-  create(name: string) {
-    return this.prisma.department.create({ data: { name } });
+  create(organizationId: string, name: string) {
+    return this.prisma.department.create({ data: { organizationId, name } });
   }
 
   update(id: string, name: string) {

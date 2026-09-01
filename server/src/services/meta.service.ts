@@ -11,12 +11,13 @@ export class MetaService {
   constructor(private prisma: PrismaService) {}
 
   /** все справочные данные для интерфейса одним вызовом */
-  async bootstrap(userId: string) {
-    const [me, users, departments, objectsRaw, catalogItems, workCatalogs, ips, vehicles, supplySteps, orderSteps] =
+  async bootstrap(organizationId: string, userId: string) {
+    const [organization, me, users, departments, objectsRaw, catalogItems, workCatalogs, ips, vehicles, supplySteps, orderSteps] =
       await Promise.all([
+        this.prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, name: true, slug: true } }),
         this.prisma.user.findUnique({ where: { id: userId }, select: PUB_USER }),
-        this.prisma.user.findMany({ select: PUB_USER, orderBy: { createdAt: 'asc' } }),
-        this.prisma.department.findMany({ orderBy: { createdAt: 'asc' } }),
+        this.prisma.user.findMany({ where: { organizationId }, select: PUB_USER, orderBy: { createdAt: 'asc' } }),
+        this.prisma.department.findMany({ where: { organizationId }, orderBy: { createdAt: 'asc' } }),
         this.prisma.objectSite.findMany({ include: { access: { select: { userId: true } } }, orderBy: { createdAt: 'asc' } }),
         this.prisma.catalogItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] }),
         this.prisma.workCatalog.findMany({ include: { items: { orderBy: { name: 'asc' } } }, orderBy: { name: 'asc' } }),
@@ -26,6 +27,6 @@ export class MetaService {
         this.prisma.orderChainStep.findMany({ orderBy: [{ departmentId: 'asc' }, { order: 'asc' }] }),
       ]);
     const objects = objectsRaw.map(({ access, ...o }) => ({ ...o, userIds: access.map((a) => a.userId) }));
-    return { me, users, departments, objects, catalogItems, workCatalogs, ips, vehicles, supplySteps, orderSteps };
+    return { organization, me, users, departments, objects, catalogItems, workCatalogs, ips, vehicles, supplySteps, orderSteps };
   }
 }

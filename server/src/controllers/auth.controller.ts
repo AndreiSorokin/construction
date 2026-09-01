@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -34,13 +34,18 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60_000 } }) // не более 5 попыток входа в минуту с одного IP
+  // лимит общий на весь IP (офис/NAT — много разных сотрудников с одного адреса), поэтому
+  // держим его заметно выше «ручного» перебора логинов, но всё ещё далеко от брутфорса пароля
+  @Throttle({ default: { limit: 30, ttl: 60_000 } }) // не более 30 попыток входа в минуту с одного IP
   @HttpCode(200)
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { user, accessToken, refreshToken } = await this.auth.login(dto.login, dto.password, this.ctx(req));
+    if (!req.org) throw new UnauthorizedException('Организация не найдена');
+    const { user, accessToken, refreshToken } = await this.auth.login(req.org.id, dto.login, dto.password, this.ctx(req));
     res.cookie(REFRESH_COOKIE, refreshToken, this.cookieOpts());
-    return { accessToken, user };
+    // клиент запоминает slug — без реального поддомена (локальная разработка) это единственный
+    // способ при следующем входе снова попасть в ту же организацию (см. X-Org-Slug в middleware)
+    return { accessToken, user, org: { id: req.org.id, slug: req.org.slug, name: req.org.name } };
   }
 
   @Public()

@@ -183,9 +183,11 @@ export class RequestsExtraService {
 
   // ── объединение заявок (сводные СВ-####) ──
 
-  private async nextConsNumber(): Promise<string> {
+  private async nextConsNumber(organizationId: string): Promise<string> {
     const c = await this.prisma.counter.upsert({
-      where: { key: 'req:CONS' }, create: { key: 'req:CONS', value: 1 }, update: { value: { increment: 1 } },
+      where: { organizationId_key: { organizationId, key: 'req:CONS' } },
+      create: { organizationId, key: 'req:CONS', value: 1 },
+      update: { value: { increment: 1 } },
     });
     return `СВ-${String(c.value).padStart(4, '0')}`;
   }
@@ -201,7 +203,7 @@ export class RequestsExtraService {
     if (good.length < 2) {
       throw new BadRequestException('Для объединения выберите минимум две активные заявки с позициями (не входящие в другую сводную)');
     }
-    const number = await this.nextConsNumber();
+    const number = await this.nextConsNumber(u.orgId);
     // агрегируем позиции по «наименование + единица», храня ссылки на источники
     const agg = new Map<string, { name: string; unit: string; qty: number; srcRefs: { requestId: string; itemId: string }[] }>();
     for (const r of good) {
@@ -216,6 +218,7 @@ export class RequestsExtraService {
     const created = await this.prisma.$transaction(async (tx) => {
       const cons = await tx.request.create({
         data: {
+          organizationId: u.orgId,
           number,
           type: good[0].type,
           departmentId: good[0].departmentId,

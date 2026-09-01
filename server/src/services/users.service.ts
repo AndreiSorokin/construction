@@ -17,20 +17,21 @@ export class UsersService {
     return this.prisma.user.findMany({ select: pub, orderBy: { createdAt: 'asc' } });
   }
 
-  private async freeLogin(): Promise<string> {
-    const users = await this.prisma.user.findMany({ select: { login: true } });
+  private async freeLogin(organizationId: string): Promise<string> {
+    const users = await this.prisma.user.findMany({ where: { organizationId }, select: { login: true } });
     const taken = new Set(users.map((u) => u.login.toLowerCase()));
     let n = users.length + 1;
     while (taken.has(`user${n}`)) n++;
     return `user${n}`;
   }
 
-  async create(dto: CreateUserDto) {
-    const login = (dto.login || '').trim() || (await this.freeLogin());
-    const dup = await this.prisma.user.findFirst({ where: { login: { equals: login, mode: 'insensitive' } } });
+  async create(organizationId: string, dto: CreateUserDto) {
+    const login = (dto.login || '').trim() || (await this.freeLogin(organizationId));
+    const dup = await this.prisma.user.findFirst({ where: { organizationId, login: { equals: login, mode: 'insensitive' } } });
     if (dup) throw new BadRequestException(`Логин «${login}» уже занят — выберите другой`);
     return this.prisma.user.create({
       data: {
+        organizationId,
         login,
         name: dto.name,
         role: dto.role,
@@ -53,7 +54,7 @@ export class UsersService {
     }
     if (dto.login) {
       const dup = await this.prisma.user.findFirst({
-        where: { login: { equals: dto.login, mode: 'insensitive' }, NOT: { id } },
+        where: { organizationId: current.orgId, login: { equals: dto.login, mode: 'insensitive' }, NOT: { id } },
       });
       if (dup) throw new BadRequestException(`Логин «${dto.login}» уже занят — выберите другой`);
     }

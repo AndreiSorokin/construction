@@ -3,6 +3,7 @@ import { DepartmentsService } from '../services/departments.service';
 import { NameDto } from '../dto/dict.dto';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
+import { CurrentUser } from '../decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('departments')
@@ -12,7 +13,7 @@ export class DepartmentsController {
   @Get() list() { return this.departments.list(); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Post() create(@Body() dto: NameDto) { return this.departments.create(dto.name); }
+  @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: NameDto) { return this.departments.create(orgId, dto.name); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Patch(':id') update(@Param('id') id: string, @Body() dto: NameDto) { return this.departments.update(id, dto.name); }

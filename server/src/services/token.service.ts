@@ -34,9 +34,9 @@ export class TokenService {
     return createHash('sha256').update(v).digest('hex');
   }
 
-  private signAccess(user: Pick<User, 'id' | 'role' | 'name'>): string {
+  private signAccess(user: Pick<User, 'id' | 'role' | 'name' | 'organizationId'>): string {
     return this.jwt.sign(
-      { sub: user.id, role: user.role, name: user.name },
+      { sub: user.id, role: user.role, name: user.name, orgId: user.organizationId },
       {
         secret: this.config.get<string>('jwt.accessSecret'),
         expiresIn: this.config.get<string>('jwt.accessTtl') || '15m',

@@ -14,7 +14,7 @@ export class UsersController {
 
   @Get() list() { return this.users.list(); }
 
-  @Post() create(@Body() dto: CreateUserDto) { return this.users.create(dto); }
+  @Post() create(@Body() dto: CreateUserDto, @CurrentUser('orgId') orgId: string) { return this.users.create(orgId, dto); }
 
   @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() u: AuthUser) {
     return this.users.update(id, dto, u);

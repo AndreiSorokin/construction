@@ -35,10 +35,11 @@ export const FULL = {
 export class RequestsService {
   constructor(private prisma: PrismaService, private mail: MailService) {}
 
-  private async nextNumber(type: RequestType): Promise<string> {
+  private async nextNumber(organizationId: string, type: RequestType): Promise<string> {
+    const key = `req:${type}`;
     const c = await this.prisma.counter.upsert({
-      where: { key: `req:${type}` },
-      create: { key: `req:${type}`, value: 1 },
+      where: { organizationId_key: { organizationId, key } },
+      create: { organizationId, key, value: 1 },
       update: { value: { increment: 1 } },
     });
     return `${PREFIX[type]}-${String(c.value).padStart(4, '0')}`;
@@ -54,23 +55,26 @@ export class RequestsService {
     const approvers = await this.prisma.user.findMany({ where: { id: { in: approverIds } } });
     const nameOf = (id: string) => approvers.find((a) => a.id === id);
 
-    const number = await this.nextNumber(dto.type);
+    const number = await this.nextNumber(user.orgId, dto.type);
     const hasChain = steps.length > 0;
 
     // лимит «Срочно» в день: при исчерпании приоритет тихо понижается до «Высокий» с записью в историю
     let priority = dto.priority ?? Priority.NORMAL;
     let downgraded = false;
     if (priority === Priority.URGENT) {
-      const setting = await this.prisma.appSetting.upsert({ where: { id: 'app' }, create: { id: 'app' }, update: {} });
+      const setting = await this.prisma.appSetting.upsert({
+        where: { organizationId: user.orgId }, create: { organizationId: user.orgId }, update: {},
+      });
       if (setting.urgentLimit > 0) {
         const from = new Date(); from.setHours(0, 0, 0, 0);
-        const todayUrgent = await this.prisma.request.count({ where: { priority: Priority.URGENT, createdAt: { gte: from } } });
+        const todayUrgent = await this.prisma.request.count({ where: { organizationId: user.orgId, priority: Priority.URGENT, createdAt: { gte: from } } });
         if (todayUrgent >= setting.urgentLimit) { priority = Priority.HIGH; downgraded = true; }
       }
     }
 
     const created = await this.prisma.request.create({
       data: {
+        organizationId: user.orgId,
         number,
         type: dto.type,
         departmentId: dto.departmentId,

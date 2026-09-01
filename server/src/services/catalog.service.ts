@@ -10,8 +10,8 @@ export class CatalogService {
     return this.prisma.catalogItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] });
   }
 
-  create(dto: CreateCatalogItemDto) {
-    return this.prisma.catalogItem.create({ data: { name: dto.name, unit: dto.unit, category: dto.category || '' } });
+  create(organizationId: string, dto: CreateCatalogItemDto) {
+    return this.prisma.catalogItem.create({ data: { organizationId, name: dto.name, unit: dto.unit, category: dto.category || '' } });
   }
 
   update(id: string, dto: UpdateCatalogItemDto) {

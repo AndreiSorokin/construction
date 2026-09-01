@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { MetaService } from '../services/meta.service';
-import { CurrentUser } from '../decorators/current-user.decorator';
+import { CurrentUser, AuthUser } from '../decorators/current-user.decorator';
 
 @Controller('meta')
 export class MetaController {
@@ -8,7 +8,7 @@ export class MetaController {
 
   /** все справочные данные + профиль одним запросом */
   @Get('bootstrap')
-  bootstrap(@CurrentUser('id') userId: string) {
-    return this.meta.bootstrap(userId);
+  bootstrap(@CurrentUser() u: AuthUser) {
+    return this.meta.bootstrap(u.orgId, u.id);
   }
 }

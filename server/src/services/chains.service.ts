@@ -21,23 +21,23 @@ export class ChainsService {
     if (found !== ids.length) throw new BadRequestException('Указан несуществующий согласующий');
   }
 
-  async setSupply(departmentId: string, type: RequestType, steps: ChainStepDto[]) {
+  async setSupply(organizationId: string, departmentId: string, type: RequestType, steps: ChainStepDto[]) {
     await this.checkApprovers(steps);
     await this.prisma.$transaction([
       this.prisma.supplyChainStep.deleteMany({ where: { departmentId, type } }),
       this.prisma.supplyChainStep.createMany({
-        data: steps.map((s, i) => ({ departmentId, type, order: i, approverId: s.approverId, label: s.label })),
+        data: steps.map((s, i) => ({ organizationId, departmentId, type, order: i, approverId: s.approverId, label: s.label })),
       }),
     ]);
     return this.listSupply();
   }
 
-  async setOrder(departmentId: string, steps: ChainStepDto[]) {
+  async setOrder(organizationId: string, departmentId: string, steps: ChainStepDto[]) {
     await this.checkApprovers(steps);
     await this.prisma.$transaction([
       this.prisma.orderChainStep.deleteMany({ where: { departmentId } }),
       this.prisma.orderChainStep.createMany({
-        data: steps.map((s, i) => ({ departmentId, order: i, approverId: s.approverId, label: s.label })),
+        data: steps.map((s, i) => ({ organizationId, departmentId, order: i, approverId: s.approverId, label: s.label })),
       }),
     ]);
     return this.listOrder();

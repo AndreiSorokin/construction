@@ -5,6 +5,7 @@ import {
 } from '../dto/work.dto';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../decorators/roles.decorator';
+import { CurrentUser } from '../decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
 @Controller('work-catalogs')
@@ -14,7 +15,7 @@ export class WorkCatalogsController {
   @Get() list() { return this.works.list(); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Post() create(@Body() dto: CreateWorkCatalogDto) { return this.works.create(dto); }
+  @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateWorkCatalogDto) { return this.works.create(orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateWorkCatalogDto) { return this.works.update(id, dto); }

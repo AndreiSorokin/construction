@@ -1,9 +1,9 @@
 import {
-  BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Res, UploadedFile, UseInterceptors,
+  BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Req, Res, UploadedFile, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { SettingsService } from '../services/settings.service';
 import { Public } from '../decorators/public.decorator';
 import { CurrentUser, AuthUser } from '../decorators/current-user.decorator';
@@ -16,7 +16,10 @@ export class SettingsController {
 
   @Public()
   @Get()
-  get() { return this.settings.get(); }
+  get(@Req() req: Request) {
+    if (!req.org) throw new NotFoundException('Организация не найдена');
+    return this.settings.get(req.org.id);
+  }
 
   @Patch('urgent-limit')
   urgentLimit(@Body('urgentLimit') n: number, @CurrentUser() u: AuthUser) {
@@ -42,8 +45,9 @@ export class SettingsController {
   // публичный: логотип виден и на странице входа, до авторизации
   @Public()
   @Get('logo/file')
-  async logoFile(@Res() res: Response) {
-    const logo = await this.settings.getLogoObject();
+  async logoFile(@Req() req: Request, @Res() res: Response) {
+    if (!req.org) throw new NotFoundException('Организация не найдена');
+    const logo = await this.settings.getLogoObject(req.org.id);
     if (!logo) throw new NotFoundException('Логотип не загружен');
     res.set('Content-Type', logo.object.ContentType || 'application/octet-stream');
     res.set('Cache-Control', 'public, max-age=31536000, immutable');

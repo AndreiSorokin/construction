@@ -10,8 +10,8 @@ export class IpsService {
     return this.prisma.ip.findMany({ orderBy: { name: 'asc' } });
   }
 
-  create(dto: CreateIpDto) {
-    return this.prisma.ip.create({ data: { name: dto.name, bin: dto.bin || null, vat: dto.vat ?? true } });
+  create(organizationId: string, dto: CreateIpDto) {
+    return this.prisma.ip.create({ data: { organizationId, name: dto.name, bin: dto.bin || null, vat: dto.vat ?? true } });
   }
 
   update(id: string, dto: UpdateIpDto) {
