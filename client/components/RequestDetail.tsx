@@ -38,6 +38,15 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
     try { onUpdated(await fn()); } catch (e: any) { setErr(e?.message || 'Ошибка'); } finally { setBusy(false); }
   };
 
+  // правки позиций исходных заявок (внутри «Из исходных заявок» на странице сводной) должны
+  // обновлять именно ТЕКУЩУЮ (сводную) страницу, а не подменять её данными исходной заявки —
+  // поэтому после мутации перечитываем саму r.id, а не результат fn()
+  const actOnSource = async (fn: () => Promise<any>) => {
+    setErr(''); setBusy(true);
+    try { await fn(); onUpdated(await api.requests.get(r.id)); }
+    catch (e: any) { setErr(e?.message || 'Ошибка'); } finally { setBusy(false); }
+  };
+
   const upload = async (f: File | undefined) => {
     if (!f) return;
     setErr(''); setBusy(true);
@@ -186,6 +195,9 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
 
       {r.items?.length > 0 && (
         <Section title={`Позиции · ${r.items.length}`}>
+          {r.isConsolidated && (
+            <p className="mb-2 text-xs text-stone-400">Собрано из исходных заявок — правки вносятся там же, ниже на этой странице.</p>
+          )}
           <Card className="!p-0 overflow-x-auto">
             <table className="w-full text-sm" style={{ minWidth: 560 }}>
               <thead>
@@ -207,7 +219,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                     </td>
                     <td className="whitespace-nowrap p-2">{it.qty} {it.unit}</td>
                     <td className="p-2">
-                      {myTurn && me.role === 'WAREHOUSE' ? (
+                      {myTurn && me.role === 'WAREHOUSE' && !r.isConsolidated ? (
                         <div className="flex gap-1">
                           <button disabled={busy} onClick={() => act(() => api.requests.stock(r.id, it.id, 'IN'))}
                             className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'}`}>Есть</button>
@@ -223,7 +235,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                     </td>
                     {(r.status === 'SUPPLY' || r.status === 'FULFILLED') && (
                       <td className="whitespace-nowrap p-2">
-                        {canWorkSupply ? (
+                        {canWorkSupply && !r.isConsolidated ? (
                           <input className={`${inputCls} !w-20 !px-2 !py-1 text-xs`} defaultValue={it.deliveredQty || ''} disabled={busy}
                             placeholder="0" title="Сколько фактически получено"
                             onBlur={(e) => { if (e.target.value !== (it.deliveredQty || '')) act(() => api.requestsX.item(r.id, it.id, { deliveredQty: e.target.value })); }} />
@@ -232,7 +244,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                     )}
                     {r.status === 'SUPPLY' && (
                       <td className="whitespace-nowrap p-2">
-                        {canWorkSupply ? (
+                        {canWorkSupply && !r.isConsolidated ? (
                           <input type="date" className={`${inputCls} !w-36 !px-2 !py-1 text-xs`} defaultValue={it.eta ? String(it.eta).slice(0, 10) : ''} disabled={busy}
                             title="Ожидаемый срок поставки"
                             onBlur={(e) => { const v = e.target.value || null; const cur = it.eta ? String(it.eta).slice(0, 10) : ''; if ((v || '') !== cur) act(() => api.requestsX.item(r.id, it.id, { eta: v })); }} />
@@ -240,7 +252,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                       </td>
                     )}
                     <td className="p-2 pr-3">
-                      {canWorkSupply ? (
+                      {canWorkSupply && !r.isConsolidated ? (
                         <button disabled={busy} title={it.fulfilled ? 'Снять отметку' : 'Отметить выполненной'}
                           onClick={() => act(() => api.requests.fulfilled(r.id, it.id, !it.fulfilled))} className="mx-auto flex">
                           {it.fulfilled ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-stone-300" />}
@@ -441,11 +453,14 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
 
                   {(src.items || []).length > 0 && (
                     <div className="mt-3 overflow-x-auto rounded-lg border border-stone-200">
-                      <table className="w-full text-sm" style={{ minWidth: 360 }}>
+                      <table className="w-full text-sm" style={{ minWidth: 560 }}>
                         <thead>
                           <tr className="border-b border-stone-200 text-left text-xs text-stone-400">
                             <th className="p-2 pl-3">Наименование</th>
                             <th className="p-2">Кол-во</th>
+                            <th className="p-2">Наличие</th>
+                            <th className="p-2">Получено</th>
+                            <th className="p-2">Срок пост.</th>
                             <th className="p-2 pr-3 text-center">Вып.</th>
                           </tr>
                         </thead>
@@ -456,8 +471,41 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                                 {it.name}{it.note && <span className="text-stone-400"> · {it.note}</span>}
                               </td>
                               <td className="whitespace-nowrap p-2">{it.qty} {it.unit}</td>
+                              <td className="p-2">
+                                {canWorkSupply ? (
+                                  <div className="flex gap-1">
+                                    <button disabled={busy} onClick={() => actOnSource(() => api.requests.stock(src.id, it.id, 'IN'))}
+                                      className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'}`}>Есть</button>
+                                    <button disabled={busy} onClick={() => actOnSource(() => api.requests.stock(src.id, it.id, 'OUT'))}
+                                      className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'OUT' ? 'bg-rose-100 text-rose-700' : 'bg-stone-100 text-stone-500'}`}>Нет</button>
+                                  </div>
+                                ) : it.stockStatus ? (
+                                  <span className={it.stockStatus === 'IN' ? 'text-emerald-600' : 'text-rose-600'}>{it.stockStatus === 'IN' ? 'есть' : 'нет'}</span>
+                                ) : <span className="text-stone-300">—</span>}
+                              </td>
+                              <td className="whitespace-nowrap p-2">
+                                {canWorkSupply ? (
+                                  <input className={`${inputCls} !w-20 !px-2 !py-1 text-xs`} defaultValue={it.deliveredQty || ''} disabled={busy}
+                                    placeholder="0" title="Сколько фактически получено"
+                                    onBlur={(e) => { if (e.target.value !== (it.deliveredQty || '')) actOnSource(() => api.requestsX.item(src.id, it.id, { deliveredQty: e.target.value })); }} />
+                                ) : (it.deliveredQty ? <span>{it.deliveredQty}</span> : <span className="text-stone-300">—</span>)}
+                              </td>
+                              <td className="whitespace-nowrap p-2">
+                                {canWorkSupply ? (
+                                  <input type="date" className={`${inputCls} !w-36 !px-2 !py-1 text-xs`} defaultValue={it.eta ? String(it.eta).slice(0, 10) : ''} disabled={busy}
+                                    title="Ожидаемый срок поставки"
+                                    onBlur={(e) => { const v = e.target.value || null; const cur = it.eta ? String(it.eta).slice(0, 10) : ''; if ((v || '') !== cur) actOnSource(() => api.requestsX.item(src.id, it.id, { eta: v })); }} />
+                                ) : (it.eta ? <span>{String(it.eta).slice(0, 10)}</span> : <span className="text-stone-300">—</span>)}
+                              </td>
                               <td className="p-2 pr-3 text-center">
-                                {it.fulfilled ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" /> : <Circle className="mx-auto h-4 w-4 text-stone-300" />}
+                                {canWorkSupply ? (
+                                  <button disabled={busy} title={it.fulfilled ? 'Снять отметку' : 'Отметить выполненной'}
+                                    onClick={() => actOnSource(() => api.requests.fulfilled(src.id, it.id, !it.fulfilled))} className="mx-auto flex">
+                                    {it.fulfilled ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <Circle className="h-4 w-4 text-stone-300" />}
+                                  </button>
+                                ) : (
+                                  it.fulfilled ? <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-500" /> : <Circle className="mx-auto h-4 w-4 text-stone-300" />
+                                )}
                               </td>
                             </tr>
                           ))}

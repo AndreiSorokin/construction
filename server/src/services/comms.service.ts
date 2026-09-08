@@ -18,11 +18,12 @@ export class CommsService {
   }
   listAdminMessages(u: AuthUser) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
-    return this.prisma.adminMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 500 });
+    return this.prisma.adminMessage.findMany({ where: { organizationId: u.orgId }, orderBy: { createdAt: 'desc' }, take: 500 });
   }
   async markMessageRead(u: AuthUser, id: string) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
-    await this.prisma.adminMessage.update({ where: { id }, data: { readAt: new Date() } });
+    const res = await this.prisma.adminMessage.updateMany({ where: { id, organizationId: u.orgId }, data: { readAt: new Date() } });
+    if (res.count === 0) throw new NotFoundException('Сообщение не найдено');
     return { ok: true };
   }
 
@@ -32,12 +33,13 @@ export class CommsService {
   }
   listAnon(u: AuthUser) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
-    return this.prisma.anonMessage.findMany({ orderBy: { createdAt: 'desc' }, take: 500 });
+    return this.prisma.anonMessage.findMany({ where: { organizationId: u.orgId }, orderBy: { createdAt: 'desc' }, take: 500 });
   }
 
   // ── объявления ──
   listAnnouncements(u: AuthUser) {
     return this.prisma.announcement.findMany({
+      where: { organizationId: u.orgId },
       orderBy: [{ pinned: 'desc' }, { createdAt: 'desc' }],
       include: { reads: { where: { userId: u.id }, select: { userId: true } } },
     }).then((rows) => rows.map(({ reads, ...a }) => ({ ...a, readByMe: reads.length > 0 })));
@@ -48,16 +50,19 @@ export class CommsService {
   }
   async deleteAnnouncement(u: AuthUser, id: string) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
-    await this.prisma.announcement.delete({ where: { id } });
+    const res = await this.prisma.announcement.deleteMany({ where: { id, organizationId: u.orgId } });
+    if (res.count === 0) throw new NotFoundException('Объявление не найдено');
     return { ok: true };
   }
   async togglePin(u: AuthUser, id: string) {
     if (u.role !== Role.ADMIN) throw new ForbiddenException('Только администратор');
-    const a = await this.prisma.announcement.findUnique({ where: { id } });
+    const a = await this.prisma.announcement.findFirst({ where: { id, organizationId: u.orgId } });
     if (!a) throw new NotFoundException('Объявление не найдено');
     return this.prisma.announcement.update({ where: { id }, data: { pinned: !a.pinned } });
   }
   async markAnnouncementRead(u: AuthUser, id: string) {
+    const a = await this.prisma.announcement.findFirst({ where: { id, organizationId: u.orgId } });
+    if (!a) throw new NotFoundException('Объявление не найдено');
     await this.prisma.announcementRead.upsert({
       where: { announcementId_userId: { announcementId: id, userId: u.id } },
       create: { announcementId: id, userId: u.id },
@@ -67,8 +72,8 @@ export class CommsService {
   }
 
   // ── календарь ──
-  listEvents(from?: string, to?: string) {
-    const where: Prisma.CalendarEventWhereInput = {};
+  listEvents(organizationId: string, from?: string, to?: string) {
+    const where: Prisma.CalendarEventWhereInput = { organizationId };
     if (from || to) where.date = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) };
     return this.prisma.calendarEvent.findMany({ where, orderBy: { date: 'asc' } });
   }
@@ -76,7 +81,7 @@ export class CommsService {
     return this.prisma.calendarEvent.create({ data: { organizationId: u.orgId, date, title, byId: u.id, byName: u.name } });
   }
   async deleteEvent(u: AuthUser, id: string) {
-    const e = await this.prisma.calendarEvent.findUnique({ where: { id } });
+    const e = await this.prisma.calendarEvent.findFirst({ where: { id, organizationId: u.orgId } });
     if (!e) return { ok: true };
     if (e.byId !== u.id && u.role !== Role.ADMIN) throw new ForbiddenException('Удалить может автор или админ');
     await this.prisma.calendarEvent.delete({ where: { id } });

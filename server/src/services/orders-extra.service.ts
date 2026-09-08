@@ -15,8 +15,8 @@ const FULL = {
 export class OrdersExtraService {
   constructor(private prisma: PrismaService, private mail: MailService) {}
 
-  private async getOne(id: string) {
-    const o = await this.prisma.order.findUnique({ where: { id }, include: FULL });
+  private async getOne(id: string, organizationId: string) {
+    const o = await this.prisma.order.findFirst({ where: { id, organizationId }, include: FULL });
     if (!o) throw new NotFoundException('Наряд не найден');
     return o;
   }
@@ -33,7 +33,7 @@ export class OrdersExtraService {
 
   /** кол-во — любой, кто вправе править; ЦЕНУ — только canPrice или админ. Значения клампятся к ≥ 0. */
   async patchLine(id: string, lineId: string, u: AuthUser, patch: { qty?: string; price?: number }) {
-    const o = await this.getOne(id);
+    const o = await this.getOne(id, u.orgId);
     if (!(await this.canEditLines(o, u))) throw new ForbiddenException('Сейчас наряд править нельзя');
     if (!o.lines.some((l) => l.id === lineId)) throw new NotFoundException('Позиция не найдена');
     const data: Prisma.OrderLineUpdateInput = {};
@@ -52,22 +52,22 @@ export class OrdersExtraService {
     await this.prisma.orderEvent.create({
       data: { orderId: id, action: DecisionAction.EDITED, byId: u.id, byName: u.name, comment: 'Изменён состав наряда' },
     });
-    return this.getOne(id);
+    return this.getOne(id, u.orgId);
   }
 
   async removeLine(id: string, lineId: string, u: AuthUser) {
-    const o = await this.getOne(id);
+    const o = await this.getOne(id, u.orgId);
     if (!(await this.canEditLines(o, u))) throw new ForbiddenException('Сейчас наряд править нельзя');
     await this.prisma.orderLine.deleteMany({ where: { id: lineId, orderId: id } });
     await this.prisma.orderEvent.create({
       data: { orderId: id, action: DecisionAction.EDITED, byId: u.id, byName: u.name, comment: 'Позиция удалена' },
     });
-    return this.getOne(id);
+    return this.getOne(id, u.orgId);
   }
 
   /** отклонённый наряд: автор дорабатывает и отправляет повторно (маршрут с нуля) */
   async resubmit(id: string, u: AuthUser) {
-    const o = await this.getOne(id);
+    const o = await this.getOne(id, u.orgId);
     if (o.requesterId !== u.id && u.role !== Role.ADMIN) throw new ForbiddenException('Повторно подать может автор');
     if (o.status !== OrderStatus.REJECTED) throw new BadRequestException('Повторная подача — только для отклонённых');
     if (o.lines.length === 0) throw new BadRequestException('В наряде нет ни одной позиции — добавьте работы');
@@ -85,6 +85,6 @@ export class OrdersExtraService {
       const appr = await this.prisma.user.findUnique({ where: { id: first.approverId } });
       if (appr?.email) this.mail.notifyApprovalNeeded(appr.email, appr.name, o.number, `/orders/${id}`).catch(() => undefined);
     }
-    return this.getOne(id);
+    return this.getOne(id, u.orgId);
   }
 }

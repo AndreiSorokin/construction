@@ -22,7 +22,7 @@ export class RequestsController {
   }
 
   @Get(':id')
-  get(@Param('id') id: string) { return this.requests.getOne(id); }
+  get(@Param('id') id: string, @CurrentUser() u: AuthUser) { return this.requests.getOne(id, u.orgId); }
 
   @UseGuards(RolesGuard)
   @Roles(Role.REQUESTER, Role.APPROVER, Role.ADMIN)
@@ -48,8 +48,8 @@ export class RequestsController {
   @UseGuards(RolesGuard)
   @Roles(Role.SUPPLY, Role.ADMIN)
   @Patch(':id/supply-stage')
-  stage(@Param('id') id: string, @Body() dto: SetStageDto) {
-    return this.requests.setSupplyStage(id, dto.stage);
+  stage(@Param('id') id: string, @Body() dto: SetStageDto, @CurrentUser('orgId') orgId: string) {
+    return this.requests.setSupplyStage(id, orgId, dto.stage);
   }
 
   @UseGuards(RolesGuard)
@@ -86,8 +86,8 @@ export class RequestsController {
   @UseGuards(RolesGuard)
   @Roles(Role.SUPPLY, Role.ADMIN)
   @Patch(':id/items/:itemId/fulfilled')
-  fulfilled(@Param('id') id: string, @Param('itemId') itemId: string, @Body() dto: FulfilledDto) {
-    return this.requests.setItemFulfilled(id, itemId, dto.fulfilled);
+  fulfilled(@Param('id') id: string, @Param('itemId') itemId: string, @Body() dto: FulfilledDto, @CurrentUser('orgId') orgId: string) {
+    return this.requests.setItemFulfilled(id, orgId, itemId, dto.fulfilled);
   }
 
   @UseGuards(RolesGuard)
@@ -100,7 +100,7 @@ export class RequestsController {
   @UseGuards(RolesGuard)
   @Roles(Role.SUPPLY, Role.ADMIN)
   @Patch(':id/postpone')
-  postpone(@Param('id') id: string, @Body() dto: PostponeDto) {
-    return this.requests.setPostponed(id, dto.postponed);
+  postpone(@Param('id') id: string, @Body() dto: PostponeDto, @CurrentUser('orgId') orgId: string) {
+    return this.requests.setPostponed(id, orgId, dto.postponed);
   }
 }

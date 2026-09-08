@@ -10,14 +10,14 @@ import { Role } from '@prisma/client';
 export class CatalogController {
   constructor(private catalog: CatalogService) {}
 
-  @Get() list() { return this.catalog.list(); }
+  @Get() list(@CurrentUser('orgId') orgId: string) { return this.catalog.list(orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateCatalogItemDto) { return this.catalog.create(orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateCatalogItemDto) { return this.catalog.update(id, dto); }
+  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateCatalogItemDto, @CurrentUser('orgId') orgId: string) { return this.catalog.update(id, orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Delete(':id') remove(@Param('id') id: string) { return this.catalog.remove(id); }
+  @Delete(':id') remove(@Param('id') id: string, @CurrentUser('orgId') orgId: string) { return this.catalog.remove(id, orgId); }
 }

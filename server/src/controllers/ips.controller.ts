@@ -10,14 +10,14 @@ import { Role } from '@prisma/client';
 export class IpsController {
   constructor(private ips: IpsService) {}
 
-  @Get() list() { return this.ips.list(); }
+  @Get() list(@CurrentUser('orgId') orgId: string) { return this.ips.list(orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateIpDto) { return this.ips.create(orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateIpDto) { return this.ips.update(id, dto); }
+  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateIpDto, @CurrentUser('orgId') orgId: string) { return this.ips.update(id, orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Delete(':id') remove(@Param('id') id: string) { return this.ips.remove(id); }
+  @Delete(':id') remove(@Param('id') id: string, @CurrentUser('orgId') orgId: string) { return this.ips.remove(id, orgId); }
 }

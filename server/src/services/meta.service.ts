@@ -18,13 +18,13 @@ export class MetaService {
         this.prisma.user.findUnique({ where: { id: userId }, select: PUB_USER }),
         this.prisma.user.findMany({ where: { organizationId }, select: PUB_USER, orderBy: { createdAt: 'asc' } }),
         this.prisma.department.findMany({ where: { organizationId }, orderBy: { createdAt: 'asc' } }),
-        this.prisma.objectSite.findMany({ include: { access: { select: { userId: true } } }, orderBy: { createdAt: 'asc' } }),
-        this.prisma.catalogItem.findMany({ orderBy: [{ category: 'asc' }, { name: 'asc' }] }),
-        this.prisma.workCatalog.findMany({ include: { items: { orderBy: { name: 'asc' } } }, orderBy: { name: 'asc' } }),
-        this.prisma.ip.findMany({ orderBy: { name: 'asc' } }),
-        this.prisma.vehicle.findMany({ orderBy: { name: 'asc' } }),
-        this.prisma.supplyChainStep.findMany({ orderBy: [{ departmentId: 'asc' }, { type: 'asc' }, { order: 'asc' }] }),
-        this.prisma.orderChainStep.findMany({ orderBy: [{ departmentId: 'asc' }, { order: 'asc' }] }),
+        this.prisma.objectSite.findMany({ where: { organizationId }, include: { access: { select: { userId: true } } }, orderBy: { createdAt: 'asc' } }),
+        this.prisma.catalogItem.findMany({ where: { organizationId }, orderBy: [{ category: 'asc' }, { name: 'asc' }] }),
+        this.prisma.workCatalog.findMany({ where: { organizationId }, include: { items: { orderBy: { name: 'asc' } } }, orderBy: { name: 'asc' } }),
+        this.prisma.ip.findMany({ where: { organizationId }, orderBy: { name: 'asc' } }),
+        this.prisma.vehicle.findMany({ where: { organizationId }, orderBy: { name: 'asc' } }),
+        this.prisma.supplyChainStep.findMany({ where: { organizationId }, orderBy: [{ departmentId: 'asc' }, { type: 'asc' }, { order: 'asc' }] }),
+        this.prisma.orderChainStep.findMany({ where: { organizationId }, orderBy: [{ departmentId: 'asc' }, { order: 'asc' }] }),
       ]);
     const objects = objectsRaw.map(({ access, ...o }) => ({ ...o, userIds: access.map((a) => a.userId) }));
     return { organization, me, users, departments, objects, catalogItems, workCatalogs, ips, vehicles, supplySteps, orderSteps };

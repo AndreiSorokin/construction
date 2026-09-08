@@ -12,7 +12,7 @@ import { CurrentUser, AuthUser } from '../decorators/current-user.decorator';
 export class UsersController {
   constructor(private users: UsersService) {}
 
-  @Get() list() { return this.users.list(); }
+  @Get() list(@CurrentUser('orgId') orgId: string) { return this.users.list(orgId); }
 
   @Post() create(@Body() dto: CreateUserDto, @CurrentUser('orgId') orgId: string) { return this.users.create(orgId, dto); }
 
@@ -20,8 +20,8 @@ export class UsersController {
     return this.users.update(id, dto, u);
   }
 
-  @Post(':id/password') reset(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
-    return this.users.resetPassword(id, dto.newPassword);
+  @Post(':id/password') reset(@Param('id') id: string, @Body() dto: ResetPasswordDto, @CurrentUser('orgId') orgId: string) {
+    return this.users.resetPassword(id, orgId, dto.newPassword);
   }
 
   /** увольнение: деактивация + вычистка из маршрутов и доступа к объектам; зависшие этапы перескакивают */

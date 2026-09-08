@@ -14,7 +14,10 @@ const PREFIX: Record<RequestType, string> = {
 // общий include для заявки: используется и здесь, и в requests-extra.service.ts —
 // один источник, чтобы «полная» форма заявки не расходилась между сервисами
 export const FULL = {
-  items: true,
+  // id (cuid) растёт по времени создания — без orderBy Postgres может вернуть позиции в другом
+  // порядке после UPDATE (строка физически переписывается), из-за чего отмеченная позиция
+  // визуально «прыгала» в списке; сортировка по id держит порядок стабильным
+  items: { orderBy: { id: 'asc' as const } },
   chainSteps: { orderBy: { order: 'asc' as const } },
   events: { orderBy: { at: 'asc' as const } },
   supplyNotes: { orderBy: { at: 'asc' as const } },
@@ -23,13 +26,55 @@ export const FULL = {
   // что было бы видно на странице каждой исходной заявки по отдельности
   consolidatedFrom: {
     include: {
-      items: true,
+      items: { orderBy: { id: 'asc' as const } },
       chainSteps: { orderBy: { order: 'asc' as const } },
       supplyNotes: { orderBy: { at: 'asc' as const } },
       attachments: true,
     },
   },
 };
+
+const parseQty = (v: unknown) => Number(String(v ?? '').replace(',', '.').replace(/[^\d.]/g, '')) || 0;
+
+/**
+ * Позиции сводной заявки — это отдельные строки, но никакого своего состояния они не хранят
+ * по сути: сводная только собирает и показывает реальное положение дел по исходным заявкам.
+ * Всё (название/ед.изм./кол-во/примечание/получено/наличие/срок/выполнено) при каждом чтении
+ * пересчитывается из текущего состояния исходных позиций (по srcRefs) — правки в ТМЦ-1/ТМЦ-2
+ * видно в СВ-1 сразу. Редактирование самих позиций происходит только на стороне источников
+ * (см. секцию «Из исходных заявок» на клиенте) — если позиция собрана из нескольких исходных
+ * с одинаковым названием+ед.изм., у одной строки СВ несколько источников и правка «какого именно»
+ * поля на самой сводной была бы неоднозначна.
+ */
+export function withLiveConsolidatedItems<T extends { isConsolidated: boolean; items: any[]; consolidatedFrom?: any[] }>(r: T): T {
+  if (!r.isConsolidated || !r.items?.length) return r;
+  const bySourceItemId = new Map<string, any>();
+  for (const src of r.consolidatedFrom || []) {
+    for (const it of src.items || []) bySourceItemId.set(it.id, it);
+  }
+  r.items = r.items.map((it: any) => {
+    const refs: { requestId: string; itemId: string }[] = Array.isArray(it.srcRefs) ? it.srcRefs : [];
+    if (refs.length === 0) return it;
+    const live = refs.map((ref) => bySourceItemId.get(ref.itemId)).filter(Boolean);
+    if (live.length === 0) return it; // источники были разъединены/удалены — оставляем как есть
+    const qtySum = live.reduce((sum: number, l: any) => sum + parseQty(l.qty), 0);
+    const deliveredSum = live.reduce((sum: number, l: any) => sum + parseQty(l.deliveredQty), 0);
+    const notes = [...new Set(live.map((l: any) => l.note).filter(Boolean))];
+    const etas = live.map((l: any) => l.eta).filter(Boolean).sort();
+    return {
+      ...it,
+      name: live[0].name,
+      unit: live[0].unit,
+      note: notes.join('; '),
+      qty: qtySum ? String(qtySum) : '',
+      deliveredQty: deliveredSum ? String(deliveredSum) : '',
+      eta: etas[0] || null, // ближайший срок среди источников
+      fulfilled: live.every((l: any) => l.fulfilled), // выполнено, только если выполнены ВСЕ источники
+      stockStatus: live.some((l: any) => l.stockStatus === 'OUT') ? 'OUT' : live.every((l: any) => l.stockStatus === 'IN') ? 'IN' : null,
+    };
+  });
+  return r;
+}
 
 @Injectable()
 export class RequestsService {
@@ -46,6 +91,12 @@ export class RequestsService {
   }
 
   async create(dto: CreateRequestDto, user: AuthUser) {
+    const dept = await this.prisma.department.findFirst({ where: { id: dto.departmentId, organizationId: user.orgId } });
+    if (!dept) throw new BadRequestException('Отдел не найден');
+    if (dto.objectId) {
+      const obj = await this.prisma.objectSite.findFirst({ where: { id: dto.objectId, organizationId: user.orgId } });
+      if (!obj) throw new BadRequestException('Объект не найден');
+    }
     // снапшот маршрута согласования для отдела+типа
     const steps = await this.prisma.supplyChainStep.findMany({
       where: { departmentId: dto.departmentId, type: dto.type },
@@ -121,7 +172,7 @@ export class RequestsService {
   }
 
   list(user: AuthUser, query: { status?: RequestStatus; type?: RequestType } = {}) {
-    const base: Prisma.RequestWhereInput = {};
+    const base: Prisma.RequestWhereInput = { organizationId: user.orgId };
     if (query.status) base.status = query.status;
     if (query.type) base.type = query.type;
 
@@ -143,17 +194,17 @@ export class RequestsService {
       where: { AND: [base, scope] },
       include: FULL,
       orderBy: { createdAt: 'desc' },
-    });
+    }).then((rows) => rows.map(withLiveConsolidatedItems));
   }
 
-  async getOne(id: string) {
-    const r = await this.prisma.request.findUnique({ where: { id }, include: FULL });
+  async getOne(id: string, organizationId: string) {
+    const r = await this.prisma.request.findFirst({ where: { id, organizationId }, include: FULL });
     if (!r) throw new NotFoundException('Заявка не найдена');
-    return r;
+    return withLiveConsolidatedItems(r);
   }
 
   async decide(id: string, user: AuthUser, dto: DecideDto) {
-    const r = await this.getOne(id);
+    const r = await this.getOne(id, user.orgId);
     if (r.status !== RequestStatus.APPROVAL) throw new BadRequestException('Заявка не на согласовании');
     const step = r.chainSteps.find((s) => s.order === r.currentStageIndex);
     if (!step || step.approverId !== user.id) throw new ForbiddenException('Сейчас не ваш этап согласования');
@@ -190,12 +241,12 @@ export class RequestsService {
           : { currentStageIndex: r.currentStageIndex + 1 },
       });
     });
-    return this.getOne(id);
+    return this.getOne(id, user.orgId);
   }
 
   // ── снабжение ──
   async claim(id: string, user: AuthUser) {
-    const r = await this.getOne(id);
+    const r = await this.getOne(id, user.orgId);
     if (r.status !== RequestStatus.SUPPLY) throw new BadRequestException('Заявка не в снабжении');
     if (r.assigneeId && r.assigneeId !== user.id && user.role !== Role.ADMIN) {
       // переназначать может только старший снабжения/админ
@@ -207,12 +258,13 @@ export class RequestsService {
     });
   }
 
-  async setSupplyStage(id: string, stage: SupplyStage) {
+  async setSupplyStage(id: string, organizationId: string, stage: SupplyStage) {
+    await this.getOne(id, organizationId);
     return this.prisma.request.update({ where: { id }, data: { supplyStage: stage }, include: FULL });
   }
 
   async fulfill(id: string, user: AuthUser) {
-    const r = await this.getOne(id);
+    const r = await this.getOne(id, user.orgId);
     if (r.status !== RequestStatus.SUPPLY) throw new BadRequestException('Заявка не в снабжении');
     await this.prisma.requestEvent.create({
       data: { requestId: id, action: DecisionAction.FULFILLED, byId: user.id, byName: user.name },
@@ -235,7 +287,7 @@ export class RequestsService {
   }
 
   async confirm(id: string, user: AuthUser) {
-    const r = await this.getOne(id);
+    const r = await this.getOne(id, user.orgId);
     if (r.requesterId !== user.id && user.role !== Role.ADMIN) throw new ForbiddenException('Подтвердить может только заявитель');
     if (r.status !== RequestStatus.FULFILLED) throw new BadRequestException('Заявка ещё не выполнена');
     await this.prisma.requestEvent.create({
@@ -247,14 +299,14 @@ export class RequestsService {
   // ── дополнительные действия ──
 
   async addSupplyNote(id: string, user: AuthUser, text: string) {
-    await this.getOne(id);
+    await this.getOne(id, user.orgId);
     await this.prisma.supplyNote.create({ data: { requestId: id, byId: user.id, byName: user.name, text } });
-    return this.getOne(id);
+    return this.getOne(id, user.orgId);
   }
 
   /** склад отмечает наличие позиции (на своём этапе согласования) */
   async setItemStock(id: string, itemId: string, user: AuthUser, status: StockStatus) {
-    const r = await this.getOne(id);
+    const r = await this.getOne(id, user.orgId);
     const item = r.items.find((i) => i.id === itemId);
     if (!item) throw new NotFoundException('Позиция не найдена');
     await this.prisma.requestItem.update({
@@ -267,36 +319,38 @@ export class RequestsService {
         comment: `${item.name}: ${status === StockStatus.IN ? 'есть на складе' : 'нет на складе'}`,
       },
     });
-    return this.getOne(id);
+    return this.getOne(id, user.orgId);
   }
 
-  async setItemFulfilled(id: string, itemId: string, fulfilled: boolean) {
-    const r = await this.getOne(id);
+  async setItemFulfilled(id: string, organizationId: string, itemId: string, fulfilled: boolean) {
+    const r = await this.getOne(id, organizationId);
     if (!r.items.some((i) => i.id === itemId)) throw new NotFoundException('Позиция не найдена');
     await this.prisma.requestItem.update({ where: { id: itemId }, data: { fulfilled } });
-    return this.getOne(id);
+    return this.getOne(id, organizationId);
   }
 
   /** старший снабжения / админ назначает исполнителя */
   async assign(id: string, user: AuthUser, assigneeId: string) {
+    await this.getOne(id, user.orgId);
     if (user.role !== Role.ADMIN) {
       const me = await this.prisma.user.findUnique({ where: { id: user.id } });
       if (!me?.isLead) throw new ForbiddenException('Назначать может старший снабжения');
     }
-    const target = await this.prisma.user.findUnique({ where: { id: assigneeId } });
+    const target = await this.prisma.user.findFirst({ where: { id: assigneeId, organizationId: user.orgId } });
     if (!target || target.role !== Role.SUPPLY) throw new BadRequestException('Исполнитель должен быть снабженцем');
     return this.prisma.request.update({
       where: { id }, data: { assigneeId, supplyStage: SupplyStage.INWORK }, include: FULL,
     });
   }
 
-  async setPostponed(id: string, postponed: boolean) {
+  async setPostponed(id: string, organizationId: string, postponed: boolean) {
+    await this.getOne(id, organizationId);
     return this.prisma.request.update({ where: { id }, data: { postponed }, include: FULL });
   }
 
   /** заявитель возвращает «выполненную» заявку обратно в снабжение */
   async returnToSupply(id: string, user: AuthUser) {
-    const r = await this.getOne(id);
+    const r = await this.getOne(id, user.orgId);
     if (r.requesterId !== user.id && user.role !== Role.ADMIN)
       throw new ForbiddenException('Вернуть может только заявитель');
     if (r.status !== RequestStatus.FULFILLED)

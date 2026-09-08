@@ -36,7 +36,9 @@ export class CommsController {
 
   // календарь
   @Get('events')
-  events(@Query('from') from?: string, @Query('to') to?: string) { return this.comms.listEvents(from, to); }
+  events(@CurrentUser('orgId') orgId: string, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.comms.listEvents(orgId, from, to);
+  }
   @Post('events')
   addEvent(@Body() dto: EventDto, @CurrentUser() u: AuthUser) { return this.comms.addEvent(u, dto.date, dto.title); }
   @Delete('events/:id')

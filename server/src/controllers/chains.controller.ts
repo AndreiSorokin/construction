@@ -10,9 +10,9 @@ import { RequestType, Role } from '@prisma/client';
 export class ChainsController {
   constructor(private chains: ChainsService) {}
 
-  @Get('supply') listSupply() { return this.chains.listSupply(); }
+  @Get('supply') listSupply(@CurrentUser('orgId') orgId: string) { return this.chains.listSupply(orgId); }
 
-  @Get('order') listOrder() { return this.chains.listOrder(); }
+  @Get('order') listOrder(@CurrentUser('orgId') orgId: string) { return this.chains.listOrder(orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Put('supply/:departmentId/:type')

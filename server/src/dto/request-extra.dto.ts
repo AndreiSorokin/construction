@@ -31,6 +31,7 @@ export class ItemPatchDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() unit?: string;
   @IsOptional() @IsString() qty?: string;
+  @IsOptional() @IsString() note?: string;
 }
 
 export class ConsolidateDto {

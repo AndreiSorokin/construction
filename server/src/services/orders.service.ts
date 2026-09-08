@@ -33,6 +33,16 @@ export class OrdersService {
     const departmentId = dto.departmentId || me.departmentId;
     if (!departmentId) throw new BadRequestException('Не указан отдел');
     if (!dto.lines || dto.lines.length === 0) throw new BadRequestException('Наряд пуст — добавьте работы');
+    const dept = await this.prisma.department.findFirst({ where: { id: departmentId, organizationId: user.orgId } });
+    if (!dept) throw new BadRequestException('Отдел не найден');
+    if (dto.objectId) {
+      const obj = await this.prisma.objectSite.findFirst({ where: { id: dto.objectId, organizationId: user.orgId } });
+      if (!obj) throw new BadRequestException('Объект не найден');
+    }
+    if (dto.ipId) {
+      const ip = await this.prisma.ip.findFirst({ where: { id: dto.ipId, organizationId: user.orgId } });
+      if (!ip) throw new BadRequestException('ИП не найден');
+    }
 
     const steps = await this.prisma.orderChainStep.findMany({
       where: { departmentId },
@@ -92,7 +102,7 @@ export class OrdersService {
   }
 
   list(user: AuthUser, query: { period?: string } = {}) {
-    const base = query.period ? { period: query.period } : {};
+    const base = query.period ? { period: query.period, organizationId: user.orgId } : { organizationId: user.orgId };
     const scope =
       user.role === Role.ADMIN
         ? {}
@@ -104,8 +114,8 @@ export class OrdersService {
     });
   }
 
-  async getOne(id: string) {
-    const o = await this.prisma.order.findUnique({ where: { id }, include: FULL });
+  async getOne(id: string, organizationId: string) {
+    const o = await this.prisma.order.findFirst({ where: { id, organizationId }, include: FULL });
     if (!o) throw new NotFoundException('Наряд не найден');
     return o;
   }
@@ -115,7 +125,7 @@ export class OrdersService {
       const cnt = await this.prisma.orderLine.count({ where: { orderId: id } });
       if (cnt === 0) throw new BadRequestException('В наряде нет ни одной позиции — согласовать его нельзя');
     }
-    const o = await this.getOne(id);
+    const o = await this.getOne(id, user.orgId);
     if (o.status !== OrderStatus.APPROVAL) throw new BadRequestException('Наряд не на согласовании');
     const step = o.chainSteps.find((s) => s.order_ === o.currentStageIndex);
     if (!step || step.approverId !== user.id) throw new ForbiddenException('Сейчас не ваш этап согласования');
@@ -152,6 +162,6 @@ export class OrdersService {
           : { currentStageIndex: o.currentStageIndex + 1 },
       });
     });
-    return this.getOne(id);
+    return this.getOne(id, user.orgId);
   }
 }

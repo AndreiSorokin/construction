@@ -10,19 +10,19 @@ import { Role } from '@prisma/client';
 export class ObjectsController {
   constructor(private objects: ObjectsService) {}
 
-  @Get() list() { return this.objects.list(); }
+  @Get() list(@CurrentUser('orgId') orgId: string) { return this.objects.list(orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateObjectDto) { return this.objects.create(orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateObjectDto) { return this.objects.update(id, dto); }
+  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateObjectDto, @CurrentUser('orgId') orgId: string) { return this.objects.update(id, orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Delete(':id') remove(@Param('id') id: string) { return this.objects.remove(id); }
+  @Delete(':id') remove(@Param('id') id: string, @CurrentUser('orgId') orgId: string) { return this.objects.remove(id, orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Put(':id/access') access(@Param('id') id: string, @Body() dto: ObjectAccessDto) {
-    return this.objects.setAccess(id, dto.userIds);
+  @Put(':id/access') access(@Param('id') id: string, @Body() dto: ObjectAccessDto, @CurrentUser('orgId') orgId: string) {
+    return this.objects.setAccess(id, orgId, dto.userIds);
   }
 }

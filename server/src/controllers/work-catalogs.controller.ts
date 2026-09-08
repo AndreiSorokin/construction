@@ -12,28 +12,28 @@ import { Role } from '@prisma/client';
 export class WorkCatalogsController {
   constructor(private works: WorkCatalogsService) {}
 
-  @Get() list() { return this.works.list(); }
+  @Get() list(@CurrentUser('orgId') orgId: string) { return this.works.list(orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
   @Post() create(@CurrentUser('orgId') orgId: string, @Body() dto: CreateWorkCatalogDto) { return this.works.create(orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateWorkCatalogDto) { return this.works.update(id, dto); }
+  @Patch(':id') update(@Param('id') id: string, @Body() dto: UpdateWorkCatalogDto, @CurrentUser('orgId') orgId: string) { return this.works.update(id, orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Delete(':id') remove(@Param('id') id: string) { return this.works.remove(id); }
+  @Delete(':id') remove(@Param('id') id: string, @CurrentUser('orgId') orgId: string) { return this.works.remove(id, orgId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Post(':id/items') addItem(@Param('id') id: string, @Body() dto: WorkItemDto) { return this.works.addItem(id, dto); }
+  @Post(':id/items') addItem(@Param('id') id: string, @Body() dto: WorkItemDto, @CurrentUser('orgId') orgId: string) { return this.works.addItem(id, orgId, dto); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Patch(':id/items/:itemId') updateItem(@Param('itemId') itemId: string, @Body() dto: UpdateWorkItemDto) {
-    return this.works.updateItem(itemId, dto);
+  @Patch(':id/items/:itemId') updateItem(@Param('id') id: string, @Param('itemId') itemId: string, @Body() dto: UpdateWorkItemDto, @CurrentUser('orgId') orgId: string) {
+    return this.works.updateItem(id, orgId, itemId, dto);
   }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Delete(':id/items/:itemId') removeItem(@Param('itemId') itemId: string) { return this.works.removeItem(itemId); }
+  @Delete(':id/items/:itemId') removeItem(@Param('id') id: string, @Param('itemId') itemId: string, @CurrentUser('orgId') orgId: string) { return this.works.removeItem(id, orgId, itemId); }
 
   @UseGuards(RolesGuard) @Roles(Role.ADMIN)
-  @Post(':id/import') import_(@Param('id') id: string, @Body() dto: ImportWorksDto) { return this.works.import(id, dto); }
+  @Post(':id/import') import_(@Param('id') id: string, @Body() dto: ImportWorksDto, @CurrentUser('orgId') orgId: string) { return this.works.import(id, orgId, dto); }
 }

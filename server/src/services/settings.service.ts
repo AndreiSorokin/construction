@@ -77,8 +77,8 @@ export class SettingsService {
     return { avatarUrl: await this.files.signedGetUrl(saved.key) };
   }
 
-  async avatarUrl(userId: string) {
-    const me = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatarKey: true } });
+  async avatarUrl(organizationId: string, userId: string) {
+    const me = await this.prisma.user.findFirst({ where: { id: userId, organizationId }, select: { avatarKey: true } });
     return { avatarUrl: me?.avatarKey ? await this.files.signedGetUrl(me.avatarKey) : null };
   }
 }

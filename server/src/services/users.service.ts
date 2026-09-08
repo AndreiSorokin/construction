@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { hashPassword } from '../common/password.util';
 import { CreateUserDto, UpdateUserDto } from '../dto/user.dto';
@@ -13,8 +13,8 @@ const pub = {
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  list() {
-    return this.prisma.user.findMany({ select: pub, orderBy: { createdAt: 'asc' } });
+  list(organizationId: string) {
+    return this.prisma.user.findMany({ where: { organizationId }, select: pub, orderBy: { createdAt: 'asc' } });
   }
 
   private async freeLogin(organizationId: string): Promise<string> {
@@ -46,6 +46,8 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto, current: AuthUser) {
+    const target = await this.prisma.user.findFirst({ where: { id, organizationId: current.orgId } });
+    if (!target) throw new NotFoundException('Пользователь не найден');
     // админ не может понизить/сменить себе роль или деактивировать сам себя —
     // иначе можно случайно потерять доступ к админке без возможности вернуть его
     if (id === current.id) {
@@ -68,6 +70,8 @@ export class UsersService {
    */
   async deactivate(id: string, current: AuthUser) {
     if (id === current.id) throw new ForbiddenException('Нельзя уволить самого себя');
+    const target = await this.prisma.user.findFirst({ where: { id, organizationId: current.orgId } });
+    if (!target) throw new NotFoundException('Пользователь не найден');
     const byName = current.name;
     await this.prisma.$transaction(async (tx) => {
       await tx.supplyChainStep.deleteMany({ where: { approverId: id } });
@@ -77,7 +81,7 @@ export class UsersService {
 
       // заявки на согласовании, ждущие ЕГО решения
       const reqs = await tx.request.findMany({
-        where: { status: 'APPROVAL', chainSteps: { some: { approverId: id, decision: null } } },
+        where: { organizationId: current.orgId, status: 'APPROVAL', chainSteps: { some: { approverId: id, decision: null } } },
         include: { chainSteps: { orderBy: { order: 'asc' } } },
       });
       for (const r of reqs) {
@@ -100,7 +104,7 @@ export class UsersService {
 
       // наряды на согласовании, ждущие ЕГО решения
       const ords = await tx.order.findMany({
-        where: { status: 'APPROVAL', chainSteps: { some: { approverId: id, decision: null } } },
+        where: { organizationId: current.orgId, status: 'APPROVAL', chainSteps: { some: { approverId: id, decision: null } } },
         include: { chainSteps: { orderBy: { order_: 'asc' } } },
       });
       for (const o of ords) {
@@ -126,7 +130,9 @@ export class UsersService {
     return { ok: true };
   }
 
-  async resetPassword(id: string, newPassword: string) {
+  async resetPassword(id: string, organizationId: string, newPassword: string) {
+    const target = await this.prisma.user.findFirst({ where: { id, organizationId } });
+    if (!target) throw new NotFoundException('Пользователь не найден');
     await this.prisma.user.update({ where: { id }, data: { passwordHash: await hashPassword(newPassword) } });
     // сбрасываем активные сессии пользователя
     await this.prisma.refreshToken.updateMany({ where: { userId: id, revoked: false }, data: { revoked: true } });

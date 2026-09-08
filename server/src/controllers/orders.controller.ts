@@ -13,8 +13,8 @@ export class OrdersController {
   }
 
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.orders.getOne(id);
+  get(@Param('id') id: string, @CurrentUser() u: AuthUser) {
+    return this.orders.getOne(id, u.orgId);
   }
 
   // доступ проверяется в сервисе (ordersAccess / ADMIN)

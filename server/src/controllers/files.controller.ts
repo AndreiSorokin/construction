@@ -4,6 +4,7 @@ import {
   Delete,
   ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Post,
   Res,
@@ -31,7 +32,7 @@ export class FilesController {
     @CurrentUser() u: AuthUser,
   ) {
     if (!file) throw new BadRequestException('Файл не передан');
-    const exists = await this.prisma.request.findUnique({ where: { id: requestId }, select: { id: true } });
+    const exists = await this.prisma.request.findFirst({ where: { id: requestId, organizationId: u.orgId }, select: { id: true } });
     if (!exists) throw new BadRequestException('Заявка не найдена');
     const saved = await this.files.upload(file);
     const att = await this.prisma.attachment.create({
@@ -57,7 +58,7 @@ export class FilesController {
     @CurrentUser() u: AuthUser,
   ) {
     if (!file) throw new BadRequestException('Файл не передан');
-    const exists = await this.prisma.order.findUnique({ where: { id: orderId }, select: { id: true } });
+    const exists = await this.prisma.order.findFirst({ where: { id: orderId, organizationId: u.orgId }, select: { id: true } });
     if (!exists) throw new BadRequestException('Наряд не найден');
     const saved = await this.files.upload(file);
     const att = await this.prisma.attachment.create({
@@ -101,11 +102,17 @@ export class FilesController {
   }
 
   // доступ к файлу — тем, кто вообще видит документ: автор, согласующие в его цепочке,
-  // снабжение/склад (для заявок) или доступ к нарядам, и админ
+  // снабжение/склад (для заявок) или доступ к нарядам, и админ; в первую очередь — только своя организация
   private async assertReadAccess(
-    att: { byId: string; request: null | { requesterId: string; chainSteps: { approverId: string }[] }; order: null | { requesterId: string; chainSteps: { approverId: string }[] } },
+    att: {
+      byId: string;
+      request: null | { requesterId: string; organizationId: string; chainSteps: { approverId: string }[] };
+      order: null | { requesterId: string; organizationId: string; chainSteps: { approverId: string }[] };
+    },
     u: AuthUser,
   ) {
+    const orgId = att.request?.organizationId ?? att.order?.organizationId;
+    if (orgId !== u.orgId) throw new NotFoundException('Нет вложения');
     if (u.role === Role.ADMIN || att.byId === u.id) return;
     if (att.request) {
       const r = att.request;
@@ -124,9 +131,14 @@ export class FilesController {
 
   @Delete(':id')
   async remove(@Param('id') id: string, @CurrentUser() u: AuthUser) {
-    const att = await this.prisma.attachment.findUnique({ where: { id } });
-    if (att && att.byId !== u.id && u.role !== 'ADMIN') throw new ForbiddenException('Удалить может загрузивший или админ');
+    const att = await this.prisma.attachment.findUnique({
+      where: { id },
+      include: { request: { select: { organizationId: true } }, order: { select: { organizationId: true } } },
+    });
     if (att) {
+      const orgId = att.request?.organizationId ?? att.order?.organizationId;
+      if (orgId !== u.orgId) throw new NotFoundException('Нет вложения');
+      if (att.byId !== u.id && u.role !== 'ADMIN') throw new ForbiddenException('Удалить может загрузивший или админ');
       await this.files.remove(att.key).catch(() => undefined);
       await this.prisma.attachment.delete({ where: { id } });
     }

@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Plus, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PRIORITY_RU, TYPE_RU } from '@/lib/format';
-import { Card, ErrorBox, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
+import { Card, ErrorBox, StageTrack, btnGhost, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
 
 const TYPE_DESC: Record<string, string> = {
   TMC: 'Материалы, инструмент, запчасти', TRANSPORT: 'Техника и перевозки', QUARRY: 'Инертные материалы',
@@ -81,6 +81,8 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
   const [note, setNote] = useState('');
   const [fields, setFields] = useState<Record<string, string>>({});
   const [items, setItems] = useState<any[]>([{ name: '', unit: 'шт', qty: '', note: '' }]);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // ── черновик: восстановление при выборе типа, автосохранение (0,8 с), очистка при создании ──
   const draftTimer = useRef<any>(null);
@@ -126,6 +128,15 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
     [boot, me],
   );
 
+  const routeDeptId = departmentId || me.departmentId;
+  const routeSteps = useMemo(
+    () => (boot.supplySteps || [])
+      .filter((s: any) => s.departmentId === routeDeptId && s.type === type)
+      .sort((a: any, b: any) => a.order - b.order)
+      .map((s: any) => ({ ...s, approverName: boot.users.find((u: any) => u.id === s.approverId)?.name || '—', decision: null })),
+    [boot, routeDeptId, type],
+  );
+
   const submit = async () => {
     if (!type) return;
     const dept = departmentId || me.departmentId;
@@ -134,11 +145,15 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
     if (HAS_ITEMS.has(type) && clean.length === 0) { setErr('Добавьте хотя бы одну позицию.'); return; }
     setErr(''); setBusy(true);
     try {
-      const r = await api.requests.create({
+      let r = await api.requests.create({
         type, departmentId: dept, objectId: objectId || undefined, priority,
         note, due: due ? new Date(due).toISOString() : undefined, fields,
         items: HAS_ITEMS.has(type) ? clean : [],
       });
+      if (files.length) {
+        for (const f of files) await api.files.upload(r.id, f);
+        r = await api.requests.get(r.id); // подтянуть только что прикреплённые вложения
+      }
       api.comms.clearDraft(type).catch(() => undefined);
       onCreated(r);
     } catch (e: any) { setErr(e?.message || 'Ошибка'); } finally { setBusy(false); }
@@ -229,6 +244,44 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
           <label className={labelCls}>Примечание</label>
           <textarea className={`${inputCls} min-h-20`} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
+
+        <div className="mt-4">
+          <label className={labelCls}>Вложения</label>
+          <input ref={fileRef} type="file" accept="image/*,.pdf" multiple className="hidden"
+                 onChange={(e) => { const picked = Array.from(e.target.files || []); if (picked.length) setFiles((p) => [...p, ...picked]); if (fileRef.current) fileRef.current.value = ''; }} />
+          {files.length > 0 && (
+            <ul className="mb-2 space-y-1">
+              {files.map((f, i) => (
+                <li key={i} className="flex items-center gap-2 rounded-lg bg-stone-50 px-2.5 py-1.5 text-sm">
+                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                  <span className="truncate">{f.name}</span>
+                  <span className="shrink-0 text-xs text-stone-400">{Math.round(f.size / 1024)} КБ</span>
+                  <button className="ml-auto text-stone-300 hover:text-rose-600" onClick={() => setFiles(files.filter((_, j) => j !== i))}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" className={btnGhost} onClick={() => fileRef.current?.click()}>
+            <Paperclip className="h-4 w-4" /> Прикрепить файл
+          </button>
+        </div>
+
+        {type && (
+          <div className="mt-4">
+            <label className={labelCls}>Маршрут согласования</label>
+            <Card className="!bg-stone-50">
+              {routeSteps.length ? (
+                <StageTrack steps={routeSteps} currentIndex={0} status="APPROVAL" />
+              ) : (
+                <p className="text-sm text-stone-400">
+                  Маршрут для этого отдела и типа не настроен — заявка сразу уйдёт в снабжение, минуя согласование.
+                </p>
+              )}
+            </Card>
+          </div>
+        )}
 
         <button onClick={submit} disabled={busy} className={`${btnPrimary} mt-4 w-full justify-center`}>
           <Send className="h-4 w-4" /> {busy ? 'Отправка…' : 'Подать заявку'}

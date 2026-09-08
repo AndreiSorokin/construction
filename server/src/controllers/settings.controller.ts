@@ -66,5 +66,5 @@ export class SettingsController {
   }
 
   @Get('avatar/:userId')
-  avatarUrl(@Param('userId') userId: string) { return this.settings.avatarUrl(userId); }
+  avatarUrl(@Param('userId') userId: string, @CurrentUser('orgId') orgId: string) { return this.settings.avatarUrl(orgId, userId); }
 }
