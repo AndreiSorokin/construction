@@ -89,6 +89,9 @@ export class CommsService {
   }
 
   // ── черновики заявок (по одному на пользователя и тип) ──
+  listDrafts(u: AuthUser) {
+    return this.prisma.draft.findMany({ where: { userId: u.id }, orderBy: { updatedAt: 'desc' } });
+  }
   getDraft(u: AuthUser, type: RequestType) {
     return this.prisma.draft.findUnique({ where: { userId_type: { userId: u.id, type } } });
   }

@@ -3,8 +3,21 @@ import { useState } from 'react';
 import { ArrowLeft, Check, Printer, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ORDER_STATUS_CLS, ORDER_STATUS_RU, fmtDateTime, lineSum, money, periodLabel } from '@/lib/format';
-import { Badge, Card, ErrorBox, Section, StageTrack, btnDanger, btnGhost, btnPrimary, inputCls, appConfirm, appPrompt, HistoryModal } from './ui';
+import { Badge, Card, ErrorBox, StageTrack, btnDanger, btnGhost, btnPrimary, inputCls, appConfirm, appPrompt, HistoryModal } from './ui';
 import { useRef } from 'react';
+
+/** блок с заголовком внутри одной рамки-«коробки» (шапка + содержимое — единое целое, не два отдельных блока) */
+function Block({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="mb-4 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-2.5">
+        <h3 className="text-sm font-semibold text-stone-700">{title}</h3>
+        {right}
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
 
 export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
   me: any; boot: any; o: any; onBack: () => void; onUpdated: (o: any) => void; onPrint: () => void;
@@ -33,8 +46,8 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="no-print sticky top-0 z-10 -mx-3 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-white px-3 py-2.5 lg:-mx-6 lg:px-6">
+    <div className="mx-auto sm:w-[85%]">
+      <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2 py-1">
         <button onClick={onBack} className={btnGhost}><ArrowLeft className="h-4 w-4" /> Назад</button>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setShowHist(true)} className={btnGhost}>История · {(o.events || []).length}</button>
@@ -54,22 +67,55 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
           </div>
           <span className="text-sm text-stone-400">{fmtDateTime(o.createdAt)}</span>
         </div>
-        <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
-          <div><span className="text-stone-400">Период: </span>{periodLabel(o.period)}</div>
-          <div><span className="text-stone-400">Заявитель: </span>{requester?.name || '—'}</div>
-          <div><span className="text-stone-400">ИП: </span>{o.ip?.name || '—'}{o.ip?.vat ? ' (НДС)' : ''}</div>
+        <div className="space-y-1 text-sm">
           <div><span className="text-stone-400">Объект: </span>{o.object?.name || '—'}</div>
+          <div>
+            <span className="text-stone-400">Период: </span>{periodLabel(o.period)}
+            <span className="text-stone-400"> · Организация: </span>{o.ip?.name || '—'}{o.ip?.vat ? ' (НДС)' : ''}
+          </div>
         </div>
+        <p className="mt-2 text-xs text-stone-400">Заявитель: {requester?.name || '—'}</p>
         {o.note && <p className="mt-2 rounded-lg bg-stone-50 p-2 text-sm">{o.note}</p>}
       </Card>
 
-      <Section title={`Работы · ${o.lines?.length || 0}`}
+      <Block title="Маршрут согласования">
+        {o.chainSteps?.length ? (
+          <>
+            <StageTrack steps={o.chainSteps} currentIndex={o.currentStageIndex} status={o.status} />
+            {o.chainSteps.some((s: any) => s.comment) && (
+              <ul className="mt-3 space-y-1 border-t border-stone-100 pt-3 text-xs text-stone-500">
+                {o.chainSteps.filter((s: any) => s.comment).map((s: any) => (
+                  <li key={s.id}><span className="font-medium text-stone-700">{s.approverName}</span> · «{s.comment}»
+                    {s.decidedAt && <span className="text-stone-400"> · {fmtDateTime(s.decidedAt)}</span>}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : <p className="text-sm text-stone-400">Маршрут пуст — наряд утверждён сразу.</p>}
+
+        {myTurn && (
+          <div className="mt-3 border-t border-stone-100 pt-3">
+            <input className={inputCls} placeholder="Комментарий (необязательно)" value={comment}
+                   onChange={(e) => setComment(e.target.value)} />
+            <div className="mt-2 flex gap-2">
+              <button disabled={busy} onClick={() => act(() => api.orders.decide(o.id, 'approve', comment || undefined))} className={btnPrimary}>
+                <Check className="h-4 w-4" /> Согласовать
+              </button>
+              <button disabled={busy} onClick={() => act(() => api.orders.decide(o.id, 'reject', comment || undefined))} className={btnDanger}>
+                <X className="h-4 w-4" /> Отклонить
+              </button>
+            </div>
+          </div>
+        )}
+      </Block>
+
+      <Block title={`Состав работ · ${o.lines?.length || 0}`}
         right={canEditLines && (o.lines?.length || 0) > 0 && (
           <button className={editLines ? `${btnGhost} !border-stone-900 !text-stone-900` : btnGhost} onClick={() => setEditLines((v) => !v)}>
             {editLines ? 'Готово' : 'Редактировать'}
           </button>
         )}>
-        <Card className="!p-0 overflow-x-auto">
+        <div className="-m-4 overflow-x-auto">
           <table className="w-full text-sm" style={{ minWidth: 560 }}>
             <thead>
               <tr className="border-b border-stone-200 text-left text-xs text-stone-400">
@@ -115,61 +161,26 @@ export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
               </tr>
             </tfoot>
           </table>
-        </Card>
-      </Section>
+        </div>
+      </Block>
 
-      <Section title="Маршрут согласования">
-        <Card>
-          {o.chainSteps?.length ? (
-            <>
-              <StageTrack steps={o.chainSteps} currentIndex={o.currentStageIndex} status={o.status} />
-              {o.chainSteps.some((s: any) => s.comment) && (
-                <ul className="mt-3 space-y-1 border-t border-stone-100 pt-3 text-xs text-stone-500">
-                  {o.chainSteps.filter((s: any) => s.comment).map((s: any) => (
-                    <li key={s.id}><span className="font-medium text-stone-700">{s.approverName}</span> · «{s.comment}»
-                      {s.decidedAt && <span className="text-stone-400"> · {fmtDateTime(s.decidedAt)}</span>}</li>
-                  ))}
-                </ul>
-              )}
-            </>
-          ) : <p className="text-sm text-stone-400">Маршрут пуст — наряд утверждён сразу.</p>}
-
-          {myTurn && (
-            <div className="mt-3 border-t border-stone-100 pt-3">
-              <input className={inputCls} placeholder="Комментарий (необязательно)" value={comment}
-                     onChange={(e) => setComment(e.target.value)} />
-              <div className="mt-2 flex gap-2">
-                <button disabled={busy} onClick={() => act(() => api.orders.decide(o.id, 'approve', comment || undefined))} className={btnPrimary}>
-                  <Check className="h-4 w-4" /> Согласовать
-                </button>
-                <button disabled={busy} onClick={() => act(() => api.orders.decide(o.id, 'reject', comment || undefined))} className={btnDanger}>
-                  <X className="h-4 w-4" /> Отклонить
-                </button>
-              </div>
-            </div>
-          )}
-        </Card>
-      </Section>
-
-      <Section title={`Файлы и фото · ${(o.attachments || []).length}`}>
-        <Card>
-          <div className="flex flex-wrap gap-2">
-            {(o.attachments || []).map((a: any) => (
-              <button key={a.id} className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-700 hover:bg-stone-50"
-                onClick={() => api.files.open(a.id)}>
-                {a.filename}{a.fromConsolidated ? ` · из ${a.fromConsolidated}` : ''}
-              </button>
-            ))}
-            <button className={btnGhost} disabled={busy} onClick={() => fileRef.current?.click()}>+ Файл</button>
-            <input ref={fileRef} type="file" className="hidden" onChange={async (e) => {
-              const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
-              setBusy(true); setErr('');
-              try { await api.ordersX.upload(o.id, f); onUpdated(await api.orders.get(o.id)); }
-              catch (er: any) { setErr(er?.message || 'Ошибка загрузки'); } finally { setBusy(false); }
-            }} />
-          </div>
-        </Card>
-      </Section>
+      <Block title={`Файлы и фото · ${(o.attachments || []).length}`}>
+        <div className="flex flex-wrap gap-2">
+          {(o.attachments || []).map((a: any) => (
+            <button key={a.id} className="rounded-lg border border-stone-200 px-2 py-1 text-xs text-stone-700 hover:bg-stone-50"
+              onClick={() => api.files.open(a.id)}>
+              {a.filename}{a.fromConsolidated ? ` · из ${a.fromConsolidated}` : ''}
+            </button>
+          ))}
+          <button className={btnGhost} disabled={busy} onClick={() => fileRef.current?.click()}>+ Файл</button>
+          <input ref={fileRef} type="file" className="hidden" onChange={async (e) => {
+            const f = e.target.files?.[0]; e.target.value = ''; if (!f) return;
+            setBusy(true); setErr('');
+            try { await api.ordersX.upload(o.id, f); onUpdated(await api.orders.get(o.id)); }
+            catch (er: any) { setErr(er?.message || 'Ошибка загрузки'); } finally { setBusy(false); }
+          }} />
+        </div>
+      </Block>
 
       {showHist && <HistoryModal title={'История ' + o.number} items={o.events || []} onClose={() => setShowHist(false)} />}
     </div>

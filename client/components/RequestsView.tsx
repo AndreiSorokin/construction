@@ -40,8 +40,8 @@ function ReqCard({ r, boot, onOpen, selectable, selected }: { r: any; boot: any;
   );
 }
 
-export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated, onBatchPrint, onReloadAll, onReplace }: {
-  me: any; boot: any; requests: any[]; onOpen: (id: string) => void; onNew: () => void; onConsolidated?: (r: any) => void; onBatchPrint?: (ids: string[]) => void; onReloadAll?: () => void; onReplace?: (r: any) => void;
+export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onConsolidated, onBatchPrint, onReloadAll, onReplace }: {
+  me: any; boot: any; requests: any[]; onOpen: (id: string) => void; onNew: () => void; onDrafts?: () => void; onConsolidated?: (r: any) => void; onBatchPrint?: (ids: string[]) => void; onReloadAll?: () => void; onReplace?: (r: any) => void;
 }) {
   const isSupply = me.role === 'SUPPLY';
   const tabs = useMemo(() => {
@@ -169,6 +169,9 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onConsolidated
             {t.label}{t.count ? ` · ${t.count}` : ''}
           </button>
         ))}
+        {canCreate && (
+          <button onClick={onDrafts} className={pillCls(false)} title="Незавершённые заявки, сохранённые как черновик">Черновики</button>
+        )}
       </div>
 
       {!supplyBoard && (

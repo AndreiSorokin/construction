@@ -45,6 +45,8 @@ export class CommsController {
   delEvent(@Param('id') id: string, @CurrentUser() u: AuthUser) { return this.comms.deleteEvent(u, id); }
 
   // черновики
+  @Get('drafts')
+  listDrafts(@CurrentUser() u: AuthUser) { return this.comms.listDrafts(u); }
   @Get('drafts/:type')
   getDraft(@Param('type') type: RequestType, @CurrentUser() u: AuthUser) { return this.comms.getDraft(u, type); }
   @Post('drafts/:type')

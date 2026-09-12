@@ -6,7 +6,9 @@ import { CreateOrderDto, OrderDecideDto } from '../dto/order.dto';
 import { AuthUser } from '../decorators/current-user.decorator';
 
 const FULL = {
-  lines: true,
+  // без orderBy Postgres может вернуть строку в другом месте после UPDATE (физическая перезапись
+  // строки) — отредактированная позиция «прыгала» вниз списка; сортировка по id держит порядок
+  lines: { orderBy: { id: 'asc' as const } },
   chainSteps: { orderBy: { order_: 'asc' as const } },
   events: { orderBy: { at: 'asc' as const } },
   ip: true,

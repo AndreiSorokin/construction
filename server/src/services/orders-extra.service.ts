@@ -5,7 +5,7 @@ import { MailService } from './mail.service';
 import { AuthUser } from '../decorators/current-user.decorator';
 
 const FULL = {
-  lines: true,
+  lines: { orderBy: { id: 'asc' as const } },
   chainSteps: { orderBy: { order_: 'asc' as const } },
   events: { orderBy: { at: 'asc' as const } },
   attachments: true,

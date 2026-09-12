@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Paperclip, Plus, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Paperclip, Plus, Save, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PRIORITY_RU, TYPE_RU } from '@/lib/format';
 import { Card, ErrorBox, StageTrack, btnGhost, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
@@ -70,10 +70,10 @@ function ItemsEditor({ items, setItems, catalog }: { items: any[]; setItems: (v:
   );
 }
 
-export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
-  me: any; boot: any; onBack: () => void; onCreated: (r: any) => void; initial?: any; settings?: any;
+export function NewRequest({ me, boot, onBack, onCreated, initial, startType, settings }: {
+  me: any; boot: any; onBack: () => void; onCreated: (r: any) => void; initial?: any; startType?: string; settings?: any;
 }) {
-  const [type, setType] = useState(initial?.type || '');
+  const [type, setType] = useState(initial?.type || startType || '');
   const [departmentId, setDepartmentId] = useState(me.departmentId || '');
   const [objectId, setObjectId] = useState('');
   const [priority, setPriority] = useState('NORMAL');
@@ -122,6 +122,15 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
   }, [type, note, due, priority, objectId, items, fields]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const saveAndExit = async () => {
+    if (!type) return;
+    setErr(''); setBusy(true);
+    try {
+      await api.comms.saveDraft(type, { note, due, priority, objectId, items, fields });
+      onBack();
+    } catch (e: any) { setErr(e?.message || 'Не удалось сохранить черновик'); } finally { setBusy(false); }
+  };
 
   const myObjects = useMemo(
     () => boot.objects.filter((o: any) => me.role === 'ADMIN' || o.userIds.includes(me.id)),
@@ -283,9 +292,14 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, settings }: {
           </div>
         )}
 
-        <button onClick={submit} disabled={busy} className={`${btnPrimary} mt-4 w-full justify-center`}>
-          <Send className="h-4 w-4" /> {busy ? 'Отправка…' : 'Подать заявку'}
-        </button>
+        <div className="mt-4 flex gap-2">
+          <button onClick={saveAndExit} disabled={busy} className={`${btnGhost} flex-1 justify-center`}>
+            <Save className="h-4 w-4" /> Сохранить в черновик
+          </button>
+          <button onClick={submit} disabled={busy} className={`${btnPrimary} flex-[2] justify-center`}>
+            <Send className="h-4 w-4" /> {busy ? 'Отправка…' : 'Подать заявку'}
+          </button>
+        </div>
       </Card>
     </div>
   );

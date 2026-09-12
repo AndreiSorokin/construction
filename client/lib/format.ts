@@ -1,5 +1,5 @@
 export const TYPE_RU: Record<string, string> = {
-  TMC: 'ТМЦ', TRANSPORT: 'Транспорт', QUARRY: 'Карьер', FUNDS: 'Ден. средства',
+  TMC: 'ТМЦ', TRANSPORT: 'Транспорт', QUARRY: 'Карьер', FUNDS: 'Денежные средства',
   FUEL: 'ГСМ', TRAVEL: 'Командировка', PRODUCTION: 'Производство',
 };
 export const STATUS_RU: Record<string, string> = {

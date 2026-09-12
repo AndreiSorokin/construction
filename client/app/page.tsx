@@ -7,6 +7,7 @@ import { RequestsView } from '@/components/RequestsView';
 import { BankView } from '@/components/BankView';
 import { RequestDetail } from '@/components/RequestDetail';
 import { NewRequest } from '@/components/NewRequest';
+import { DraftsView } from '@/components/DraftsView';
 import { OrdersView } from '@/components/OrdersView';
 import { NewOrder } from '@/components/NewOrder';
 import { OrderDetail } from '@/components/OrderDetail';
@@ -25,9 +26,23 @@ export default function Home() {
   const [notes, setNotes] = useState<any[]>([]);
   const [loadErr, setLoadErr] = useState('');
 
-  const [view, setView] = useState<ViewKey>('requests');
+  // текущий раздел переживает перезагрузку страницы (запоминаем в localStorage) —
+  // раньше после F5 всегда сбрасывало на «Снабжение» независимо от того, где был пользователь
+  const VIEW_KEY = 'interstroy_active_view';
+  const [view, setView] = useState<ViewKey>(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === 'requests' || saved === 'bank' || saved === 'orders' || saved === 'personal') return saved;
+    } catch {}
+    return 'requests';
+  });
+  useEffect(() => {
+    try { localStorage.setItem(VIEW_KEY, view); } catch {}
+  }, [view]);
   const [openReq, setOpenReq] = useState<string | null>(null);
   const [newReq, setNewReq] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [draftStartType, setDraftStartType] = useState<string | null>(null);
   const [openOrd, setOpenOrd] = useState<string | null>(null);
   const [newOrd, setNewOrd] = useState(false);
   const [printDoc, setPrintDoc] = useState<{ kind: 'request' | 'order' | 'order-summary'; data: any } | null>(null);
@@ -187,12 +202,15 @@ export default function Home() {
 
   let content: any = null;
   if (view === 'requests') {
-    content = newReq ? (
-      <NewRequest me={me} boot={boot} initial={repeatFrom} settings={appSettings}
-                  onBack={() => { setNewReq(false); setRepeatFrom(null); }}
-                  onCreated={(r) => { setRequests((p) => [r, ...p]); setNewReq(false); setRepeatFrom(null); setOpenReq(r.id); }} />
+    content = showDrafts ? (
+      <DraftsView onBack={() => setShowDrafts(false)}
+                  onOpen={(type) => { setDraftStartType(type); setShowDrafts(false); setNewReq(true); }} />
+    ) : newReq ? (
+      <NewRequest me={me} boot={boot} initial={repeatFrom} startType={draftStartType || undefined} settings={appSettings}
+                  onBack={() => { setNewReq(false); setRepeatFrom(null); setDraftStartType(null); }}
+                  onCreated={(r) => { setRequests((p) => [r, ...p]); setNewReq(false); setRepeatFrom(null); setDraftStartType(null); setOpenReq(r.id); }} />
     ) : curReq ? requestDetailNode : (
-      <RequestsView me={me} boot={boot} requests={requests} onOpen={setOpenReq} onNew={() => setNewReq(true)}
+      <RequestsView me={me} boot={boot} requests={requests} onOpen={setOpenReq} onNew={() => setNewReq(true)} onDrafts={() => setShowDrafts(true)}
                     onConsolidated={(r) => {
                       const srcIds = (r.consolidatedFrom || []).map((s: any) => s.id);
                       setRequests((p) => [r, ...p.map((x) => (srcIds.includes(x.id) ? { ...x, consolidatedIntoId: r.id, postponed: true } : x))]);

@@ -261,6 +261,7 @@ export const api = {
     events: (from?: string, to?: string) => GET(`/api/comms/events${from ? `?from=${from}&to=${to || ''}` : ''}`),
     addEvent: (date: string, title: string) => POST('/api/comms/events', { date, title }),
     delEvent: (id: string) => DEL(`/api/comms/events/${id}`),
+    listDrafts: () => GET('/api/comms/drafts') as Promise<any[]>,
     getDraft: (type: string) => GET(`/api/comms/drafts/${type}`),
     saveDraft: (type: string, payload: any) => POST(`/api/comms/drafts/${type}`, { payload }),
     clearDraft: (type: string) => DEL(`/api/comms/drafts/${type}`),

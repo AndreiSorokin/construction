@@ -13,6 +13,7 @@ function Head({ title, number, date }: { title: string; number: string; date: st
         <div className="mt-1 text-lg font-bold">{title} {number}</div>
         <div className="text-xs">от {fmtDateTime(date)}</div>
       </div>
+      <div className="whitespace-nowrap text-right text-xs">Подпись: ____________________</div>
     </div>
   );
 }
@@ -22,7 +23,7 @@ function ChainBlock({ steps }: { steps: any[] }) {
   return (
     <table className="mt-4 w-full border-collapse text-xs">
       <thead>
-        <tr>{['Этап', 'Согласующий', 'Решение', 'Дата', 'Подпись'].map((h) => (
+        <tr>{['Этап', 'Согласующий', 'Решение', 'Дата согласования'].map((h) => (
           <th key={h} className="border border-black p-1 text-left">{h}</th>))}
         </tr>
       </thead>
@@ -33,7 +34,6 @@ function ChainBlock({ steps }: { steps: any[] }) {
             <td className="border border-black p-1">{s.approverName}</td>
             <td className="border border-black p-1">{s.decision === 'APPROVED' ? 'Согласовано' : s.decision === 'REJECTED' ? 'Отклонено' : '—'}</td>
             <td className="border border-black p-1">{s.decidedAt ? fmtDateTime(s.decidedAt) : '—'}</td>
-            <td className="border border-black p-1 w-24"></td>
           </tr>
         ))}
       </tbody>
@@ -171,12 +171,6 @@ export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'ord
             {d.note && <p className="mt-2 text-sm">Примечание: {d.note}</p>}
             <ChainBlock steps={d.chainSteps} />
           </>
-        )}
-        {doc.kind !== 'order-summary' && (
-          <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
-            <div>Сдал: ____________________</div>
-            <div>Принял: ____________________</div>
-          </div>
         )}
       </div>
     </div>

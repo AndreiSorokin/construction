@@ -141,7 +141,7 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
               <div className="relative min-w-0 flex-1">
                 <input className={`${inputCls} pr-7 font-mono`} value={slug}
                        onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
-                       placeholder="moya-firma" />
+                       />
                 <span className="absolute inset-y-0 right-2 flex items-center">
                   {slugCheck.checking
                     ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-stone-400" />

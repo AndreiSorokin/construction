@@ -8,7 +8,20 @@ import { appConfirm, appPrompt, HistoryModal, StageTrack } from './ui';
 import {
   FIELD_RU, PRIORITY_RU, STAGE_RU, STATUS_CLS, STATUS_RU, TYPE_RU, fmtDate, fmtDateTime,
 } from '@/lib/format';
-import { Badge, Card, ErrorBox, Section, btnDanger, btnGhost, btnPrimary, inputCls } from './ui';
+import { Badge, Card, ErrorBox, btnDanger, btnGhost, btnPrimary, inputCls } from './ui';
+
+/** блок с заголовком внутри одной рамки-«коробки» (шапка + содержимое — единое целое, не два отдельных блока) */
+function Block({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="mb-4 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-2 border-b border-stone-200 px-4 py-2.5">
+        <h3 className="text-sm font-semibold text-stone-700">{title}</h3>
+        {right}
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
 
 export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepeat, onOpenRequest, onReloadAll }: {
   me: any; boot: any; r: any; onBack: () => void; onUpdated: (r: any) => void; onPrint: () => void;
@@ -79,8 +92,8 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
   };
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="no-print sticky top-0 z-10 -mx-3 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 bg-white px-3 py-2.5 lg:-mx-6 lg:px-6">
+    <div className="mx-auto sm:w-[85%]">
+      <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-2 py-1">
         <button onClick={onBack} className={btnGhost}><ArrowLeft className="h-4 w-4" /> Назад</button>
         <div className="flex flex-wrap items-center gap-2">
           <button onClick={() => setShowHist(true)} className={btnGhost}>История · {(r.events || []).length}</button>
@@ -120,8 +133,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
         </div>
       )}
       {editMode && (
-        <Section title="Правка заявки">
-          <Card>
+        <Block title="Правка заявки">
             <datalist id="catalog-names-edit">
               {boot.catalogItems.map((c: any) => <option key={c.id} value={c.name} />)}
             </datalist>
@@ -153,8 +165,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
               <button className={btnGhost} onClick={() => setEditMode(false)}>Отмена</button>
             </div>
             <p className="mt-2 text-xs text-stone-400">«Получено N» у позиций сохраняется — правка её не затирает.</p>
-          </Card>
-        </Section>
+        </Block>
       )}
 
       <Card className="mb-4">
@@ -194,11 +205,11 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
       </Card>
 
       {r.items?.length > 0 && (
-        <Section title={`Позиции · ${r.items.length}`}>
+        <Block title={`Позиции · ${r.items.length}`}>
           {r.isConsolidated && (
             <p className="mb-2 text-xs text-stone-400">Собрано из исходных заявок — правки вносятся там же, ниже на этой странице.</p>
           )}
-          <Card className="!p-0 overflow-x-auto">
+          <div className="-mx-4 -mb-4 overflow-x-auto">
             <table className="w-full text-sm" style={{ minWidth: 560 }}>
               <thead>
                 <tr className="border-b border-stone-200 text-left text-xs text-stone-400">
@@ -267,12 +278,11 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                 ))}
               </tbody>
             </table>
-          </Card>
-        </Section>
+          </div>
+        </Block>
       )}
 
-      <Section title="Маршрут согласования">
-        <Card>
+      <Block title="Маршрут согласования">
           {r.chainSteps?.length ? (
             <>
               <StageTrack steps={r.chainSteps} currentIndex={r.currentStageIndex} status={r.status} />
@@ -299,12 +309,10 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
               </div>
             </div>
           )}
-        </Card>
-      </Section>
+      </Block>
 
       {r.status === 'SUPPLY' && isSupplyRole && (
-        <Section title="Снабжение">
-          <Card>
+        <Block title="Снабжение">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-stone-400">Исполнитель:</span>
               {isLead ? (
@@ -355,30 +363,28 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                 </button>
               </div>
             )}
-          </Card>
-        </Section>
+        </Block>
       )}
 
       {r.status === 'FULFILLED' && isRequester && (
-        <Section title="Подтверждение">
-          <Card className="flex flex-wrap gap-2">
+        <Block title="Подтверждение">
+          <div className="flex flex-wrap gap-2">
             <button disabled={busy} onClick={() => act(() => api.requests.confirm(r.id))} className={btnPrimary}>
               <CheckCircle2 className="h-4 w-4" /> Получено, закрыть заявку
             </button>
             <button disabled={busy} onClick={() => act(() => api.requests.return(r.id))} className={btnGhost}>
               <CornerUpLeft className="h-4 w-4" /> Вернуть в снабжение
             </button>
-          </Card>
-        </Section>
+          </div>
+        </Block>
       )}
 
-      <Section title={`Вложения · ${r.attachments?.length || 0}`}
+      <Block title={`Вложения · ${r.attachments?.length || 0}`}
                right={<button className={btnGhost} disabled={busy} onClick={() => fileRef.current?.click()}>
                         <Paperclip className="h-4 w-4" /> Прикрепить</button>}>
         <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
                onChange={(e) => upload(e.target.files?.[0])} />
-        <Card>
-          {r.attachments?.length ? (
+        {r.attachments?.length ? (
             <ul className="space-y-1.5 text-sm">
               {r.attachments.map((a: any) => (
                 <li key={a.id} className="flex items-center gap-2">
@@ -394,11 +400,9 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
               ))}
             </ul>
           ) : <p className="text-sm text-stone-400">Нет вложений.</p>}
-        </Card>
-      </Section>
+      </Block>
 
-      <Section title="Заметки снабжения">
-        <Card>
+      <Block title="Заметки снабжения">
           {r.supplyNotes?.length ? (
             <ul className="mb-2 space-y-1.5 text-sm">
               {r.supplyNotes.map((n: any) => (
@@ -417,11 +421,10 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
               </button>
             </div>
           )}
-        </Card>
-      </Section>
+      </Block>
 
       {r.isConsolidated && (r.consolidatedFrom || []).length > 0 && (
-        <Section title={`Из исходных заявок · ${r.consolidatedFrom.length}`}>
+        <Block title={`Из исходных заявок · ${r.consolidatedFrom.length}`}>
           <div className="space-y-3">
             {r.consolidatedFrom.map((src: any) => {
               const srcObj = boot.objects.find((o: any) => o.id === src.objectId);
@@ -543,7 +546,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
               );
             })}
           </div>
-        </Section>
+        </Block>
       )}
 
       {showHist && <HistoryModal title={'История ' + r.number} items={r.events || []} onClose={() => setShowHist(false)} />}
