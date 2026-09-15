@@ -134,13 +134,20 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
     if (slugCheck.available === false) { setErr('Выберите другой адрес организации.'); return; }
     setErr(''); setBusy(true);
     try {
-      const { user } = await api.registerOrganization({
+      const { org } = await api.registerOrganization({
         orgName: orgName.trim(),
         slug: slug.trim(),
         adminEmail: adminEmail.trim(),
         adminPassword,
       });
-      onDone(user);
+      // сессия (токен/куки) привязана к хосту, на котором прошла регистрация — если это была
+      // общая точка входа (login.interstil.kz/apex/localhost), а не настоящий поддомен
+      // организации, переходим на него; там нужно будет войти ещё раз под только что заданными
+      // логином/паролем администратора
+      const { isLocalDev } = getHostInfo();
+      const host = isLocalDev ? `${org.slug}.localhost` : `${org.slug}.${ROOT_DOMAIN}`;
+      const port = window.location.port ? `:${window.location.port}` : '';
+      window.location.href = `${window.location.protocol}//${host}${port}/`;
     } catch (e: any) { setErr(e?.message || 'Ошибка регистрации'); }
     finally { setBusy(false); }
   };
