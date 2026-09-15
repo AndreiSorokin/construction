@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, NotFoundException, Post, Query, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -27,6 +27,24 @@ export class OrganizationsController {
   @Get('check-slug')
   checkSlug(@Query('slug') slug: string) {
     return this.orgs.checkSlug(slug || '');
+  }
+
+  /**
+   * «Привратник» для On-Demand TLS в Caddy (Caddyfile: on_demand_tls { ask ... }) — перед тем как
+   * выпустить сертификат для нового {slug}.<rootDomain>, Caddy спрашивает сюда, стоит ли вообще
+   * это делать. 200 — да (реальная организация, либо общая точка входа login.<rootDomain>),
+   * 404 — нет, не тратим лимиты Let's Encrypt на случайные поддомены.
+   */
+  @Public()
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Get('tls-ask')
+  async tlsAsk(@Query('domain') domain: string) {
+    const rootDomain = this.config.get<string>('org.rootDomain') || '';
+    const host = (domain || '').toLowerCase();
+    if (rootDomain && host === `login.${rootDomain}`) return;
+    const slug = rootDomain && host.endsWith(`.${rootDomain}`) ? host.slice(0, -(`.${rootDomain}`.length)) : '';
+    const check = await this.orgs.checkSlug(slug);
+    if (check.reason !== 'taken') throw new NotFoundException();
   }
 
   @Public()
