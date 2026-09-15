@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Building2, Check, Eye, EyeOff, KeyRound, RefreshCw, X } from 'lucide-react';
+import { ArrowLeft, Building2, Check, Eye, EyeOff, KeyRound, RefreshCw, X } from 'lucide-react';
 import { api, apiUrl } from '@/lib/api';
 import { inputCls, labelCls, btnPrimary, ErrorBox } from './ui';
 
@@ -85,15 +85,17 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
       const r = await api.checkOrgSlug(slug);
       if (r.reason !== 'taken') {
         setChooseErr(r.reason === 'reserved' ? SLUG_REASON.reserved : 'Организация с таким адресом не найдена.');
+        setChooseBusy(false);
         return;
       }
       const { isLocalDev } = getHostInfo();
       const host = isLocalDev ? `${slug}.localhost` : `${slug}.${ROOT_DOMAIN}`;
       const port = window.location.port ? `:${window.location.port}` : '';
       window.location.href = `${window.location.protocol}//${host}${port}/`;
+      // busy намеренно не сбрасываем — сейчас произойдёт переход на новый домен (может занять
+      // пару секунд из-за выпуска сертификата через On-Demand TLS), спиннер должен крутиться до конца
     } catch (e: any) {
       setChooseErr(e?.message || 'Не удалось проверить адрес.');
-    } finally {
       setChooseBusy(false);
     }
   };
@@ -150,8 +152,12 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
       const host = isLocalDev ? `${org.slug}.localhost` : `${org.slug}.${ROOT_DOMAIN}`;
       const port = window.location.port ? `:${window.location.port}` : '';
       window.location.href = `${window.location.protocol}//${host}${port}/`;
-    } catch (e: any) { setErr(e?.message || 'Ошибка регистрации'); }
-    finally { setBusy(false); }
+      // busy намеренно не сбрасываем — сейчас произойдёт переход на новый домен (может занять
+      // пару секунд из-за выпуска сертификата через On-Demand TLS), спиннер должен крутиться до конца
+    } catch (e: any) {
+      setErr(e?.message || 'Ошибка регистрации');
+      setBusy(false);
+    }
   };
 
   return (
@@ -194,6 +200,10 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
           </div>
         ) : mode === 'login' ? (
           <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm anim-fade-in">
+            <button onClick={() => { setMode('choose'); setErr(''); }}
+                    className="mb-3 flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800">
+              <ArrowLeft className="h-3.5 w-3.5" /> Войти в другую организацию
+            </button>
             <label className={labelCls}>Логин</label>
             <input className={`${inputCls} font-mono`} value={login} onChange={(e) => setLogin(e.target.value)} autoFocus
                    onKeyDown={(e) => e.key === 'Enter' && submit()} />
