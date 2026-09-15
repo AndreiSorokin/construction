@@ -1,11 +1,12 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Archive, AlertTriangle, BarChart3, BookOpen, Camera, CalendarDays, KeyRound, LayoutDashboard,
   MessageSquare, Moon, NotebookPen, Settings as SettingsIcon, Sun,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { pillCls, overdueDays, btnGhost, btnPrimary, inputCls, labelCls, ErrorBox } from './ui';
+import { useUrlState } from '@/lib/useUrlState';
 import { ROLE_RU, TYPE_RU } from '@/lib/format';
 import { reqTitle } from '@/lib/requestHelpers';
 import { useTheme } from './ThemeProvider';
@@ -190,6 +191,7 @@ function ChangePasswordCard({ onClose }: { onClose: () => void }) {
 }
 
 type TabKey = 'notes' | 'calendar' | 'messenger' | 'dashboard' | 'reports' | 'archive' | 'log' | 'settings';
+const TAB_KEYS: TabKey[] = ['notes', 'calendar', 'messenger', 'dashboard', 'reports', 'archive', 'log', 'settings'];
 
 export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avatarUrl, onAvatarChange, onOpenReq, onOpenReqInBank, onOpenOrder, reload }: {
   me: any; boot: any; requests: any[]; orders: any[]; notes: any[]; setNotes: (n: any[]) => void;
@@ -201,7 +203,10 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
   const { dark, toggleTheme } = useTheme();
   const dept = boot.departments.find((d: any) => d.id === me.departmentId);
   const avaRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<TabKey>('notes');
+  // вкладка личного кабинета тоже переживает перезагрузку страницы (через URL, ?pTab=)
+  const [rawTab, setRawTab] = useUrlState('pTab', 'notes');
+  const tab: TabKey = TAB_KEYS.includes(rawTab as TabKey) ? (rawTab as TabKey) : 'notes';
+  const setTab = (t: TabKey) => setRawTab(t);
   const [pwOpen, setPwOpen] = useState(false);
 
   const uploadAvatar = async (f: File | undefined) => {
@@ -220,6 +225,9 @@ export function PersonalHub({ me, boot, requests, orders, notes, setNotes, avata
     ...(isAdmin ? [{ k: 'log' as const, t: 'Журнал', icon: BookOpen }] : []),
     ...(isAdmin ? [{ k: 'settings' as const, t: 'Настройки', icon: SettingsIcon }] : []),
   ];
+  useEffect(() => {
+    if (!tabs.some((x) => x.k === tab)) setTab('notes');
+  }, [tab, isSupplyOrAdmin, isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div>

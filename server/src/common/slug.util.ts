@@ -9,7 +9,7 @@ const TRANSLIT: Record<string, string> = {
 
 const RESERVED = new Set([
   'www', 'api', 'app', 'admin', 'mail', 'ftp', 'localhost', 'staging', 'test',
-  'dev', 'ck', 'static', 'assets', 'cdn', 'root', 'support', 'help',
+  'dev', 'ck', 'sk', 'static', 'assets', 'cdn', 'root', 'support', 'help', 'login',
 ]);
 
 export function slugify(input: string): string {

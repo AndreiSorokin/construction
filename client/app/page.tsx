@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { Login } from '@/components/Login';
 import { Shell, type ViewKey } from '@/components/Shell';
@@ -16,6 +16,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { DialogHost, NotifBell, appConfirm } from '@/components/ui';
 import { PrintDoc } from '@/components/PrintDoc';
 import { BatchPrint } from '@/components/BatchPrint';
+import { useUrlState } from '@/lib/useUrlState';
 
 export default function Home() {
   const [checking, setChecking] = useState(true);
@@ -26,24 +27,21 @@ export default function Home() {
   const [notes, setNotes] = useState<any[]>([]);
   const [loadErr, setLoadErr] = useState('');
 
-  // текущий раздел переживает перезагрузку страницы (запоминаем в localStorage) —
-  // раньше после F5 всегда сбрасывало на «Снабжение» независимо от того, где был пользователь
-  const VIEW_KEY = 'interstroy_active_view';
-  const [view, setView] = useState<ViewKey>(() => {
-    try {
-      const saved = localStorage.getItem(VIEW_KEY);
-      if (saved === 'requests' || saved === 'bank' || saved === 'orders' || saved === 'personal') return saved;
-    } catch {}
-    return 'requests';
-  });
-  useEffect(() => {
-    try { localStorage.setItem(VIEW_KEY, view); } catch {}
-  }, [view]);
-  const [openReq, setOpenReq] = useState<string | null>(null);
+  // текущий раздел, открытая заявка/наряд — всё в URL (?view=&request=&order=), а не в памяти
+  // компонента: переживает перезагрузку страницы естественным образом, как обычная навигация
+  // по сайту, и заодно остаётся ссылкой, которую можно скопировать и открыть в другой вкладке.
+  const [viewParam, setViewParam] = useUrlState('view', null);
+  const [openReq, setOpenReq] = useUrlState('request', null);
+  const [openOrd, setOpenOrd] = useUrlState('order', null);
+  const view: ViewKey = (viewParam === 'requests' || viewParam === 'bank' || viewParam === 'orders' || viewParam === 'personal')
+    ? viewParam
+    // старые ссылки вида ?request=ID (без view) — например «открыть в новой вкладке» из карточки
+    // сводной заявки — всегда вели в «Банк», т.к. он не завязан на текущий раздел/фильтры
+    : openReq ? 'bank' : 'requests';
+  const setView = (v: ViewKey) => setViewParam(v);
   const [newReq, setNewReq] = useState(false);
   const [showDrafts, setShowDrafts] = useState(false);
   const [draftStartType, setDraftStartType] = useState<string | null>(null);
-  const [openOrd, setOpenOrd] = useState<string | null>(null);
   const [newOrd, setNewOrd] = useState(false);
   const [printDoc, setPrintDoc] = useState<{ kind: 'request' | 'order' | 'order-summary'; data: any } | null>(null);
   const [batchIds, setBatchIds] = useState<string[] | null>(null);
@@ -108,20 +106,6 @@ export default function Home() {
       })
       .catch(() => setChecking(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // диплинк на конкретную заявку (?request=ID) — например ссылка «открыть в новой вкладке»
-  // из карточки сводной заявки; открываем через «Банк», т.к. он не завязан на текущий раздел
-  const deepLinkHandled = useRef(false);
-  useEffect(() => {
-    if (deepLinkHandled.current || !boot) return;
-    const id = new URLSearchParams(window.location.search).get('request');
-    if (id) {
-      deepLinkHandled.current = true;
-      setView('bank');
-      setOpenReq(id);
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  }, [boot]);
 
   // фоновое обновление списков раз в 30 c (когда вкладка видима)
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { useUrlState } from '@/lib/useUrlState';
 import { ChevronDown, ChevronUp, Filter, Plus, Search } from 'lucide-react';
 import { Badge, Card, Empty, btnPrimary, btnGhost, pillCls, DueBadge, ObjectDot, TypeBadge, BulkBar, appConfirm, appPrompt } from './ui';
 import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, fmtDate } from '@/lib/format';
@@ -53,7 +54,11 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onCo
     t.push({ key: 'all', label: me.role === 'REQUESTER' ? 'Архив' : 'Все / архив' });
     return t;
   }, [requests, me, isSupply]);
-  const [tab, setTab] = useState(tabs[0]?.key || 'mine');
+  // вкладка тоже переживает перезагрузку (через URL, ?reqTab=), как и раздел «Снабжение» в целом
+  const [tab, setTab] = useUrlState('reqTab', tabs[0]?.key || 'mine');
+  useEffect(() => {
+    if (tab && !tabs.some((t) => t.key === tab)) setTab(tabs[0]?.key || 'mine');
+  }, [tabs]); // eslint-disable-line react-hooks/exhaustive-deps
   const [q, setQ] = useState('');
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
