@@ -31,6 +31,10 @@ services:
       # добавленный ниже в extra_hosts. Подставьте реальный порт/пароль вашего Postgres.
       DATABASE_URL: ${DATABASE_URL}
       WEB_ORIGIN: ${WEB_ORIGIN}
+      # мультитенантность: {slug}.<ORG_ROOT_DOMAIN> — CORS (main.ts) и определение организации
+      # по Host (OrgResolveMiddleware) держатся на этом значении, не на WEB_ORIGIN
+      ORG_ROOT_DOMAIN: ${ORG_ROOT_DOMAIN:-interstil.kz}
+      ORG_DEFAULT_SLUG: ${ORG_DEFAULT_SLUG:-}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
       JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}

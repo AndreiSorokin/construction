@@ -4,9 +4,16 @@ import { getAccessToken, setAccessToken, refresh, isAccessFresh, clearAuth } fro
 // живёт на том же домене за реверс-прокси, поэтому в браузере резолвим API из текущего origin.
 // NEXT_PUBLIC_API_URL (запечён в билд на этапе сборки) — только фолбэк для локальной разработки
 // и SSR, где своего window.location ещё нет.
+// NEXT_PUBLIC_API_PORT — только для локальной разработки: фронт и бэк на localhost сидят на
+// разных портах (нет общего реверс-прокси, как в проде), но на одном и том же поддомене
+// {slug}.localhost — так что просто подставляем порт бэкенда, оставляя текущий хост как есть.
 const API =
   process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4000');
+  (typeof window !== 'undefined'
+    ? process.env.NEXT_PUBLIC_API_PORT
+      ? `${window.location.protocol}//${window.location.hostname}:${process.env.NEXT_PUBLIC_API_PORT}`
+      : window.location.origin
+    : 'http://localhost:4000');
 
 /** абсолютный URL для относительных путей с бэкенда (например logoUrl из /api/settings) —
  *  нужен там, где путь идёт напрямую в src="", а не через authFetch */

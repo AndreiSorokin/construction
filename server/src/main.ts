@@ -13,7 +13,26 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(helmet());
   app.use(cookieParser());
-  app.enableCors({ origin: config.get('webOrigin'), credentials: true });
+
+  const staticOrigins = config.get<string[]>('webOrigin') || [];
+  const rootDomain = config.get<string>('org.rootDomain') || '';
+  app.enableCors({
+    // помимо статического списка WEB_ORIGIN, разрешаем любой поддомен корневого домена —
+    // {slug}.<rootDomain> (в деве rootDomain=localhost, в проде interstil.kz)
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // curl/сервер-сервер, без Origin
+      try {
+        const hostname = new URL(origin).hostname;
+        const allowed =
+          staticOrigins.includes(origin) ||
+          (!!rootDomain && (hostname === rootDomain || hostname.endsWith(`.${rootDomain}`)));
+        cb(null, allowed);
+      } catch {
+        cb(null, false);
+      }
+    },
+    credentials: true,
+  });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // Глобально требуем JWT; публичные ручки помечаются @Public()
   app.useGlobalGuards(new JwtAuthGuard(app.get(Reflector)));

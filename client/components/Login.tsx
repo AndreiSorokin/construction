@@ -23,6 +23,24 @@ const SLUG_REASON: Record<string, string> = {
   taken: 'уже занято другой организацией',
 };
 
+// корневой домен мультитенантности — совпадает с ORG_ROOT_DOMAIN на сервере (по умолчанию
+// interstil.kz, см. server/src/config/configuration.ts)
+const ROOT_DOMAIN = 'interstil.kz';
+
+/** хосты, на которых Host-заголовок не определяет реальную организацию (общая точка входа —
+ *  login.interstil.kz/сам apex-домен, либо голый localhost при локальной разработке) —
+ *  там вместо формы логина показываем шаг «в какую организацию войти» */
+function getHostInfo() {
+  if (typeof window === 'undefined') return { isEntry: false, isLocalDev: false };
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return { isEntry: true, isLocalDev: true };
+  if (h.endsWith('.localhost')) return { isEntry: false, isLocalDev: true };
+  if (h === ROOT_DOMAIN || h === `login.${ROOT_DOMAIN}` || h === `www.${ROOT_DOMAIN}`) {
+    return { isEntry: true, isLocalDev: false };
+  }
+  return { isEntry: false, isLocalDev: false };
+}
+
 /** пароль с кнопкой-«глазом» для показа/скрытия введённого текста */
 function PasswordField({ value, onChange, onKeyDown }: { value: string; onChange: (v: string) => void; onKeyDown?: (e: React.KeyboardEvent) => void }) {
   const [show, setShow] = useState(false);
@@ -39,13 +57,44 @@ function PasswordField({ value, onChange, onKeyDown }: { value: string; onChange
 }
 
 export function Login({ onDone }: { onDone: (user: any) => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'choose'>('login');
+  // на общей точке входа (login.interstil.kz / apex / голый localhost) Host не определяет
+  // организацию — сперва спрашиваем, куда входить, и переадресуем на её настоящий поддомен
+  const [entryMode, setEntryMode] = useState<'login' | 'choose'>('login');
+  useEffect(() => {
+    if (getHostInfo().isEntry) { setEntryMode('choose'); setMode('choose'); }
+  }, []);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   useEffect(() => { api.settings.get().then((s: any) => setLogoUrl(s.logoUrl)).catch(() => undefined); }, []);
+
+  const [orgSlugInput, setOrgSlugInput] = useState('');
+  const [chooseErr, setChooseErr] = useState('');
+  const [chooseBusy, setChooseBusy] = useState(false);
+
+  const submitChoose = async () => {
+    const slug = slugify(orgSlugInput);
+    if (!slug) { setChooseErr('Введите адрес организации.'); return; }
+    setChooseErr(''); setChooseBusy(true);
+    try {
+      const r = await api.checkOrgSlug(slug);
+      if (r.reason !== 'taken') {
+        setChooseErr(r.reason === 'reserved' ? SLUG_REASON.reserved : 'Организация с таким адресом не найдена.');
+        return;
+      }
+      const { isLocalDev } = getHostInfo();
+      const host = isLocalDev ? `${slug}.localhost` : `${slug}.${ROOT_DOMAIN}`;
+      const port = window.location.port ? `:${window.location.port}` : '';
+      window.location.href = `${window.location.protocol}//${host}${port}/`;
+    } catch (e: any) {
+      setChooseErr(e?.message || 'Не удалось проверить адрес.');
+    } finally {
+      setChooseBusy(false);
+    }
+  };
 
   const submit = async () => {
     if (!login.trim() || !password) { setErr('Введите логин и пароль.'); return; }
@@ -109,14 +158,32 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
               </div>
               <div>
                 <div className="text-lg font-semibold leading-none">ТОО «Интерстиль»</div>
-                <div className="mt-1 text-xs text-stone-500">Снабжение и наряды — {mode === 'login' ? 'вход' : 'регистрация организации'}</div>
+                <div className="mt-1 text-xs text-stone-500">Снабжение и наряды — {mode === 'register' ? 'регистрация организации' : 'вход'}</div>
               </div>
             </div>
           )}
-          {logoUrl && <div className="text-xs text-stone-500">Снабжение и наряды — {mode === 'login' ? 'вход' : 'регистрация организации'}</div>}
+          {logoUrl && <div className="text-xs text-stone-500">Снабжение и наряды — {mode === 'register' ? 'регистрация организации' : 'вход'}</div>}
         </div>
 
-        {mode === 'login' ? (
+        {mode === 'choose' ? (
+          <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm anim-fade-in">
+            <label className={labelCls}>Адрес организации</label>
+            <div className="flex items-center gap-1.5">
+              <input className={`${inputCls} font-mono`} value={orgSlugInput}
+                     onChange={(e) => setOrgSlugInput(e.target.value)} autoFocus
+                     onKeyDown={(e) => e.key === 'Enter' && submitChoose()} />
+              <span className="shrink-0 text-xs text-stone-400">.{ROOT_DOMAIN}</span>
+            </div>
+            <p className="mt-1.5 text-xs text-stone-400">Адрес, который вам выдали при регистрации организации.</p>
+            <div className="mt-4">
+              <ErrorBox msg={chooseErr} />
+              <button onClick={submitChoose} disabled={chooseBusy} className={`${btnPrimary} w-full justify-center`}>
+                {chooseBusy ? <RefreshCw className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {chooseBusy ? 'Проверка…' : 'Продолжить'}
+              </button>
+            </div>
+          </div>
+        ) : mode === 'login' ? (
           <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm anim-fade-in">
             <label className={labelCls}>Логин</label>
             <input className={`${inputCls} font-mono`} value={login} onChange={(e) => setLogin(e.target.value)} autoFocus
@@ -174,13 +241,13 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
         )}
 
         <p className="mt-4 text-center text-xs text-stone-400">
-          {mode === 'login' ? (
-            <>Доступ выдаёт администратор компании. Ещё нет организации?{' '}
-              <button className="text-stone-600 underline hover:text-stone-900" onClick={() => { setMode('register'); setErr(''); }}>Зарегистрировать</button>
+          {mode === 'register' ? (
+            <>Уже есть организация?{' '}
+              <button className="text-stone-600 underline hover:text-stone-900" onClick={() => { setMode(entryMode); setErr(''); }}>Войти</button>
             </>
           ) : (
-            <>Уже есть организация?{' '}
-              <button className="text-stone-600 underline hover:text-stone-900" onClick={() => { setMode('login'); setErr(''); }}>Войти</button>
+            <>Доступ выдаёт администратор компании. Ещё нет организации?{' '}
+              <button className="text-stone-600 underline hover:text-stone-900" onClick={() => { setMode('register'); setErr(''); }}>Зарегистрировать</button>
             </>
           )}
         </p>

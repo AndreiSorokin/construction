@@ -36,7 +36,7 @@ export class OrganizationsService {
       const admin = await tx.user.create({
         data: {
           organizationId: org.id,
-          login: dto.adminEmail,
+          login: 'admin',
           email: dto.adminEmail,
           name: 'Администратор',
           role: 'ADMIN',
