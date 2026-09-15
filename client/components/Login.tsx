@@ -43,6 +43,15 @@ function getHostInfo() {
   return { isEntry: false, isLocalDev: false };
 }
 
+/** реальный переход на общую точку входа (login.<rootDomain> / localhost в деве) — не просто
+ *  смена локального состояния, чтобы URL всегда отражал реальный экран (переживает перезагрузку) */
+function goToEntry() {
+  const { isLocalDev } = getHostInfo();
+  const port = window.location.port ? `:${window.location.port}` : '';
+  const entryHost = isLocalDev ? 'localhost' : `login.${ROOT_DOMAIN}`;
+  window.location.href = `${window.location.protocol}//${entryHost}${port}/`;
+}
+
 /** пароль с кнопкой-«глазом» для показа/скрытия введённого текста */
 function PasswordField({ value, onChange, onKeyDown }: { value: string; onChange: (v: string) => void; onKeyDown?: (e: React.KeyboardEvent) => void }) {
   const [show, setShow] = useState(false);
@@ -200,11 +209,11 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
           </div>
         ) : mode === 'login' ? (
           <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm anim-fade-in">
-            <button onClick={() => { setMode('choose'); setErr(''); }}
+            <button onClick={goToEntry}
                     className="mb-3 flex items-center gap-1 text-xs text-stone-500 hover:text-stone-800">
               <ArrowLeft className="h-3.5 w-3.5" /> Войти в другую организацию
             </button>
-            <label className={labelCls}>Логин</label>
+            <label className={labelCls}>Логин или email</label>
             <input className={`${inputCls} font-mono`} value={login} onChange={(e) => setLogin(e.target.value)} autoFocus
                    onKeyDown={(e) => e.key === 'Enter' && submit()} />
             <label className={`${labelCls} mt-3`}>Пароль</label>

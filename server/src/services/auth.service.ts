@@ -9,7 +9,12 @@ export class AuthService {
   constructor(private prisma: PrismaService, private tokens: TokenService) {}
 
   async validateUser(organizationId: string, login: string, password: string): Promise<User | null> {
-    const user = await this.prisma.user.findFirst({ where: { organizationId, login } });
+    // вход по логину ИЛИ по email — оба варианта строго в рамках той же организации,
+    // email хоть и уникален глобально, но здесь используется только как альтернативный
+    // идентификатор внутри уже резолвленной по Host организации
+    const user = await this.prisma.user.findFirst({
+      where: { organizationId, OR: [{ login }, { email: login }] },
+    });
     if (!user || !user.isActive) return null;
     return (await verifyPassword(password, user.passwordHash)) ? user : null;
   }
