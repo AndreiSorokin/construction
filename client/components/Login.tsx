@@ -23,9 +23,11 @@ const SLUG_REASON: Record<string, string> = {
   taken: 'уже занято другой организацией',
 };
 
-// корневой домен мультитенантности — совпадает с ORG_ROOT_DOMAIN на сервере (по умолчанию
-// interstil.kz, см. server/src/config/configuration.ts)
-const ROOT_DOMAIN = 'interstil.kz';
+// корневой домен мультитенантности — должен совпадать с ORG_ROOT_DOMAIN на сервере (см.
+// server/src/config/configuration.ts). Настраивается через NEXT_PUBLIC_ORG_ROOT_DOMAIN, чтобы
+// смена домена в будущем (например на supplex.su) требовала только пересборки с новым env,
+// без правок кода — organizationId/login/данные организаций от домена никак не зависят.
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ORG_ROOT_DOMAIN || 'interstil.kz';
 
 /** хосты, на которых Host-заголовок не определяет реальную организацию (общая точка входа —
  *  login.interstil.kz/сам apex-домен, либо голый localhost при локальной разработке) —
@@ -226,7 +228,7 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
                         : null}
                 </span>
               </div>
-              <span className="shrink-0 text-xs text-stone-400">.interstil.kz</span>
+              <span className="shrink-0 text-xs text-stone-400">.{ROOT_DOMAIN}</span>
             </div>
             {!slugCheck.checking && slugCheck.available === false && (
               <p className="mt-1 text-xs text-rose-600">{SLUG_REASON[slugCheck.reason || ''] || 'этот адрес недоступен'}</p>
