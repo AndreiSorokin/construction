@@ -7,6 +7,7 @@ import { ConsolidateDto, EditRequestDto, ItemPatchDto } from '../dto/request-ext
 import { FULL, withLiveConsolidatedItems } from './requests.service';
 
 const ITEM_TYPES = new Set(['TMC', 'QUARRY', 'FUEL']); // типы «с позициями» — только их можно объединять
+const TYPE_RU: Record<string, string> = { TMC: 'ТМЦ', QUARRY: 'Карьер', FUEL: 'ГСМ' };
 
 @Injectable()
 export class RequestsExtraService {
@@ -203,6 +204,12 @@ export class RequestsExtraService {
     );
     if (good.length < 2) {
       throw new BadRequestException('Для объединения выберите минимум две активные заявки с позициями (не входящие в другую сводную)');
+    }
+    const types = new Set(good.map((r) => r.type));
+    if (types.size > 1) {
+      throw new BadRequestException(
+        `Нельзя объединять заявки разных типов (${[...types].map((t) => TYPE_RU[t] || t).join(', ')}) — выберите заявки одного типа`,
+      );
     }
     const number = await this.nextConsNumber(u.orgId);
     // агрегируем позиции по «наименование + единица», храня ссылки на источники

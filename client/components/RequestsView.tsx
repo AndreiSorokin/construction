@@ -79,7 +79,12 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onCo
     setSelecting(false); setSelected([]);
     if (onReloadAll) onReloadAll();
   };
-  const consolidatable = (r: any) => r.status === 'SUPPLY' && !r.isConsolidated && !r.consolidatedIntoId && ['TMC','QUARRY','FUEL'].includes(r.type);
+  const consolidatable = (r: any) => {
+    if (!(r.status === 'SUPPLY' && !r.isConsolidated && !r.consolidatedIntoId && ['TMC', 'QUARRY', 'FUEL'].includes(r.type))) return false;
+    // после первой выбранной заявки остальные должны быть того же типа (ТМЦ+ТМЦ, карьер+карьер и т.д.)
+    const first = selected.length > 0 ? requests.find((x) => x.id === selected[0]) : null;
+    return !first || first.type === r.type;
+  };
   const [ftype, setFtype] = useState('');
   const [fobj, setFobj] = useState('');
   const [dFrom, setDFrom] = useState('');
@@ -167,7 +172,7 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onCo
       </div>
 
       {consErr && <div className="mb-3 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">{consErr}</div>}
-      {selecting && <p className="mb-2 text-xs text-stone-500">Нажимайте на карточки, чтобы выбрать. «Объединить» доступно для активных заявок с позициями (ТМЦ/карьер/ГСМ); «Печать» — для любых.</p>}
+      {selecting && <p className="mb-2 text-xs text-stone-500">Нажимайте на карточки, чтобы выбрать. «Объединить» доступно для активных заявок с позициями одного типа (ТМЦ/карьер/ГСМ — нельзя смешивать разные типы в одной сводной); «Печать» — для любых.</p>}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)} className={pillCls(tab === t.key)}>
