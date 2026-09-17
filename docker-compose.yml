@@ -4,6 +4,7 @@ services:
       context: ./client
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
+        NEXT_PUBLIC_ORG_ROOT_DOMAIN: ${NEXT_PUBLIC_ORG_ROOT_DOMAIN:-supplex.su}
     container_name: interstroy-client
     restart: unless-stopped
     environment:
@@ -33,7 +34,7 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN}
       # мультитенантность: {slug}.<ORG_ROOT_DOMAIN> — CORS (main.ts) и определение организации
       # по Host (OrgResolveMiddleware) держатся на этом значении, не на WEB_ORIGIN
-      ORG_ROOT_DOMAIN: ${ORG_ROOT_DOMAIN:-interstil.kz}
+      ORG_ROOT_DOMAIN: ${ORG_ROOT_DOMAIN:-supplex.su}
       ORG_DEFAULT_SLUG: ${ORG_DEFAULT_SLUG:-}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}

@@ -1,4 +1,4 @@
-# On-Demand TLS: перед выпуском сертификата для нового {slug}.interstil.kz Caddy спрашивает
+# On-Demand TLS: перед выпуском сертификата для нового {slug}.supplex.su Caddy спрашивает
 # бэкенд interstroy — существует ли такая организация (см. OrganizationsController.tlsAsk).
 # Обычный HTTP-01, без DNS-плагинов и без CF_API_TOKEN — только запись в DNS (Cloudflare) нужна,
 # чтобы поддомен вообще резолвился.
@@ -10,21 +10,7 @@
 	}
 }
 
-ck.interstil.kz {
-	encode zstd gzip
-	request_body {
-		max_size 20MB
-	}
-	@api path /api /api/*
-	handle @api {
-		reverse_proxy interstroy-server:3000
-	}
-	handle {
-		reverse_proxy interstroy-client:3000
-	}
-}
-
-*.interstil.kz {
+*.supplex.su {
 	tls {
 		on_demand
 	}
