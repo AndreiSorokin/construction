@@ -192,7 +192,7 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
         <ErrorBox msg={err} />
         <div className="grid gap-3 sm:grid-cols-2">
           {me.role === 'ADMIN' && (
-            <div>
+            <div className="min-w-0">
               <label className={labelCls}>Отдел</label>
               <select className={inputCls} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
                 <option value="">—</option>
@@ -200,14 +200,14 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
               </select>
             </div>
           )}
-          <div>
+          <div className="min-w-0">
             <label className={labelCls}>Объект</label>
             <select className={inputCls} value={objectId} onChange={(e) => setObjectId(e.target.value)}>
               <option value="">—</option>
               {myObjects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className={labelCls}>Приоритет</label>
             <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value)}>
               {Object.entries(PRIORITY_RU).map(([k, v]) => {
@@ -222,12 +222,12 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
               <p className="mt-1 text-xs text-stone-400">Лимит «Срочно»: {settings.urgentToday} из {settings.urgentLimit} за сегодня. При исчерпании приоритет автоматически понизится до «Высокий».</p>
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <label className={labelCls}>Срок</label>
-            <input type="date" className={inputCls} value={due} onChange={(e) => setDue(e.target.value)} />
+            <input type="date" className={`${inputCls} min-w-0`} value={due} onChange={(e) => setDue(e.target.value)} />
           </div>
           {TYPE_FIELDS[type].map((f) => (
-            <div key={f.key} className={f.key === 'purpose' || f.key === 'route' ? 'sm:col-span-2' : ''}>
+            <div key={f.key} className={`min-w-0 ${f.key === 'purpose' || f.key === 'route' ? 'sm:col-span-2' : ''}`}>
               <label className={labelCls}>{f.label}</label>
               {f.options ? (
                 <select className={inputCls} value={fields[f.key] || ''} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })}>
