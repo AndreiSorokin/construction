@@ -24,8 +24,6 @@ export class RequestsController {
   @Get(':id')
   get(@Param('id') id: string, @CurrentUser() u: AuthUser) { return this.requests.getOne(id, u.orgId); }
 
-  @UseGuards(RolesGuard)
-  @Roles(Role.REQUESTER, Role.APPROVER, Role.ADMIN)
   @Post()
   create(@Body() dto: CreateRequestDto, @CurrentUser() u: AuthUser) {
     return this.requests.create(dto, u);

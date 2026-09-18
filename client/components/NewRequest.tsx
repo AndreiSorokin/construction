@@ -191,7 +191,7 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
       <Card>
         <ErrorBox msg={err} />
         <div className="grid gap-3 sm:grid-cols-2">
-          {me.role === 'ADMIN' && (
+          {(me.role === 'ADMIN' || !me.departmentId) && (
             <div className="min-w-0">
               <label className={labelCls}>Отдел</label>
               <select className={inputCls} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>

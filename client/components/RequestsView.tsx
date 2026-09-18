@@ -112,7 +112,7 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onCo
   }, [requests, tab, q, ftype, fobj, dFrom, dTo, me]);
 
   const supplyBoard = tab === 'board';
-  const canCreate = me.role === 'REQUESTER' || me.role === 'APPROVER' || me.role === 'ADMIN';
+  const canCreate = true; // заявку может создать пользователь любой роли
 
   // «Мои заявки»/«Все / архив» — та же таблица, что и в «Доске снабжения» (SupplyBoard),
   // для единого визуального языка везде, где показывается список заявок
