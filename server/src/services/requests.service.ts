@@ -275,7 +275,7 @@ export class RequestsService {
       for (const s of cons.consolidatedFrom) {
         await this.prisma.request.update({
           where: { id: s.id },
-          data: { status: RequestStatus.FULFILLED, postponed: false, consolidatedIntoId: null, wasConsolidated: cons.number },
+          data: { status: RequestStatus.FULFILLED, fulfilledAt: new Date(), postponed: false, consolidatedIntoId: null, wasConsolidated: cons.number },
         });
         await this.prisma.requestItem.updateMany({ where: { requestId: s.id }, data: { fulfilled: true } });
         await this.prisma.requestEvent.create({
@@ -283,7 +283,7 @@ export class RequestsService {
         });
       }
     }
-    return this.prisma.request.update({ where: { id }, data: { status: RequestStatus.FULFILLED }, include: FULL });
+    return this.prisma.request.update({ where: { id }, data: { status: RequestStatus.FULFILLED, fulfilledAt: new Date() }, include: FULL });
   }
 
   async confirm(id: string, user: AuthUser) {
@@ -293,7 +293,21 @@ export class RequestsService {
     await this.prisma.requestEvent.create({
       data: { requestId: id, action: DecisionAction.CONFIRMED, byId: user.id, byName: user.name },
     });
-    return this.prisma.request.update({ where: { id }, data: { status: RequestStatus.DONE }, include: FULL });
+    return this.prisma.request.update({ where: { id }, data: { status: RequestStatus.DONE, fulfilledAt: null }, include: FULL });
+  }
+
+  /** автоподтверждение по таймеру (48ч без ответа заявителя) — вызывается только из
+   *  RequestsAutoConfirmService, без реального AuthUser, поэтому в обход проверки requesterId */
+  async autoConfirm(id: string) {
+    const r = await this.prisma.request.findUnique({ where: { id } });
+    if (!r || r.status !== RequestStatus.FULFILLED) return; // уже подтверждена/возвращена вручную — тик уже не актуален
+    await this.prisma.requestEvent.create({
+      data: {
+        requestId: id, action: DecisionAction.AUTO_CONFIRMED, byId: 'system', byName: 'Система',
+        comment: 'Не подтверждено заявителем в течение 48 часов — подтверждено автоматически',
+      },
+    });
+    return this.prisma.request.update({ where: { id }, data: { status: RequestStatus.DONE, fulfilledAt: null } });
   }
 
   // ── дополнительные действия ──
@@ -360,7 +374,7 @@ export class RequestsService {
     });
     return this.prisma.request.update({
       where: { id },
-      data: { status: RequestStatus.SUPPLY, supplyStage: SupplyStage.INWORK, postponed: false },
+      data: { status: RequestStatus.SUPPLY, supplyStage: SupplyStage.INWORK, postponed: false, fulfilledAt: null },
       include: FULL,
     });
   }

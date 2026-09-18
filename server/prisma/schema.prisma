@@ -72,6 +72,7 @@ enum DecisionAction {
   STOCK
   FULFILLED
   CONFIRMED
+  AUTO_CONFIRMED // подтверждено автоматически по таймеру (48ч без ответа заявителя)
   RETURNED
   EDITED // правка состава/полей
   RESUBMITTED // отправлено повторно после доработки
@@ -298,6 +299,7 @@ model Request {
   supplyStage        SupplyStage   @default(NEW)
   postponed          Boolean       @default(false)
   spent              Decimal?      @db.Decimal(14, 2) // фактически потрачено (снабжение)
+  fulfilledAt        DateTime? // момент перехода в FULFILLED — таймер автоподтверждения (48ч)
   // объединение заявок (сводные СВ-####)
   isConsolidated     Boolean       @default(false) // это сводная
   consolidatedIntoId String? // исходная входит в сводную (скрыта у автора, postponed)
@@ -317,6 +319,7 @@ model Request {
 
   @@unique([organizationId, number])
   @@index([status])
+  @@index([status, fulfilledAt])
   @@index([type])
   @@index([departmentId])
   @@index([organizationId])

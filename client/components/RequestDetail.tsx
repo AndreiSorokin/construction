@@ -8,7 +8,7 @@ import { appConfirm, appPrompt, HistoryModal, StageTrack } from './ui';
 import {
   FIELD_RU, PRIORITY_RU, STAGE_RU, STATUS_CLS, STATUS_RU, TYPE_RU, fmtDate, fmtDateTime,
 } from '@/lib/format';
-import { Badge, Card, ErrorBox, btnDanger, btnGhost, btnPrimary, inputCls } from './ui';
+import { AutoConfirmCountdown, Badge, Card, ErrorBox, btnDanger, btnGhost, btnPrimary, inputCls } from './ui';
 
 /** блок с заголовком внутри одной рамки-«коробки» (шапка + содержимое — единое целое, не два отдельных блока) */
 function Block({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
@@ -366,16 +366,19 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
         </Block>
       )}
 
-      {r.status === 'FULFILLED' && isRequester && (
+      {r.status === 'FULFILLED' && (
         <Block title="Подтверждение">
-          <div className="flex flex-wrap gap-2">
-            <button disabled={busy} onClick={() => act(() => api.requests.confirm(r.id))} className={btnPrimary}>
-              <CheckCircle2 className="h-4 w-4" /> Получено, закрыть заявку
-            </button>
-            <button disabled={busy} onClick={() => act(() => api.requests.return(r.id))} className={btnGhost}>
-              <CornerUpLeft className="h-4 w-4" /> Вернуть в снабжение
-            </button>
-          </div>
+          <AutoConfirmCountdown fulfilledAt={r.fulfilledAt} />
+          {isRequester && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button disabled={busy} onClick={() => act(() => api.requests.confirm(r.id))} className={btnPrimary}>
+                <CheckCircle2 className="h-4 w-4" /> Получено, закрыть заявку
+              </button>
+              <button disabled={busy} onClick={() => act(() => api.requests.return(r.id))} className={btnGhost}>
+                <CornerUpLeft className="h-4 w-4" /> Вернуть в снабжение
+              </button>
+            </div>
+          )}
         </Block>
       )}
 
@@ -441,6 +444,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                     <a href={`?request=${src.id}`} target="_blank" rel="noopener noreferrer"
                        className="text-xs text-stone-500 underline hover:text-stone-800">открыть в новой вкладке</a>
                   </div>
+                  {src.status === 'FULFILLED' && <div className="mb-2"><AutoConfirmCountdown fulfilledAt={src.fulfilledAt} /></div>}
                   <div className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                     <div><span className="text-stone-400">Тип: </span>{TYPE_RU[src.type]}</div>
                     <div><span className="text-stone-400">Отдел: </span>{srcDept?.name || '—'}</div>

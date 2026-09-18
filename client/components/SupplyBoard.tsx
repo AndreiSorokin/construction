@@ -320,7 +320,7 @@ export function SupplyBoard({ me, boot, requests, onOpen, onReplace, onReloadAll
                   <td className="px-3 py-2 font-mono text-xs">{r.due ? fmtDate(r.due) : '—'}</td>
                   <td className="px-3 py-2"><span className="rounded-full border px-2 py-0.5 text-xs">{STATUS_RU[r.status] || r.status}</span></td>
                   <td className="px-3 py-2 font-mono text-xs text-stone-500">{fmtDate(r.createdAt)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-xs">{r.spent != null ? r.spent : '—'}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{r.spent != null ? r.spent : '—'}</td>
                 </tr>
               ))}</tbody>
             </table>

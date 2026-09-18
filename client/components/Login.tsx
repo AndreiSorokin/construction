@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Building2, Check, Eye, EyeOff, KeyRound, RefreshCw, X } from 'lucide-react';
 import { api, apiUrl } from '@/lib/api';
 import { inputCls, labelCls, btnPrimary, ErrorBox } from './ui';
+import favicon from '../img/favicon.png';
 
 // та же транслитерация, что и на сервере (common/slug.util.ts) — для мгновенного превью,
 // пока не пришёл ответ от /api/organizations/check-slug
@@ -177,11 +178,9 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
             <img src={apiUrl(logoUrl)} alt="Логотип" className="object-contain" style={{ height: 72, width: 'auto', maxWidth: 320 }} />
           ) : (
             <div className="flex items-center gap-2.5">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500 text-stone-900">
-                <Building2 className="h-7 w-7" />
-              </div>
+              <img src={favicon.src} alt="Фавикон" className="h-11 w-11" />
               <div>
-                <div className="text-lg font-semibold leading-none">ТОО «Интерстиль»</div>
+                <div className="text-lg font-semibold leading-none">Supplex</div>
                 <div className="mt-1 text-xs text-stone-500">Снабжение и наряды — {mode === 'register' ? 'регистрация организации' : 'вход'}</div>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import configuration from './config/configuration';
 import { HealthController } from './controllers/health.controller';
 import { PrismaModule } from './modules/prisma.module';
@@ -31,6 +32,7 @@ import { DeltaModule } from './modules/delta.module';
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
     // общий лимит на все ручки; на /auth/login — отдельный, строже (см. auth.controller.ts)
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     OrganizationsModule,

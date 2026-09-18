@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Warehouse, X } from 'lucide-react';
+import { Check, Clock, Warehouse, X } from 'lucide-react';
 import { TYPE_CLS } from '@/lib/requestHelpers';
 import { TYPE_RU } from '@/lib/format';
 
@@ -66,6 +66,32 @@ export function Badge({ children, cls }: { children: ReactNode; cls?: string }) 
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-xl border border-stone-200 bg-white p-4 shadow-sm ${className || ''}`}>{children}</div>;
+}
+
+const AUTO_CONFIRM_AFTER_MS = 48 * 60 * 60 * 1000;
+
+/** «Автоматически подтвердится через …» — обратный отсчёт до автоподтверждения выполненной
+ *  заявки (48ч без ответа заявителя, см. RequestsAutoConfirmService на сервере). Обновляется
+ *  раз в минуту — секундная точность тут не нужна и только зря дёргала бы рендер. */
+export function AutoConfirmCountdown({ fulfilledAt }: { fulfilledAt?: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  if (!fulfilledAt) return null;
+  const deadline = new Date(fulfilledAt).getTime() + AUTO_CONFIRM_AFTER_MS;
+  const left = deadline - now;
+  if (left <= 0) return null; // вот-вот сработает крон — не показываем отрицательное значение
+  const days = Math.floor(left / 86_400_000);
+  const hours = Math.floor((left % 86_400_000) / 3_600_000);
+  const text = days > 0 ? `${days} д ${hours} ч` : hours > 0 ? `${hours} ч` : 'меньше часа';
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-stone-500">
+      <Clock className="h-3.5 w-3.5 shrink-0" />
+      Автоматически подтвердится через: {text}
+    </div>
+  );
 }
 
 export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
@@ -148,6 +174,7 @@ export function DialogHost() {
 export const HIST_LABELS: Record<string, string> = {
   CREATED: 'создал(а)', APPROVED: 'согласовал(а)', REJECTED: 'отклонил(а)', RETURNED: 'вернул(а) в снабжение',
   STOCK: 'отметка склада', FULFILLED: 'выполнено', CONFIRMED: 'подтвердил(а) получение',
+  AUTO_CONFIRMED: 'автоподтверждено',
   EDITED: 'изменил(а)', RESUBMITTED: 'отправил(а) повторно', WITHDRAWN: 'отозвал(а)',
   CONSOLIDATED: 'включено в сводную', UNCONSOLIDATED: 'сводная расформирована',
 };
