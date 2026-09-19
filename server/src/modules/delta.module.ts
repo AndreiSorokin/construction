@@ -4,9 +4,10 @@ import { RequestsExtraService } from '../services/requests-extra.service';
 import { OrdersExtraController } from '../controllers/orders-extra.controller';
 import { OrdersExtraService } from '../services/orders-extra.service';
 import { MailModule } from './mail.module';
+import { FilesModule } from './files.module';
 
 @Module({
-  imports: [MailModule],
+  imports: [MailModule, FilesModule],
   controllers: [RequestsExtraController, OrdersExtraController],
   providers: [RequestsExtraService, OrdersExtraService],
 })

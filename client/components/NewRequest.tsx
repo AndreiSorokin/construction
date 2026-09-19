@@ -106,6 +106,7 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
         if (p.due !== undefined) setDue(p.due);
         if (p.priority) setPriority(p.priority);
         if (p.objectId !== undefined) setObjectId(p.objectId);
+        if (p.departmentId) setDepartmentId(p.departmentId);
         if (Array.isArray(p.items) && p.items.length) setItems(p.items);
         if (p.fields) setFields(p.fields);
       }

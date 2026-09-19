@@ -101,12 +101,6 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
           {(r.status === 'DONE' || r.status === 'REJECTED') && (r.requesterId === me.id || me.role === 'ADMIN') && onRepeat && !r.isConsolidated && (
             <button className={btnGhost} onClick={() => onRepeat(r)}>Повторить</button>
           )}
-          {r.status === 'APPROVAL' && r.requesterId === me.id && noDecisions && (
-            <button disabled={busy} className={btnGhost} onClick={async () => {
-              if (await appConfirm('Отозвать заявку? Она уйдёт в архив; позже её можно отправить повторно.', { okText: 'Отозвать', danger: true }))
-                act(() => api.requestsX.withdraw(r.id));
-            }}>Отозвать</button>
-          )}
           {r.status === 'REJECTED' && (r.requesterId === me.id || me.role === 'ADMIN') && !r.isConsolidated && (
             <button disabled={busy} className={btnGhost} onClick={() => act(() => api.requestsX.resubmit(r.id))}>Отправить повторно</button>
           )}
@@ -116,6 +110,18 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
               if (await appConfirm('Разъединить сводную? Исходные заявки вернутся в работу.' + (n ? ` Файлы сводной (${n}) будут перенесены в первую исходную — не потеряются.` : ''), { okText: 'Разъединить', danger: true }))
                 { await api.requestsX.unconsolidate(r.id); onReloadAll?.(); onBack(); }
             }}>Разъединить</button>
+          )}
+          {(r.status === 'APPROVAL' || r.status === 'SUPPLY') && r.requesterId === me.id && (
+            <button disabled={busy} className={btnGhost} onClick={async () => {
+              if (!(await appConfirm(
+                'Отозвать заявку в черновик? Маршрут согласования, история решений, работа снабжения и вложения будут удалены — заявку нужно будет подать заново.',
+                { okText: 'Отозвать', danger: true }
+              ))) return;
+              setErr(''); setBusy(true);
+              try { await api.requestsX.withdraw(r.id); onReloadAll?.(); onBack(); }
+              catch (e: any) { setErr(e?.message || 'Не удалось отозвать'); }
+              finally { setBusy(false); }
+            }}>Отозвать</button>
           )}
           <button onClick={onPrint} className={btnGhost}><Printer className="h-4 w-4" /> Печать</button>
         </div>

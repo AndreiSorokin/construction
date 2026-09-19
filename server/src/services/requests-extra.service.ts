@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { DecisionAction, Prisma, Priority, RequestStatus, Role, SupplyStage } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 import { MailService } from './mail.service';
+import { FilesService } from './files.service';
 import { AuthUser } from '../decorators/current-user.decorator';
 import { ConsolidateDto, EditRequestDto, ItemPatchDto } from '../dto/request-extra.dto';
 import { FULL, withLiveConsolidatedItems } from './requests.service';
@@ -11,7 +12,7 @@ const TYPE_RU: Record<string, string> = { TMC: 'ТМЦ', QUARRY: 'Карьер',
 
 @Injectable()
 export class RequestsExtraService {
-  constructor(private prisma: PrismaService, private mail: MailService) {}
+  constructor(private prisma: PrismaService, private mail: MailService, private files: FilesService) {}
 
   private async getOne(id: string, organizationId: string) {
     const r = await this.prisma.request.findFirst({ where: { id, organizationId }, include: FULL });
@@ -120,16 +121,32 @@ export class RequestsExtraService {
     return this.getOne(id, u.orgId);
   }
 
-  /** отзыв автором — пока никто не принял решение */
+  /** отзыв автором в черновик — доступно на APPROVAL/SUPPLY, только самому автору (без обхода для
+   *  ADMIN). Заявка удаляется целиком (каскадно уносит позиции/маршрут/историю/вложения) —
+   *  это и есть «сброс маршрута согласования»: при повторной подаче из черновика он строится
+   *  заново с нуля в create(). */
   async withdraw(id: string, u: AuthUser) {
     const r = await this.getOne(id, u.orgId);
-    if (r.requesterId !== u.id && u.role !== Role.ADMIN) throw new ForbiddenException('Отозвать может автор');
-    if (r.status !== RequestStatus.APPROVAL) throw new BadRequestException('Отзыв — только с согласования');
-    if (r.chainSteps.some((s) => s.decision)) throw new BadRequestException('По заявке уже есть решения — отзыв невозможен');
-    await this.prisma.requestEvent.create({
-      data: { requestId: id, action: DecisionAction.WITHDRAWN, byId: u.id, byName: u.name, comment: 'Отозвана автором' },
-    });
-    return this.prisma.request.update({ where: { id }, data: { status: RequestStatus.REJECTED }, include: FULL });
+    if (r.requesterId !== u.id) throw new ForbiddenException('Отозвать может только автор заявки');
+    if (r.status !== RequestStatus.APPROVAL && r.status !== RequestStatus.SUPPLY) {
+      throw new BadRequestException('Отзыв недоступен для этого статуса');
+    }
+    const existing = await this.prisma.draft.findUnique({ where: { userId_type: { userId: u.id, type: r.type } } });
+    if (existing) {
+      throw new BadRequestException('У вас уже есть незавершённый черновик этого же типа заявки — сначала подайте его или удалите в разделе «Черновики»');
+    }
+    const payload = {
+      note: r.note, due: r.due ? r.due.toISOString().slice(0, 10) : '',
+      priority: r.priority, objectId: r.objectId || '', departmentId: r.departmentId,
+      items: (r.items || []).map((i: any) => ({ name: i.name, unit: i.unit, qty: i.qty, note: i.note })),
+      fields: r.fields,
+    };
+    await this.prisma.draft.create({ data: { userId: u.id, type: r.type, payload } });
+    for (const att of r.attachments || []) {
+      await this.files.remove(att.key).catch(() => undefined); // best-effort — не блокируем отзыв из-за S3
+    }
+    await this.prisma.request.delete({ where: { id } });
+    return { ok: true };
   }
 
   async setPriority(id: string, u: AuthUser, priority: Priority) {
