@@ -5,7 +5,7 @@ import { useUrlState } from '@/lib/useUrlState';
 import { ChevronDown, ChevronUp, Filter, Plus, Search } from 'lucide-react';
 import { Badge, Card, Empty, btnPrimary, btnGhost, pillCls, DueBadge, ObjectDot, TypeBadge, BulkBar, appConfirm, appPrompt } from './ui';
 import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, fmtDate } from '@/lib/format';
-import { reqTitle, PRI_RANK, PRI_SELECT_CLS } from '@/lib/requestHelpers';
+import { reqTitle, PRI_RANK, PRI_SELECT_CLS, TYPE_BORDER } from '@/lib/requestHelpers';
 import { SupplyBoard } from './SupplyBoard';
 
 const PRI_BORDER: Record<string, string> = {
@@ -244,7 +244,8 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onCo
                   </th>)}
                 </tr></thead>
                 <tbody>{tRows.map((r) => (
-                  <tr key={r.id} onClick={() => onOpen(r.id)} className="cursor-pointer border-b border-stone-100 transition hover:bg-stone-50">
+                  <tr key={r.id} onClick={() => onOpen(r.id)}
+                      className={`cursor-pointer border-b border-l-4 border-stone-100 transition hover:bg-stone-50 ${TYPE_BORDER[r.type] || 'border-l-stone-300'}`}>
                     <td className="px-3 py-2 font-mono text-xs font-semibold text-stone-900">{r.number}</td>
                     <td className="px-3 py-2 text-stone-800"><span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span></td>
                     <td className="px-3 py-2"><TypeBadge type={r.type} /></td>

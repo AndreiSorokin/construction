@@ -14,10 +14,10 @@ export class RequestItemDto {
 export class CreateRequestDto {
   @IsEnum(RequestType) type: RequestType;
   @IsString() departmentId: string;
-  @IsOptional() @IsString() objectId?: string;
+  @IsString() objectId: string;
   @IsOptional() @IsEnum(Priority) priority?: Priority;
   @IsOptional() @IsString() note?: string;
-  @IsOptional() @IsISO8601() due?: string;
+  @IsISO8601() due: string;
   @IsOptional() fields?: Record<string, any>;
   @IsArray() @ValidateNested({ each: true }) @Type(() => RequestItemDto) items: RequestItemDto[];
 }

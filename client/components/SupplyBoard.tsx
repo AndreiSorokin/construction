@@ -310,7 +310,8 @@ export function SupplyBoard({ me, boot, requests, onOpen, onReplace, onReloadAll
                 </th>)}
               </tr></thead>
               <tbody>{tRows.map((r) => (
-                <tr key={r.id} onClick={() => onOpen(r.id)} className={`cursor-pointer border-b border-stone-100 transition hover:bg-stone-50 ${r.postponed ? 'opacity-60' : ''}`}>
+                <tr key={r.id} onClick={() => onOpen(r.id)}
+                    className={`cursor-pointer border-b border-l-4 border-stone-100 transition hover:bg-stone-50 ${TYPE_BORDER[r.type] || 'border-l-stone-300'} ${r.postponed ? 'opacity-60' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs font-semibold text-stone-900">{r.number}</td>
                   <td className="px-3 py-2 text-stone-800"><span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span></td>
                   <td className="px-3 py-2"><TypeBadge type={r.type} /></td>

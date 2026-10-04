@@ -4,7 +4,7 @@
 
 export const HAS_ITEMS = new Set(['TMC', 'PRODUCTION']);
 export const TITLE_KEY: Record<string, string> = {
-  TRANSPORT: 'route', QUARRY: 'material', FUNDS: 'purpose', FUEL: 'vehicle', TRAVEL: 'destination',
+  TRANSPORT: 'route', QUARRY: 'material', FUNDS: 'purpose', FUEL: 'vehicle', TRAVEL: 'amount',
 };
 export const TYPE_CLS: Record<string, string> = {
   TMC: 'bg-amber-50 text-amber-700 border-amber-200', TRANSPORT: 'bg-sky-50 text-sky-700 border-sky-200',
@@ -25,10 +25,13 @@ export const PRI_SELECT_CLS: Record<string, string> = {
 export const STATUS_RANK: Record<string, number> = { APPROVAL: 0, SUPPLY: 1, FULFILLED: 2, DONE: 3, REJECTED: 4 };
 
 export function reqTitle(r: any, boot: any): string {
-  const key = TITLE_KEY[r.type];
-  if (key && r.fields?.[key]) return r.fields[key];
+  // объект теперь обязателен при создании заявки — показываем его в первую очередь, а не
+  // служебное поле конкретного типа (раньше, например, для командировочных колонка «Заявка»
+  // показывала «куда» вместо объекта); поля-фолбэки остаются только для старых заявок без объекта
   const obj = boot.objects.find((o: any) => o.id === r.objectId);
   if (obj) return obj.name;
+  const key = TITLE_KEY[r.type];
+  if (key && r.fields?.[key]) return r.fields[key];
   if (r.items?.[0]?.name) return r.items[0].name;
   return r.number;
 }

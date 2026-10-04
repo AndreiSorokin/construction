@@ -11,7 +11,7 @@ const TYPE_DESC: Record<string, string> = {
   FUNDS: 'Оплаты и наличные', FUEL: 'Топливо и масла', TRAVEL: 'Командировочные', PRODUCTION: 'Заказ в цех',
 };
 const HAS_ITEMS = new Set(['TMC', 'PRODUCTION']);
-const UNITS = ['шт', 'компл', 'упак', 'пара', 'мешок', 'рулон', 'лист', 'бухта', 'м', 'м²', 'м³', 'кг', 'т', 'л', 'рейс', 'смена', 'час'];
+const UNITS = ['шт', 'компл', 'упак','пог.м', 'пар(а)', 'мешок', 'рулон', 'лист', 'бухта', 'м', 'м²', 'м³', 'кг', 'т', 'л', 'рейс', 'смена', 'час'];
 const TYPE_FIELDS: Record<string, { key: string; label: string; type?: string; options?: string[] }[]> = {
   TMC: [],
   TRANSPORT: [
@@ -26,7 +26,7 @@ const TYPE_FIELDS: Record<string, { key: string; label: string; type?: string; o
     { key: 'liters', label: 'Литры', type: 'number' },
   ],
   TRAVEL: [
-    { key: 'employee', label: 'Сотрудник' }, { key: 'destination', label: 'Куда' },
+    { key: 'employee', label: 'Сотрудник' }, { key: 'amount', label: 'Сумма, ₸', type: 'number' },
     { key: 'dateFrom', label: 'С', type: 'date' }, { key: 'dateTo', label: 'По', type: 'date' },
     { key: 'purpose', label: 'Цель' },
   ],
@@ -152,6 +152,8 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
     if (!type) return;
     const dept = departmentId || me.departmentId;
     if (!dept) { setErr('У вас не указан отдел — обратитесь к администратору.'); return; }
+    if (!objectId) { setErr('Укажите объект.'); return; }
+    if (!due) { setErr('Укажите срок.'); return; }
     const clean = items.filter((i) => i.name.trim());
     if (HAS_ITEMS.has(type) && clean.length === 0) { setErr('Добавьте хотя бы одну позицию.'); return; }
     setErr(''); setBusy(true);
@@ -203,7 +205,7 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
             </div>
           )}
           <div className="min-w-0">
-            <label className={labelCls}>Объект</label>
+            <label className={labelCls}>Объект <span className="text-rose-500">*</span></label>
             <select className={inputCls} value={objectId} onChange={(e) => setObjectId(e.target.value)}>
               <option value="">—</option>
               {myObjects.map((o: any) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -225,7 +227,7 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
             )}
           </div>
           <div className="min-w-0">
-            <label className={labelCls}>Срок</label>
+            <label className={labelCls}>Срок <span className="text-rose-500">*</span></label>
             <input type="date" className={`${inputCls} min-w-0`} value={due} onChange={(e) => setDue(e.target.value)} />
           </div>
           {TYPE_FIELDS[type].map((f) => (
