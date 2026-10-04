@@ -4,6 +4,7 @@ import {
   ArrowLeft, Check, CheckCircle2, Circle, CornerUpLeft, Paperclip, Printer, Send, Trash2, X,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { appConfirm, appPrompt, HistoryModal, StageTrack } from './ui';
 import {
   FIELD_RU, PRIORITY_RU, STAGE_RU, STATUS_CLS, STATUS_RU, TYPE_RU, fmtDate, fmtDateTime,
@@ -27,7 +28,7 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
   me: any; boot: any; r: any; onBack: () => void; onUpdated: (r: any) => void; onPrint: () => void;
   onRepeat?: (r: any) => void; onOpenRequest?: (id: string) => void; onReloadAll?: () => void;
 }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState('');
   const [noteText, setNoteText] = useState('');

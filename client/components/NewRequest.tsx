@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Paperclip, Plus, Save, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { PRIORITY_RU, TYPE_RU } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, StageTrack, btnGhost, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
 
 const TYPE_DESC: Record<string, string> = {
@@ -121,7 +122,7 @@ export function NewRequest({ me, boot, onBack, onCreated, initial, startType, se
     }, 800);
     return () => draftTimer.current && clearTimeout(draftTimer.current);
   }, [type, note, due, priority, objectId, items, fields]);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [busy, setBusy] = useState(false);
 
   const saveAndExit = async () => {

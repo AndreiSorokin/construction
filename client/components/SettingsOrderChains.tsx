@@ -1,12 +1,13 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { api } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox } from './ui';
 import { StepsEditor } from './StepsEditor';
 
 /** «Маршруты нарядов»: единый маршрут согласования строительных нарядов — как в эталоне (OrderChainsAdmin). */
 export function SettingsOrderChains({ boot, reload }: { boot: any; reload: () => void }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const stroyDept = boot.departments.find((d: any) => /строит/i.test(d.name)) || boot.departments[0];
   const approvers = useMemo(
     () => boot.users.filter((u: any) => u.isActive && (u.role === 'APPROVER' || u.role === 'ADMIN')),

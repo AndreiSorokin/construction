@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Download, Plus, Trash2, Upload } from 'lucide-react';
 import { api } from '@/lib/api';
 import { money } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnGhost, btnPrimary, inputCls, appConfirm } from './ui';
 
 const HEADERS = ['Наименование', 'Ед.', 'Цена'] as const;
@@ -48,7 +49,7 @@ async function parseWorkbookFile(file: File): Promise<{ name: string; unit: stri
 const KIND_RU: Record<string, string> = { STROY: 'Строительные', ELEKTRO: 'Электромонтажные' };
 
 export function SettingsWorks({ boot, reload }: { boot: any; reload: () => void }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [catId, setCatId] = useState(boot.workCatalogs[0]?.id || '');
   const [q, setQ] = useState('');
   const [nw, setNw] = useState({ name: '', unit: '', price: '' });

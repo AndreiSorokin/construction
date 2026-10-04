@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react';
 import { FileEdit, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { TYPE_RU, fmtDateTime } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, Empty, ErrorBox, PageHeader, appConfirm } from './ui';
 
 /** список черновиков заявок — только просмотр/переход/удаление, без интерфейса создания */
 export function DraftsView({ onBack, onOpen }: { onBack: () => void; onOpen: (type: string) => void }) {
   const [drafts, setDrafts] = useState<any[] | null>(null);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
 
   const reload = () => {
     setErr('');

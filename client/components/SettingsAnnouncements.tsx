@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Megaphone } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnPrimary, appConfirm } from './ui';
 
 const fmt = (s: string) => new Date(s).toLocaleString('ru-RU');
@@ -10,7 +11,7 @@ const fmt = (s: string) => new Date(s).toLocaleString('ru-RU');
 export function SettingsAnnouncements() {
   const [text, setText] = useState('');
   const [anns, setAnns] = useState<any[]>([]);
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
 
   const load = () => { api.comms.announcements().then(setAnns).catch((e) => setErr(e?.message || 'Не удалось загрузить')); };
   useEffect(() => { load(); }, []);

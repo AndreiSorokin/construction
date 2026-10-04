@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { KeyRound, Plus, UserX } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ROLE_RU } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnGhost, btnPrimary, inputCls, labelCls, appConfirm, appPrompt } from './ui';
 
 const ROLES = ['REQUESTER', 'APPROVER', 'WAREHOUSE', 'SUPPLY', 'ADMIN'];
@@ -10,7 +11,7 @@ const ROLES = ['REQUESTER', 'APPROVER', 'WAREHOUSE', 'SUPPLY', 'ADMIN'];
 /** «Люди»: карточки вместо широкой таблицы — как в эталоне (AdminUsers). На телефоне поля
  *  каждой карточки стоят в столбик, ничего не расползается и не прячется за узкими ячейками. */
 export function SettingsUsers({ boot, reload }: { boot: any; reload: () => void }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [nw, setNw] = useState({ name: '', login: '', password: '', role: 'REQUESTER', departmentId: '' });
 
   const act = async (fn: () => Promise<any>) => {

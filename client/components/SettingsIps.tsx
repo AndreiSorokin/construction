@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnPrimary, inputCls, appConfirm } from './ui';
 
 /** «ИП»: подрядчики, на которых закрываются наряды — как в эталоне (IpAdmin). */
 export function SettingsIps({ boot, reload }: { boot: any; reload: () => void }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [nw, setNw] = useState({ name: '', bin: '', vat: true });
 
   const act = async (fn: () => Promise<any>) => {

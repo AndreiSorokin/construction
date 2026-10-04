@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, Plus, Search, Send, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { MONTHS_RU, lineSum, money, qtyNum } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnGhost, btnPrimary, inputCls, labelCls, PageHeader } from './ui';
 
 export function NewOrder({ me, boot, onBack, onCreated }: {
@@ -26,7 +27,7 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
   const [note, setNote] = useState('');
   const [q, setQ] = useState('');
   const [qty, setQty] = useState<Record<string, string>>({});
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [busy, setBusy] = useState(false);
 
   const catalog = boot.workCatalogs.find((c: any) => c.id === catalogId);
@@ -39,7 +40,14 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
     return s ? list.filter((i: any) => i.name.toLowerCase().includes(s)) : list;
   }, [catalog, q]);
 
-  const selected = (catalog?.items || []).filter((i: any) => qtyNum(qty[i.id] || '') > 0);
+  // позиции копятся из ВСЕХ справочников сразу, а не только из того, что сейчас открыт в
+  // селекторе слева — иначе переключение справочника «роняло» уже добавленные работы другого
+  // типа из наряда (qty для них оставался в стейте, но раньше просто не попадал в selected)
+  const allItems = useMemo(
+    () => boot.workCatalogs.flatMap((c: any) => (c.items || []).map((i: any) => ({ ...i, catalogName: c.name }))),
+    [boot.workCatalogs],
+  );
+  const selected = allItems.filter((i: any) => qtyNum(qty[i.id] || '') > 0);
   const total = selected.reduce((s: number, i: any) => s + lineSum({ price: i.price, qty: qty[i.id] }), 0);
 
   const removeLine = (id: string) => setQty((prev) => { const n = { ...prev }; delete n[id]; return n; });
@@ -166,7 +174,10 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
               {selected.map((i: any) => (
                 <div key={i.id} className="rounded-lg bg-stone-50 p-2">
                   <div className="flex items-start gap-2">
-                    <span className="min-w-0 flex-1 text-sm leading-snug text-stone-800">{i.name}</span>
+                    <span className="min-w-0 flex-1 text-sm leading-snug text-stone-800">
+                      {i.name}
+                      {boot.workCatalogs.length > 1 && <span className="ml-1.5 text-xs text-stone-400">· {i.catalogName}</span>}
+                    </span>
                     <button onClick={() => removeLine(i.id)} className="shrink-0 rounded p-1 text-stone-400 hover:bg-stone-200 hover:text-rose-600" title="Убрать позицию"><Trash2 className="h-4 w-4" /></button>
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">

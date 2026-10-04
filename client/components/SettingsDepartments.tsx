@@ -3,13 +3,14 @@ import { useMemo, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { TYPE_RU } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnPrimary, inputCls, appConfirm } from './ui';
 import { StepsEditor } from './StepsEditor';
 
 /** «Отделы и маршруты»: отделы (создать/переименовать/удалить) + маршрут согласования
  *  заявок по связке отдел × тип — как в эталоне (AdminChains). */
 export function SettingsDepartments({ boot, reload }: { boot: any; reload: () => void }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [dName, setDName] = useState('');
   const [deptId, setDeptId] = useState(boot.departments[0]?.id || '');
   const [type, setType] = useState('TMC');

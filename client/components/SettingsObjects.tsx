@@ -2,13 +2,14 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { Card, ErrorBox, btnPrimary, btnGhost, inputCls, appConfirm } from './ui';
 
 const COLORS = ['stone', 'sky', 'emerald', 'violet', 'amber', 'lime', 'rose'];
 
 /** «Объекты»: объекты, на которые выписываются заявки, и доступ заявителей к каждому — как в эталоне (AdminObjects). */
 export function SettingsObjects({ boot, reload }: { boot: any; reload: () => void }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [oName, setOName] = useState('');
   const [openObj, setOpenObj] = useState<string | null>(null);
 

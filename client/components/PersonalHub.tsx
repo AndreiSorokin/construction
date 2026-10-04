@@ -7,6 +7,7 @@ import {
 import { api } from '@/lib/api';
 import { pillCls, overdueDays, btnGhost, btnPrimary, inputCls, labelCls, ErrorBox } from './ui';
 import { useUrlState } from '@/lib/useUrlState';
+import { useErrorState } from '@/lib/useErrorState';
 import { ROLE_RU, TYPE_RU } from '@/lib/format';
 import { reqTitle } from '@/lib/requestHelpers';
 import { useTheme } from './ThemeProvider';
@@ -144,7 +145,7 @@ function ChangePasswordCard({ onClose }: { onClose: () => void }) {
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 

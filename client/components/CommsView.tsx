@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { appConfirm, inputCls, pillCls } from './ui';
 
 const card = 'rounded-2xl border border-stone-200 bg-white shadow-sm';
@@ -19,7 +20,7 @@ export function CommsView({ me }: { me: any }) {
   const [anons, setAnons] = useState<any[]>([]);
   const [anns, setAnns] = useState<any[]>([]);
   const [annText, setAnnText] = useState('');
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
 
   const load = async () => {
     setErr('');

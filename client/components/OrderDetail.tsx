@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ArrowLeft, Check, Printer, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ORDER_STATUS_CLS, ORDER_STATUS_RU, fmtDateTime, lineSum, money, periodLabel } from '@/lib/format';
+import { useErrorState } from '@/lib/useErrorState';
 import { Badge, Card, ErrorBox, StageTrack, btnDanger, btnGhost, btnPrimary, inputCls, appConfirm, appPrompt, HistoryModal } from './ui';
 import { useRef } from 'react';
 
@@ -22,7 +23,7 @@ function Block({ title, right, children }: { title: string; right?: React.ReactN
 export function OrderDetail({ me, boot, o, onBack, onUpdated, onPrint }: {
   me: any; boot: any; o: any; onBack: () => void; onUpdated: (o: any) => void; onPrint: () => void;
 }) {
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState('');
 

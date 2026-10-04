@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Building2, Check, Eye, EyeOff, KeyRound, RefreshCw, X } from 'lucide-react';
 import { api, apiUrl } from '@/lib/api';
+import { useErrorState } from '@/lib/useErrorState';
 import { inputCls, labelCls, btnPrimary, ErrorBox } from './ui';
 import favicon from '../img/favicon.png';
 
@@ -78,7 +79,7 @@ export function Login({ onDone }: { onDone: (user: any) => void }) {
   }, []);
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
-  const [err, setErr] = useState('');
+  const [err, setErr] = useErrorState();
   const [busy, setBusy] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   useEffect(() => { api.settings.get().then((s: any) => setLogoUrl(s.logoUrl)).catch(() => undefined); }, []);
