@@ -339,9 +339,9 @@ export function NotifBell({ items, onOpen, dark }: {
     <div className="relative">
       <button onClick={openPanel} title="События"
         className={dark
-          ? 'relative inline-flex items-center justify-center rounded-lg bg-stone-800 p-2 text-stone-300 hover:bg-stone-700'
-          : 'relative inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white p-2 text-stone-600 hover:bg-stone-50'}>
-        <span aria-hidden>🔔</span>
+          ? 'relative inline-flex items-center justify-center rounded-lg bg-stone-800 p-1.5 text-stone-300 hover:bg-stone-700'
+          : 'relative inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white p-1.5 text-stone-600 hover:bg-stone-50'}>
+        <span aria-hidden className="text-sm leading-none">🔔</span>
         {unseenCount > 0 && (
           <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-xs font-bold text-white">
             {unseenCount > 9 ? '9+' : unseenCount}
