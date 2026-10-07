@@ -21,7 +21,8 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const period = `${year}-${String(month).padStart(2, '0')}`;
-  const [ipName, setIpName] = useState('');
+  const [ipId, setIpId] = useState('');
+  const [newIpName, setNewIpName] = useState('');
   const [objectId, setObjectId] = useState('');
   const [catalogId, setCatalogId] = useState(stroyCat?.id || '');
   const [note, setNote] = useState('');
@@ -32,7 +33,7 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
 
   const catalog = boot.workCatalogs.find((c: any) => c.id === catalogId);
   const myObjects = boot.objects.filter((o: any) => me.role === 'ADMIN' || o.userIds.includes(me.id));
-  const ipMatch = boot.ips.find((x: any) => x.name.trim().toLowerCase() === ipName.trim().toLowerCase());
+  const selectedIp = boot.ips.find((x: any) => x.id === ipId);
 
   const items = useMemo(() => {
     const list = catalog?.items || [];
@@ -54,21 +55,18 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
 
   const submit = async () => {
     if (!stroyDept) { setErr('Не настроен строительный отдел.'); return; }
-    if (!ipName.trim()) { setErr('Укажите ИП — выберите из списка или введите новое.'); return; }
+    if (!ipId) { setErr('Укажите ИП — выберите из списка.'); return; }
+    if (ipId === '__new__' && !newIpName.trim()) { setErr('Введите название нового ИП.'); return; }
     if (selected.length === 0) { setErr('Добавьте хотя бы одну работу с количеством.'); return; }
     setErr(''); setBusy(true);
     try {
-      let ipId = ipMatch?.id || '';
-      if (!ipId) {
-        if (me.role !== 'ADMIN') {
-          setErr('Такого ИП нет в справочнике. Выберите из подсказки или попросите администратора добавить новый ИП.');
-          setBusy(false); return;
-        }
-        const created = await api.ips.create({ name: ipName.trim() });
-        ipId = created.id;
+      let realIpId = ipId;
+      if (ipId === '__new__') {
+        const created = await api.ips.create({ name: newIpName.trim() });
+        realIpId = created.id;
       }
       const o = await api.orders.create({
-        departmentId: stroyDept.id, period, ipId, objectId: objectId || undefined, catalogId, note,
+        departmentId: stroyDept.id, period, ipId: realIpId, objectId: objectId || undefined, catalogId, note,
         lines: selected.map((i: any) => ({
           workId: i.id, name: i.name, unit: i.unit, price: Number(i.price), qty: qty[i.id],
         })),
@@ -102,13 +100,19 @@ export function NewOrder({ me, boot, onBack, onCreated }: {
           </div>
           <div>
             <label className={labelCls}>На какое ИП закрыть</label>
-            <input list="ip-suggest" className={inputCls} value={ipName} onChange={(e) => setIpName(e.target.value)} placeholder="Начните вводить или выберите" />
-            <datalist id="ip-suggest">{boot.ips.map((x: any) => <option key={x.id} value={x.name} />)}</datalist>
-            <p className="mt-1 text-xs text-stone-400">
-              {ipMatch && ipMatch.vat === false
-                ? <span className="text-rose-600">Это ИП на упрощёнке — наряд на него закрыть нельзя.</span>
-                : me.role === 'ADMIN' ? 'Новое ИП сохранится и появится в подсказках в следующий раз.' : 'Новое ИП в справочник может добавить только администратор.'}
-            </p>
+            <select className={inputCls} value={ipId} onChange={(e) => setIpId(e.target.value)}>
+              <option value="">—</option>
+              {boot.ips.map((x: any) => <option key={x.id} value={x.id}>{x.name}{x.vat === false ? ' (упрощёнка)' : ''}</option>)}
+              {me.role === 'ADMIN' && <option value="__new__">+ Новое ИП…</option>}
+            </select>
+            {ipId === '__new__' && (
+              <input className={`${inputCls} mt-2`} placeholder="Название нового ИП" value={newIpName} onChange={(e) => setNewIpName(e.target.value)} autoFocus />
+            )}
+            {selectedIp && selectedIp.vat === false ? (
+              <p className="mt-1 text-xs text-rose-600">Это ИП на упрощёнке — наряд на него закрыть нельзя.</p>
+            ) : ipId === '__new__' ? (
+              <p className="mt-1 text-xs text-stone-400">Новое ИП сохранится и появится в списке в следующий раз.</p>
+            ) : null}
           </div>
           <div>
             <label className={labelCls}>Объект</label>

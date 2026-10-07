@@ -61,7 +61,7 @@ export function SupplyBoard({ me, boot, requests, onOpen, onReplace, onReloadAll
     { k: 'urgent', t: 'Срочные', icon: AlertTriangle, items: supply.filter((r) => ['URGENT', 'HIGH'].includes(r.priority)) },
     { k: 'today', t: 'Срок подошёл', icon: Calendar, items: supply.filter((r) => r.due && new Date(r.due) <= todayEnd) },
     { k: 'all', t: 'Все активные', icon: Layers, items: supply },
-    { k: 'postponed', t: 'Отложенные', icon: Pause, items: supply.filter((r) => r.postponed) },
+    { k: 'postponed', t: 'Ожидание оплаты', icon: Pause, items: supply.filter((r) => r.postponed) },
     { k: 'done', t: 'Выполнено', icon: CheckCircle2, items: [...fulfilled, ...doneRecent] },
   ] as const;
   const cur = lists.find((l) => l.k === list) || lists[0];
