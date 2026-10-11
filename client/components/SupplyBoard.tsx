@@ -182,7 +182,7 @@ export function SupplyBoard({ me, boot, requests, onOpen, onReplace, onReloadAll
               <DueBadge due={r.due} status={r.status} />
               {progChip(r)}
               {(r.attachments || []).length > 0 && <span className="inline-flex shrink-0 items-center gap-1"><Paperclip className="h-3 w-3" />{r.attachments.length}</span>}
-              {r.postponed && <span className="inline-flex shrink-0 items-center gap-1 text-stone-400"><Pause className="h-3 w-3" />отлож.</span>}
+              {r.postponed && <span className="inline-flex shrink-0 items-center gap-1 text-rose-600"><Pause className="h-3 w-3" />отлож.</span>}
             </div>
           </button>
           {r.status === 'SUPPLY' ? (
@@ -313,7 +313,12 @@ export function SupplyBoard({ me, boot, requests, onOpen, onReplace, onReloadAll
                 <tr key={r.id} onClick={() => onOpen(r.id)}
                     className={`cursor-pointer border-b border-l-4 border-stone-100 transition hover:bg-stone-50 ${TYPE_BORDER[r.type] || 'border-l-stone-300'} ${r.postponed ? 'opacity-60' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs font-semibold text-stone-900">{r.number}</td>
-                  <td className="px-3 py-2 text-stone-800"><span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span></td>
+                  <td className="px-3 py-2 text-stone-800">
+                    <div className="flex items-center gap-1.5">
+                      <span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span>
+                      {r.postponed && <Pause className="h-3.5 w-3.5 shrink-0 text-rose-600" />}
+                    </div>
+                  </td>
                   <td className="px-3 py-2"><TypeBadge type={r.type} /></td>
                   <td className="px-3 py-2 text-xs text-stone-500">{deptName(r)}</td>
                   <td className="px-3 py-2 text-xs text-stone-500">{objOf(r)?.name || '—'}</td>

@@ -337,7 +337,8 @@ model RequestItem {
   deliveredQty String       @default("") // «получено N» (снабженец)
   eta          DateTime? // ожидаемый срок поставки позиции
   srcRefs      Json? // для позиций СВОДНОЙ: [{requestId,itemId}] — откуда агрегировано
-  stockStatus  StockStatus?
+  stockQty     String       @default("") // сколько реально есть на складе (вводит склад)
+  stockStatus  StockStatus? // авто: выводится из stockQty (>0 — IN, "0" — OUT, пусто — null)
   stockById    String?
   stockByName  String?
   stockAt      DateTime?

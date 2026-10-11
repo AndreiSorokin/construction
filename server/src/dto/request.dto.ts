@@ -2,7 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray, IsBoolean, IsEnum, IsIn, IsISO8601, IsOptional, IsString, MinLength, ValidateNested,
 } from 'class-validator';
-import { Priority, RequestType, StockStatus, SupplyStage } from '@prisma/client';
+import { Priority, RequestType, SupplyStage } from '@prisma/client';
 
 export class RequestItemDto {
   @IsString() name: string;
@@ -36,7 +36,7 @@ export class SupplyNoteDto {
 }
 
 export class StockDto {
-  @IsEnum(StockStatus) status: StockStatus;
+  @IsString() qty: string;
 }
 
 export class FulfilledDto {

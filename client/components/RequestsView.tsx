@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useUrlState } from '@/lib/useUrlState';
-import { ChevronDown, ChevronUp, Filter, Plus, Search } from 'lucide-react';
+import { ChevronDown, ChevronUp, Filter, Pause, Plus, Search } from 'lucide-react';
 import { Badge, Card, Empty, btnPrimary, btnGhost, pillCls, DueBadge, ObjectDot, TypeBadge, BulkBar, appConfirm, appPrompt } from './ui';
 import { STATUS_CLS, STATUS_RU, TYPE_RU, PRIORITY_RU, fmtDate } from '@/lib/format';
 import { reqTitle, PRI_RANK, PRI_SELECT_CLS, TYPE_BORDER } from '@/lib/requestHelpers';
@@ -33,6 +33,7 @@ function ReqCard({ r, boot, onOpen, selectable, selected }: { r: any; boot: any;
         <span>{requester?.name || '—'}</span>
         <span className="flex items-center gap-1.5">
           <DueBadge due={r.due} status={r.status} />
+          {r.postponed && <Pause className="h-3 w-3 shrink-0 text-rose-600" />}
           {r.priority !== 'NORMAL' ? PRIORITY_RU[r.priority] + ' · ' : ''}{fmtDate(r.createdAt)}
         </span>
       </div>
@@ -247,7 +248,12 @@ export function RequestsView({ me, boot, requests, onOpen, onNew, onDrafts, onCo
                   <tr key={r.id} onClick={() => onOpen(r.id)}
                       className={`cursor-pointer border-b border-l-4 border-stone-100 transition hover:bg-stone-50 ${TYPE_BORDER[r.type] || 'border-l-stone-300'}`}>
                     <td className="px-3 py-2 font-mono text-xs font-semibold text-stone-900">{r.number}</td>
-                    <td className="px-3 py-2 text-stone-800"><span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span></td>
+                    <td className="px-3 py-2 text-stone-800">
+                      <div className="flex items-center gap-1.5">
+                        <span className="block truncate" style={{ maxWidth: 260 }}>{reqTitle(r, boot)}</span>
+                        {r.postponed && <Pause className="h-3.5 w-3.5 shrink-0 text-rose-600" />}
+                      </div>
+                    </td>
                     <td className="px-3 py-2"><TypeBadge type={r.type} /></td>
                     <td className="px-3 py-2 text-xs text-stone-500">{deptName(r)}</td>
                     <td className="px-3 py-2 text-xs text-stone-500">{objOf(r)?.name || '—'}</td>

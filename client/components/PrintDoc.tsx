@@ -125,7 +125,7 @@ export function PrintDoc({ doc, boot, onClose }: { doc: { kind: 'request' | 'ord
                       <td className="border border-black p-1">{it.name}{it.note ? ` (${it.note})` : ''}</td>
                       <td className="border border-black p-1">{it.unit}</td>
                       <td className="border border-black p-1">{it.qty}</td>
-                      <td className="border border-black p-1">{it.stockStatus === 'IN' ? 'есть' : it.stockStatus === 'OUT' ? 'нет' : ''}</td>
+                      <td className="border border-black p-1">{it.stockQty || ''}</td>
                     </tr>
                   ))}
                 </tbody>

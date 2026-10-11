@@ -78,7 +78,7 @@ export class RequestsController {
   @Roles(Role.WAREHOUSE, Role.ADMIN)
   @Patch(':id/items/:itemId/stock')
   stock(@Param('id') id: string, @Param('itemId') itemId: string, @Body() dto: StockDto, @CurrentUser() u: AuthUser) {
-    return this.requests.setItemStock(id, itemId, u, dto.status);
+    return this.requests.setItemStock(id, itemId, u, dto.qty);
   }
 
   @UseGuards(RolesGuard)

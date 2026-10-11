@@ -59,6 +59,7 @@ export function withLiveConsolidatedItems<T extends { isConsolidated: boolean; i
     if (live.length === 0) return it; // источники были разъединены/удалены — оставляем как есть
     const qtySum = live.reduce((sum: number, l: any) => sum + parseQty(l.qty), 0);
     const deliveredSum = live.reduce((sum: number, l: any) => sum + parseQty(l.deliveredQty), 0);
+    const stockSum = live.reduce((sum: number, l: any) => sum + parseQty(l.stockQty), 0);
     const notes = [...new Set(live.map((l: any) => l.note).filter(Boolean))];
     const etas = live.map((l: any) => l.eta).filter(Boolean).sort();
     return {
@@ -68,6 +69,7 @@ export function withLiveConsolidatedItems<T extends { isConsolidated: boolean; i
       note: notes.join('; '),
       qty: qtySum ? String(qtySum) : '',
       deliveredQty: deliveredSum ? String(deliveredSum) : '',
+      stockQty: stockSum ? String(stockSum) : '',
       eta: etas[0] || null, // ближайший срок среди источников
       fulfilled: live.every((l: any) => l.fulfilled), // выполнено, только если выполнены ВСЕ источники
       stockStatus: live.some((l: any) => l.stockStatus === 'OUT') ? 'OUT' : live.every((l: any) => l.stockStatus === 'IN') ? 'IN' : null,
@@ -318,19 +320,23 @@ export class RequestsService {
     return this.getOne(id, user.orgId);
   }
 
-  /** склад отмечает наличие позиции (на своём этапе согласования) */
-  async setItemStock(id: string, itemId: string, user: AuthUser, status: StockStatus) {
+  /** склад указывает фактическое количество на складе (на своём этапе согласования) —
+   *  stockStatus выводится из количества автоматически, для обратной совместимости с
+   *  агрегацией сводных заявок (withLiveConsolidatedItems) и печатной формой */
+  async setItemStock(id: string, itemId: string, user: AuthUser, qty: string) {
     const r = await this.getOne(id, user.orgId);
     const item = r.items.find((i) => i.id === itemId);
     if (!item) throw new NotFoundException('Позиция не найдена');
+    const n = qty.trim() ? parseQty(qty) : null;
+    const stockStatus = n === null ? null : n > 0 ? StockStatus.IN : StockStatus.OUT;
     await this.prisma.requestItem.update({
       where: { id: itemId },
-      data: { stockStatus: status, stockById: user.id, stockByName: user.name, stockAt: new Date() },
+      data: { stockQty: qty, stockStatus, stockById: user.id, stockByName: user.name, stockAt: new Date() },
     });
     await this.prisma.requestEvent.create({
       data: {
         requestId: id, action: DecisionAction.STOCK, byId: user.id, byName: user.name, stage: 'Склад',
-        comment: `${item.name}: ${status === StockStatus.IN ? 'есть на складе' : 'нет на складе'}`,
+        comment: `${item.name}: на складе ${qty || '—'} ${item.unit}`.trim(),
       },
     });
     return this.getOne(id, user.orgId);

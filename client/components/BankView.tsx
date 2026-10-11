@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import {
-  Search, Filter, ChevronUp, ChevronDown, AlertTriangle, Paperclip, ListChecks, ClipboardList,
+  Search, Filter, ChevronUp, ChevronDown, AlertTriangle, Paperclip, ListChecks, ClipboardList, Pause,
 } from 'lucide-react';
 import { ObjectDot, TypeBadge } from './ui';
 import { STATUS_RU, TYPE_RU, fmtDate } from '@/lib/format';
@@ -121,6 +121,7 @@ export function BankView({ me, boot, requests, onOpen }: { me: any; boot: any; r
                     <div className="flex items-center gap-1.5">
                       <span className="block truncate text-stone-800" style={{ maxWidth: 240 }}>{title}</span>
                       {obj && !dupObj && <ObjectDot color={obj.color} />}
+                      {r.postponed && <Pause className="h-3.5 w-3.5 shrink-0 text-rose-600" />}
                       {nAtt > 0 && <span className="inline-flex shrink-0 items-center gap-0.5 text-xs text-stone-400"><Paperclip className="h-3 w-3" />{nAtt}</span>}
                       {prog && prog.total > 0 && <span className={`inline-flex shrink-0 items-center gap-0.5 text-xs ${prog.done === prog.total ? 'text-emerald-600' : 'text-stone-400'}`}><ListChecks className="h-3 w-3" />{prog.done}/{prog.total}</span>}
                     </div>

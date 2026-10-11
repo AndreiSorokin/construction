@@ -238,15 +238,12 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                     <td className="whitespace-nowrap p-2">{it.qty} {it.unit}</td>
                     <td className="p-2">
                       {myTurn && me.role === 'WAREHOUSE' && !r.isConsolidated ? (
-                        <div className="flex gap-1">
-                          <button disabled={busy} onClick={() => act(() => api.requests.stock(r.id, it.id, 'IN'))}
-                            className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'}`}>Есть</button>
-                          <button disabled={busy} onClick={() => act(() => api.requests.stock(r.id, it.id, 'OUT'))}
-                            className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'OUT' ? 'bg-rose-100 text-rose-700' : 'bg-stone-100 text-stone-500'}`}>Нет</button>
-                        </div>
-                      ) : it.stockStatus ? (
-                        <span className={it.stockStatus === 'IN' ? 'text-emerald-600' : 'text-rose-600'}>
-                          {it.stockStatus === 'IN' ? 'есть' : 'нет'}
+                        <input className={`${inputCls} !w-20 !px-2 !py-1 text-xs`} defaultValue={it.stockQty || ''} disabled={busy}
+                          placeholder="0" title="Сколько есть на складе"
+                          onBlur={(e) => { if (e.target.value !== (it.stockQty || '')) act(() => api.requests.stock(r.id, it.id, e.target.value)); }} />
+                      ) : it.stockQty ? (
+                        <span>
+                          {it.stockQty}
                           <span className="text-stone-400"> · {it.stockByName}</span>
                         </span>
                       ) : <span className="text-stone-300">—</span>}
@@ -487,14 +484,11 @@ export function RequestDetail({ me, boot, r, onBack, onUpdated, onPrint, onRepea
                               <td className="whitespace-nowrap p-2">{it.qty} {it.unit}</td>
                               <td className="p-2">
                                 {canWorkSupply ? (
-                                  <div className="flex gap-1">
-                                    <button disabled={busy} onClick={() => actOnSource(() => api.requests.stock(src.id, it.id, 'IN'))}
-                                      className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'}`}>Есть</button>
-                                    <button disabled={busy} onClick={() => actOnSource(() => api.requests.stock(src.id, it.id, 'OUT'))}
-                                      className={`rounded px-1.5 py-0.5 text-xs ${it.stockStatus === 'OUT' ? 'bg-rose-100 text-rose-700' : 'bg-stone-100 text-stone-500'}`}>Нет</button>
-                                  </div>
-                                ) : it.stockStatus ? (
-                                  <span className={it.stockStatus === 'IN' ? 'text-emerald-600' : 'text-rose-600'}>{it.stockStatus === 'IN' ? 'есть' : 'нет'}</span>
+                                  <input className={`${inputCls} !w-20 !px-2 !py-1 text-xs`} defaultValue={it.stockQty || ''} disabled={busy}
+                                    placeholder="0" title="Сколько есть на складе"
+                                    onBlur={(e) => { if (e.target.value !== (it.stockQty || '')) actOnSource(() => api.requests.stock(src.id, it.id, e.target.value)); }} />
+                                ) : it.stockQty ? (
+                                  <span>{it.stockQty}</span>
                                 ) : <span className="text-stone-300">—</span>}
                               </td>
                               <td className="whitespace-nowrap p-2">

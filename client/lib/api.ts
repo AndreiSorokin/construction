@@ -135,8 +135,8 @@ export const api = {
     confirm: (id: string) => POST(`/api/requests/${id}/confirm`),
     return: (id: string) => POST(`/api/requests/${id}/return`),
     supplyNote: (id: string, text: string) => POST(`/api/requests/${id}/supply-notes`, { text }),
-    stock: (id: string, itemId: string, status: 'IN' | 'OUT') =>
-      PATCH(`/api/requests/${id}/items/${itemId}/stock`, { status }),
+    stock: (id: string, itemId: string, qty: string) =>
+      PATCH(`/api/requests/${id}/items/${itemId}/stock`, { qty }),
     fulfilled: (id: string, itemId: string, fulfilled: boolean) =>
       PATCH(`/api/requests/${id}/items/${itemId}/fulfilled`, { fulfilled }),
     assign: (id: string, assigneeId: string) => PATCH(`/api/requests/${id}/assign`, { assigneeId }),
